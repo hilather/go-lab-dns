@@ -181,6 +181,35 @@ receive packet
 
 The chaos engine receives a structured resolution context and cannot access management handlers or arbitrary process resources.
 
+## DNS wire adapter and listeners
+
+`internal/dnswire` is the only package that may import `github.com/miekg/dns` (pinned at **v1.1.72**). It converts wire bytes to `model.Query` plus a package-local `Request` (ID, opcode, EDNS) and encodes `model.Result` back to octets. Library types never appear in `dnsserver` or later packages.
+
+`internal/dnsserver` binds UDP and TCP, applies admission, calls `Handler.ServeDNS`, and applies the returned `TransportHint`. It does not import snapshot, resolver, forwarder, or chaos.
+
+Default listen address (first GA, configured later by CFG): `:5353` UDP+TCP.
+
+Default admission and transport limits:
+
+| Limit | Default |
+|---|---|
+| Max UDP datagram | 4096 octets (oversize dropped) |
+| Max TCP message | 65535 octets (oversize closes the connection) |
+| Max questions | 1 (0 or more than 1 → FORMERR) |
+| Max EDNS UDP size | 4096 (client sizes below 512 raised to 512) |
+| Advertised EDNS UDP size | 1232 |
+| TCP idle / read / write / max age | 10s / 2s / 2s / 30s |
+| Query handler timeout | 2s |
+| Max TCP connections / per source IP | 256 / 16 |
+| Max in-flight queries | 1024 |
+| Max hold-then-close | 1s |
+
+Parse/admission RCODEs: empty or short datagram → drop; malformed with a 12-byte header → FORMERR; QR=1 → drop; opcode ≠ QUERY → NOTIMP; QCLASS ≠ IN or AXFR/IXFR → NOTIMP; EDNS version ≠ 0 → BADVERS (FORMERR + OPT version 0).
+
+Transport hints: TCP-only actions on UDP are **drop** (no successful answer). `HintTruncate` on TCP is **send** of the full response (TC is a UDP signal). Unknown hints are **drop**. After `ServeDNS` returns the server owns the `Response`; later `SetHint` fails.
+
+Metrics hooks take only bounded labels (transport, RCODE, action, reason). QNAME and client IP are not recorded.
+
 ## Reverse-proxy relationship
 
 A wildcard A or AAAA record can direct many names to one host. An HTTP reverse proxy or ingress on that host must route by Host or SNI to reach different tools. DNS does not normally select an arbitrary application port for browsers.

@@ -1273,7 +1273,7 @@ Idempotency cache: bounded in-memory, process-local, cleared on reset. Same key 
 
 | Topic | Option | Verdict | Why |
 |---|---|---|---|
-| DNS library | **`github.com/miekg/dns` behind `dnswire`** | **Accepted for DNS-001** | Mature wire codec; de facto Go DNS stack; keeps types behind the adapter. Pin an exact version in PR-04 |
+| DNS library | **`github.com/miekg/dns v1.1.72` behind `dnswire`** | **Accepted for DNS-001** | Mature wire codec; de facto Go DNS stack; keeps types behind the adapter. Pinned in DNS-001 / PR-04 |
 | | `coredns/coredns` as a library | Rejected | Pulls a server framework; fights ADR 0002 |
 | | From-scratch parser | Rejected | ADR 0002 |
 | HTTP stack | **stdlib `net/http`** | **Accepted** | ADR 0001; middleware is small enough to own |
@@ -1684,7 +1684,7 @@ flowchart TD
 - **PR title:** `feat(dns): UDP/TCP listeners and miekg/dns adapter with admission limits`
 - **Files/components:** `internal/dnswire/**`, `internal/dnsserver/**`, library pin, fuzz corpus
 - **Dependencies:** PR-01; PR-02 query/response types
-- **Description:** Pin `miekg/dns` behind `dnswire`. UDP/TCP, EDNS limits, TCP framing/deadlines, graceful shutdown, parse/admission flags. Transport actions for chaos (send/drop/TC/close/reset/hold) with ownership rules. Stub handler is enough. Library types do not escape.
+- **Description:** Pin `github.com/miekg/dns v1.1.72` behind `dnswire`. UDP/TCP, EDNS limits, TCP framing/deadlines, graceful shutdown, parse/admission flags. Transport actions for chaos (send/drop/TC/close/reset/hold) with ownership rules. Stub handler is enough. Library types do not escape.
 
 ### PR-05 — Local resolver and wildcards (RES-001)
 

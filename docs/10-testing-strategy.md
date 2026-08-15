@@ -43,7 +43,7 @@ Fuzzers must enforce memory and time limits and preserve minimized regressions i
 
 ### Protocol integration tests
 
-Run real UDP and TCP listeners and verify wire responses with an independent client library or tool. Cover:
+DNS-001 lands independent localhost UDP/TCP client tests in `internal/dnsserver` (no miekg import) plus a `dnswire` fuzz corpus under `testdata/packets` and `internal/dnswire/testdata/fuzz/FuzzParse`. Cover:
 
 - Exact and wildcard answers.
 - Empty non-terminals.

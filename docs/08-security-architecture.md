@@ -31,6 +31,8 @@ Related ADRs: 0003, 0004, 0005, 0007
 - Maximum question count, packet size, EDNS size, CNAME depth, answer count, and upstream attempts.
 - UDP response size controls and minimal responses.
 - TCP read/write/idle/total deadlines and per-source connection caps.
+
+First-GA DNS listener numeric defaults (DNS-001; YAML overrides land with CFG/STA): max UDP 4096, max TCP message 65535, one question, EDNS UDP clamp 4096 / advertise 1232, TCP idle 10s, read/write 2s, connection max-age 30s, query timeout 2s, 256 TCP connections (16 per source IP), 1024 in-flight queries, hold-then-close cap 1s. Oversized UDP is dropped; oversized TCP is closed. Rate limits beyond these caps are SEC-001.
 - Self-forwarding and loop validation.
 - No automatic use of host `/etc/resolv.conf` unless explicitly configured and documented.
 

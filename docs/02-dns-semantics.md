@@ -140,6 +140,28 @@ UDP and TCP return semantically equivalent answers unless:
 
 TCP handlers must use read, write, idle, and total request bounds. Delayed chaos must be cancellable when the TCP connection closes.
 
+### Parse and admission (DNS-001)
+
+Implemented in `internal/dnsserver` using `internal/dnswire`. Malformed input never panics.
+
+| Condition | Response |
+|---|---|
+| Empty datagram or fewer than 12 header octets | Drop |
+| Unpack failure with a usable header | FORMERR (ID echoed; question echoed when parsed) |
+| UDP length greater than `MaxUDPSize` (default 4096) | Drop |
+| TCP length prefix 0 or greater than `MaxTCPSize` | Close the connection |
+| QR=1 (a response sent as a query) | Drop |
+| Opcode other than QUERY | NOTIMP |
+| QDCOUNT = 0 or QDCOUNT > `MaxQuestions` (default 1) | FORMERR |
+| QCLASS other than IN | NOTIMP |
+| QTYPE AXFR or IXFR | NOTIMP |
+| EDNS version other than 0 | BADVERS (header FORMERR + OPT version 0) |
+| No EDNS on UDP | Responses capped at 512 octets; TC set if truncated |
+| EDNS UDP size < 512 | Treated as 512 (RFC 6891) |
+| EDNS UDP size > `MaxEDNSUDPSize` (default 4096) | Clamped |
+
+Handler failures, panics, and a nil `Response` with `HintSend` are fail-closed to SERVFAIL. Context cancel (shutdown, query timeout, TCP peer close) produces no answer.
+
 ## Explainability
 
 `resolve:explain` returns:

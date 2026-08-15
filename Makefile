@@ -21,7 +21,7 @@ help:
 		'  verify-generated    fail if generate would change the fixture' \
 		'  test                go test ./...' \
 		'  test-race           go test -race ./...' \
-		'  test-fuzz-smoke     execute the buildinfo seed corpus' \
+		'  test-fuzz-smoke     execute the buildinfo and dnswire seed corpora' \
 		'  test-docs           required documents and internal markdown links' \
 		'  security-scan       govulncheck' \
 		'  test-integration    unimplemented until later DNS/control-plane PRs' \
@@ -49,7 +49,8 @@ test-race:
 	$(GO) test -race ./...
 
 test-fuzz-smoke:
-	$(GO) test ./internal/buildinfo -fuzz=FuzzInfoString -fuzztime=10s -count=1
+	$(GO) test ./internal/buildinfo -fuzz=FuzzInfoString -fuzztime=5s -count=1
+	$(GO) test ./internal/dnswire -fuzz=FuzzParse -fuzztime=10s -count=1
 
 test-docs:
 	$(GO) run ./scripts/checkdocs
