@@ -190,6 +190,67 @@ func TestStoreConcurrentLoadSwapPreviousBootstrap(t *testing.T) {
 	}
 }
 
+func TestStoreSwapStampsEmergencyAndApplyCannotClear(t *testing.T) {
+	s := NewStore()
+	boot := &Snapshot{Generation: 0, Revision: "sha256:boot", Canonical: &model.State{Kind: model.KindLabDNS}}
+	s.InstallBootstrap(boot)
+	if s.EmergencyChaosOff() || s.Load().EmergencyChaosOff {
+		t.Fatal("inhibit set at bootstrap")
+	}
+
+	s.SetEmergencyChaosOff(true)
+	if !s.EmergencyChaosOff() {
+		t.Fatal("SetEmergencyChaosOff did not stick")
+	}
+	stamped := s.StampEmergency()
+	if stamped == boot {
+		t.Fatal("stamp must publish a new snapshot pointer")
+	}
+	if !stamped.EmergencyChaosOff || stamped.Revision != boot.Revision {
+		t.Fatalf("stamped off=%v rev=%s", stamped.EmergencyChaosOff, stamped.Revision)
+	}
+	if stamped.Canonical != boot.Canonical {
+		t.Fatal("stamp must keep the same Canonical pointer")
+	}
+
+	applied := &Snapshot{Generation: 2, Revision: "sha256:applied", Canonical: &model.State{Kind: model.KindLabDNS, Metadata: model.Metadata{Name: "applied"}}}
+	if prev := s.Swap(applied); prev != stamped {
+		t.Fatalf("swap prev=%p want stamped", prev)
+	}
+	live := s.Load()
+	if live.Revision != "sha256:applied" {
+		t.Fatal("swap lost the applied Canonical")
+	}
+	if !live.EmergencyChaosOff {
+		t.Fatal("swap must stamp inhibit onto apply")
+	}
+	if live == applied {
+		t.Fatal("swap must copy when forcing the inhibit bit")
+	}
+
+	s.SetEmergencyChaosOff(false)
+	cleared := s.StampEmergency()
+	if cleared.EmergencyChaosOff {
+		t.Fatal("enable must allow clearing the snapshot bit")
+	}
+}
+
+func TestStoreStampEmergencyDoesNotRepublishStaleCanonical(t *testing.T) {
+	s := NewStore()
+	old := &Snapshot{Generation: 1, Revision: "sha256:old", Canonical: &model.State{Kind: model.KindLabDNS, Metadata: model.Metadata{Name: "old"}}}
+	neu := &Snapshot{Generation: 2, Revision: "sha256:new", Canonical: &model.State{Kind: model.KindLabDNS, Metadata: model.Metadata{Name: "new"}}}
+	s.Swap(old)
+	s.SetEmergencyChaosOff(true)
+	s.Swap(neu)
+	got := s.StampEmergency()
+	if got.Revision != "sha256:new" || got.Canonical.Metadata.Name != "new" {
+		t.Fatalf("stamp republished stale Canonical rev=%s name=%s", got.Revision, got.Canonical.Metadata.Name)
+	}
+	if !got.EmergencyChaosOff {
+		t.Fatal("stamp lost inhibit on the new snapshot")
+	}
+}
+
 func TestZeroValueSnapshotIndexes(t *testing.T) {
 	var snap Snapshot
 	_ = snap.Zones

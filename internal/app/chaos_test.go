@@ -83,6 +83,39 @@ func TestApplyPreservesEmergencyBit(t *testing.T) {
 	}
 }
 
+func TestEmergencyDisableDoesNotClobberConcurrentApply(t *testing.T) {
+	path := copyFixture(t)
+	svc, boot := mustBoot(t, path)
+	ctx := context.Background()
+	svc.afterCompile = func() {
+		if _, err := svc.EmergencyDisableChaos(ctx, actor(), EmergencyIn{Reason: "interleave"}); err != nil {
+			t.Errorf("emergency during apply: %v", err)
+		}
+	}
+	if _, err := svc.Apply(ctx, actor(), ChangeIn{
+		ExpectedRevision: boot.Revision,
+		Operations:       []model.Operation{addWWWRecord()},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	live := svc.Store().Load()
+	if !live.EmergencyChaosOff {
+		t.Fatal("emergency inhibit missing after interleaved apply")
+	}
+	found := false
+	for _, r := range live.Canonical.Spec.Zones[0].Records {
+		if r.ID == "www-a" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("emergency swap discarded the concurrent apply")
+	}
+	if live.Revision == boot.Revision {
+		t.Fatal("apply revision missing")
+	}
+}
+
 func TestListChaosPoliciesEmpty(t *testing.T) {
 	path := copyFixture(t)
 	svc, _ := mustBoot(t, path)

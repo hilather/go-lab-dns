@@ -48,7 +48,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 ### Chaos behavior
 
 - `ActivateChaos` / `DeactivateChaos` / `SetChaosExpiry` / `SimulateChaos` return `unsupported_capability` until CHA-001.
-- `EmergencyDisableChaos` swaps a new snapshot with `EmergencyChaosOff` set; Canonical (and therefore Revision) is unchanged. YAML `emergencyDisabled` still forces the bit on at compile.
+- `EmergencyDisableChaos` sets a store-level inhibit bit that `Store.Swap` stamps onto every snapshot (apply cannot clear it). The emergency path CAS-stamps the current snapshot and does not roll back a concurrent apply. YAML `emergencyDisabled` still forces the bit on.
 
 ### REST API
 

@@ -40,7 +40,7 @@ func (s *App) Reset(ctx context.Context, actor Actor, in ResetIn) (*ApplyResult,
 	impact := impactOf(canonicalOf(prev), next.Canonical, diff)
 
 	// Runtime-only emergency bit does not survive reset.
-	s.emergencyOff.Store(false)
+	s.store.SetEmergencyChaosOff(false)
 	displaced := s.store.Swap(next)
 	// Bootstrap pointer tracks the last successfully compiled mount so a
 	// later reset without a path can still restore it. Set after compile

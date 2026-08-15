@@ -75,7 +75,10 @@ func (s *App) applyLocked(ctx context.Context, actor Actor, in ChangeIn) (*Apply
 		s.forgetIdempOnConflict(in.IdempotencyKey, err)
 		return nil, err
 	}
-	cand.next = s.honorEmergency(cand.next)
+	if s.afterCompile != nil {
+		s.afterCompile()
+	}
+	// Swap stamps Store.EmergencyChaosOff onto next; apply cannot clear it.
 	prev := s.store.Swap(cand.next)
 	res := &ApplyResult{
 		Plan:       *s.planFrom(cand),
@@ -131,6 +134,9 @@ func (s *App) Validate(ctx context.Context, actor Actor, in ValidateIn) (*Plan, 
 	off := false
 	if prev != nil {
 		off = prev.EmergencyChaosOff
+	}
+	if s.store != nil && s.store.EmergencyChaosOff() {
+		off = true
 	}
 	next, err := compileCandidate(ctx, base, prev, s.clock, off)
 	if err != nil {
@@ -189,7 +195,11 @@ func (s *App) buildCandidate(ctx context.Context, in ChangeIn, requireRev bool) 
 	if err := applyOperations(copied, in.Operations); err != nil {
 		return nil, err
 	}
-	next, err := compileCandidate(ctx, copied, prev, s.clock, prev.EmergencyChaosOff)
+	off := prev.EmergencyChaosOff
+	if s.store != nil && s.store.EmergencyChaosOff() {
+		off = true
+	}
+	next, err := compileCandidate(ctx, copied, prev, s.clock, off)
 	if err != nil {
 		return nil, asDomain(err)
 	}
