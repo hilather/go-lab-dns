@@ -48,9 +48,3 @@ func Annotate(res *model.Result, base model.Result, plans ...chaos.ActionPlan) {
 		ex.ChaosActions = acts
 	}
 }
-
-// MergePlans folds two phase plans for cache/upstream/pressure that were
-// decided in pre-resolution. Response-phase mutations stay on post.
-func HasTransport(plan chaos.ActionPlan) bool {
-	return plan.TransportHint != "" && plan.TransportHint != "send"
-}

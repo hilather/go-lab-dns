@@ -291,7 +291,7 @@ func (e *Engine) uniforms(p model.ChaosPolicy, snap *snapshot.Snapshot, in Decis
 	if mode == "" {
 		mode = model.SelectorDeterministic
 	}
-	if mode == model.SelectorRandom && !simulate {
+	if mode == model.SelectorRandom && !simulate && in.SimulationNonce == "" {
 		p := unit(e.rng.Uint64())
 		w := unit(e.rng.Uint64())
 		return HashResult{P: p, W: w}, p, w
@@ -352,45 +352,16 @@ func (e *Engine) planActions(p model.ChaosPolicy, out model.ChaosOutcome, in Dec
 		}
 		switch a.Type {
 		case model.ActionDelay:
-			d := a.Duration
-			if a.Distribution == model.DistUniform || (a.Distribution == "" && (a.Min != 0 || a.Max != 0)) {
-				u1 := h.U1
-				if p.Selector.Mode != model.SelectorRandom || simulate {
-					delayFields := HashFields{
-						Seed:        p.Selector.Seed,
-						Revision:    p.Selector.Revision,
-						PolicyID:    p.ID,
-						QNAME:       canonicalName(in.Query.Name),
-						QTYPE:       in.Query.Type,
-						ClientGroup: ClientGroupField(p.Selector, in.ClientGroupID, clientString(in)),
-						Transport:   in.Query.Transport,
-						TimeBucket:  TimeBucketString(now, p.Selector.TimeBucket),
-						Nonce:       DelayNonce(in.SimulationNonce),
-					}
-					if delayFields.Revision == "" {
-						delayFields.Revision = snap.Revision
-					}
-					u1 = HashV1(delayFields).U1
-				} else {
-					u1 = e.rng.Uint64()
-				}
-				d = UniformDelay(a.Min, a.Max, u1)
-				pa.Seed = u1
-			}
-			clamped, did := clampDelay(d, globalMax, policyMax)
+			clamped, u1, recs := e.mapDelay(p, a, in, snap, h, now, simulate, globalMax, policyMax)
 			pa.Delay = clamped
-			if did {
+			pa.Seed = u1
+			if len(recs) > 0 {
 				pa.Clamped = true
-				clamps = append(clamps, ClampRecord{
-					PolicyID: p.ID, Action: model.ActionDelay, Reason: "max_delay",
-					From: d.String(), To: clamped.String(),
-				})
+				clamps = append(clamps, recs...)
 			}
 			if clamped > delay {
 				delay = clamped
 			}
-			// Reservation is taken at execution so unused Decide calls
-			// (tests, unused plans) cannot leak in-flight counts.
 		case model.ActionRCode:
 			pa.RCode = a.Value
 			if in.Phase == PhasePreResolution || in.Phase == "" {
@@ -424,18 +395,12 @@ func (e *Engine) planActions(p model.ChaosPolicy, out model.ChaosOutcome, in Dec
 			hint = "tcp-reset"
 		case model.ActionUpstream:
 			if normalizeActionValue(a.Value) == UpstreamValueDelay {
-				d := a.Duration
-				if d == 0 {
-					d = a.TTL
-				}
-				clamped, did := clampDelay(d, globalMax, policyMax)
+				clamped, u1, recs := e.mapDelay(p, a, in, snap, h, now, simulate, globalMax, policyMax)
 				pa.Delay = clamped
-				if did {
+				pa.Seed = u1
+				if len(recs) > 0 {
 					pa.Clamped = true
-					clamps = append(clamps, ClampRecord{
-						PolicyID: p.ID, Action: model.ActionUpstream, Reason: "max_delay",
-						From: d.String(), To: clamped.String(),
-					})
+					clamps = append(clamps, recs...)
 				}
 			}
 		case model.ActionPressure:
@@ -447,6 +412,45 @@ func (e *Engine) planActions(p model.ChaosPolicy, out model.ChaosOutcome, in Dec
 		acts = append(acts, pa)
 	}
 	return acts, clamps, delay, early, hint, skipRes, transportConflict
+}
+
+func (e *Engine) mapDelay(p model.ChaosPolicy, a model.ChaosAction, in DecisionIn, snap *snapshot.Snapshot, h HashResult, now time.Time, simulate bool, globalMax, policyMax time.Duration) (time.Duration, uint64, []ClampRecord) {
+	d := a.Duration
+	if d == 0 {
+		d = a.TTL
+	}
+	u1 := h.U1
+	if a.Distribution == model.DistUniform || (a.Distribution == "" && (a.Min != 0 || a.Max != 0)) {
+		if p.Selector.Mode != model.SelectorRandom || simulate || in.SimulationNonce != "" {
+			delayFields := HashFields{
+				Seed:        p.Selector.Seed,
+				Revision:    p.Selector.Revision,
+				PolicyID:    p.ID,
+				QNAME:       canonicalName(in.Query.Name),
+				QTYPE:       in.Query.Type,
+				ClientGroup: ClientGroupField(p.Selector, in.ClientGroupID, clientString(in)),
+				Transport:   in.Query.Transport,
+				TimeBucket:  TimeBucketString(now, p.Selector.TimeBucket),
+				Nonce:       DelayNonce(in.SimulationNonce),
+			}
+			if delayFields.Revision == "" {
+				delayFields.Revision = snap.Revision
+			}
+			u1 = HashV1(delayFields).U1
+		} else if e != nil {
+			u1 = e.rng.Uint64()
+		}
+		d = UniformDelay(a.Min, a.Max, u1)
+	}
+	clamped, did := clampDelay(d, globalMax, policyMax)
+	var recs []ClampRecord
+	if did {
+		recs = []ClampRecord{{
+			PolicyID: p.ID, Action: a.Type, Reason: "max_delay",
+			From: d.String(), To: clamped.String(),
+		}}
+	}
+	return clamped, u1, recs
 }
 
 func fillPlanSummary(plan *ActionPlan) {
@@ -471,13 +475,6 @@ func fillPlanSummary(plan *ActionPlan) {
 			case UpstreamValueDelay:
 				if a.Delay > plan.Upstream.Delay {
 					plan.Upstream.Delay = a.Delay
-				}
-				if a.TTL > plan.Upstream.Delay {
-					// duration lives on Delay after planning; Duration field is Delay
-					plan.Upstream.Delay = a.TTL
-				}
-				if a.Min > 0 && plan.Upstream.Delay == 0 {
-					plan.Upstream.Delay = a.Min
 				}
 			case UpstreamValueUnavailable:
 				if a.UpstreamID != "" {

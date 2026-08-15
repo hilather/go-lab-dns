@@ -2,6 +2,9 @@ package dnsquery
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
 	"sync/atomic"
 
 	"github.com/hilather/go-lab-dns/internal/cache"
@@ -102,12 +105,21 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (*dnsserver.Re
 	}
 
 	cl := classify(snap, q)
-	pre := h.decide(ctx, snap, q, cl, nil, chaos.PhasePreResolution)
+	nonce := newDecisionNonce()
+	pre := chaos.ActionPlan{}
+	if !h.inhibited() {
+		pre = h.decide(ctx, snap, q, cl, nil, chaos.PhasePreResolution, nonce)
+	} else {
+		pre = chaos.ActionPlan{Disabled: true, Reason: "emergency_disabled"}
+	}
 	sess := effects.NewSession(h.clk, h.budgets(), snap, h.metrics())
 	defer sess.Release()
 
 	if err := sess.Sleep(ctx, pre, model.PhaseBeforeResolution); err != nil {
 		return nil, dnsserver.HintDrop, err
+	}
+	if h.inhibited() {
+		return h.sendBase(ctx, snap, q, cl, model.Result{}, chaos.ActionPlan{})
 	}
 
 	press := effects.CheckPressure(h.pressure(), pre, h.clk.Now(), h.metrics())
@@ -130,18 +142,27 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (*dnsserver.Re
 			return sess.Sleep(ctx, pre, model.PhaseBeforeUpstream)
 		})
 		if err != nil {
-			if ctx.Err() != nil {
-				return nil, dnsserver.HintDrop, ctx.Err()
+			if dropOnCtx(ctx) {
+				return nil, dnsserver.HintDrop, err
 			}
 			return dnsserver.NewResponse(model.Result{RCode: model.RCodeServFail}), dnsserver.HintSend, nil
 		}
 	}
+	if h.inhibited() {
+		applyRA(&res, cl)
+		return dnsserver.NewResponse(res), dnsserver.HintSend, nil
+	}
 
-	post := h.decide(ctx, snap, q, cl, &res, chaos.PhaseResponse)
+	post := h.decide(ctx, snap, q, cl, &res, chaos.PhaseResponse, nonce)
+	if h.inhibited() {
+		applyRA(&res, cl)
+		return dnsserver.NewResponse(res), dnsserver.HintSend, nil
+	}
 	base := res
 	res = effects.ApplyResponse(res, post, q, h.metrics())
 	effects.Annotate(&res, base, pre, post)
 	applyRA(&res, cl)
+	applyRA(&base, cl)
 	if res.Explanation != nil {
 		res.Explanation.ClientGroupID = cl.Group
 		res.Explanation.ForwardingID = cl.ForwardingID
@@ -154,6 +175,10 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (*dnsserver.Re
 	}
 	if err := sess.Sleep(ctx, post, model.PhaseBeforeResponse); err != nil {
 		return nil, dnsserver.HintDrop, err
+	}
+	if h.inhibited() {
+		// Emergency after a response-phase mutate: send the pre-chaos answer.
+		return dnsserver.NewResponse(base), dnsserver.HintSend, nil
 	}
 
 	hintPlan := post
@@ -172,17 +197,34 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (*dnsserver.Re
 	return resp, hint, nil
 }
 
-func (h *Handler) decide(ctx context.Context, snap *snapshot.Snapshot, q model.Query, cl class, base *model.Result, phase chaos.Phase) chaos.ActionPlan {
-	if h == nil || h.eng == nil {
-		return chaos.ActionPlan{}
+func (h *Handler) sendBase(ctx context.Context, snap *snapshot.Snapshot, q model.Query, cl class, have model.Result, plan chaos.ActionPlan) (*dnsserver.Response, dnsserver.TransportHint, error) {
+	res := have
+	if res.RCode == "" && len(res.Answers) == 0 {
+		var err error
+		res, err = h.answer(ctx, snap, q, cl, plan, nil)
+		if err != nil {
+			if dropOnCtx(ctx) {
+				return nil, dnsserver.HintDrop, err
+			}
+			return dnsserver.NewResponse(model.Result{RCode: model.RCodeServFail}), dnsserver.HintSend, nil
+		}
+	}
+	applyRA(&res, cl)
+	return dnsserver.NewResponse(res), dnsserver.HintSend, nil
+}
+
+func (h *Handler) decide(ctx context.Context, snap *snapshot.Snapshot, q model.Query, cl class, base *model.Result, phase chaos.Phase, nonce string) chaos.ActionPlan {
+	if h == nil || h.eng == nil || h.inhibited() {
+		return chaos.ActionPlan{Disabled: h.inhibited(), Reason: inhibitReason(h)}
 	}
 	plan, err := h.eng.Decide(ctx, snap, chaos.DecisionIn{
-		Query:         q,
-		ClientGroupID: cl.Group,
-		ZoneID:        cl.ZoneID,
-		ForwardingID:  cl.ForwardingID,
-		Base:          base,
-		Phase:         phase,
+		Query:           q,
+		ClientGroupID:   cl.Group,
+		ZoneID:          cl.ZoneID,
+		ForwardingID:    cl.ForwardingID,
+		Base:            base,
+		Phase:           phase,
+		SimulationNonce: nonce,
 	})
 	if err != nil {
 		h.logf("chaos decide: %v", err)
@@ -191,15 +233,59 @@ func (h *Handler) decide(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 	return plan
 }
 
+func (h *Handler) inhibited() bool {
+	return h != nil && h.store != nil && h.store.EmergencyChaosOff()
+}
+
+func inhibitReason(h *Handler) string {
+	if h != nil && h.inhibited() {
+		return "emergency_disabled"
+	}
+	return ""
+}
+
+func newDecisionNonce() string {
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(b[:])
+}
+
+func dropOnCtx(ctx context.Context) bool {
+	if ctx == nil || ctx.Err() == nil {
+		return false
+	}
+	return !errors.Is(ctx.Err(), context.DeadlineExceeded)
+}
+
+// liveWorkCtx keeps resolve/exchange runnable after a chaos delay consumed
+// the listener's query deadline. Shutdown cancel still aborts.
+func liveWorkCtx(ctx context.Context) (context.Context, context.CancelFunc) {
+	if ctx == nil {
+		return context.Background(), func() {}
+	}
+	if ctx.Err() == nil {
+		return ctx, func() {}
+	}
+	if errors.Is(ctx.Err(), context.Canceled) {
+		return ctx, func() {}
+	}
+	return context.WithTimeout(context.WithoutCancel(ctx), dnsserver.DefaultQueryTimeout)
+}
+
 func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Query, cl class, plan chaos.ActionPlan, beforeUpstream func() error) (model.Result, error) {
 	if ent, ok := h.lookupCache(snap, q, cl, plan); ok {
 		return ent.Result, nil
 	}
 
+	rctx, rcancel := liveWorkCtx(ctx)
+	defer rcancel()
+
 	var local model.Result
 	haveLocal := false
 	if cl.ZoneID != "" {
-		res, err := resolver.Resolve(ctx, snap, q, cl.ZoneID)
+		res, err := resolver.Resolve(rctx, snap, q, cl.ZoneID)
 		if err != nil {
 			return model.Result{}, err
 		}
@@ -221,6 +307,8 @@ func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 			return model.Result{}, err
 		}
 	}
+	xctx, xcancel := liveWorkCtx(ctx)
+	defer xcancel()
 
 	fq := q
 	var prefix []model.RR
@@ -240,9 +328,9 @@ func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 			exchangeID = tid
 		}
 	}
-	up, err := h.fwd.ExchangeOpts(ctx, snap, fq, exchangeID, effects.Exchange(plan, h.metrics()))
+	up, err := h.fwd.ExchangeOpts(xctx, snap, fq, exchangeID, effects.Exchange(plan, h.metrics()))
 	if err != nil {
-		if ctx.Err() != nil {
+		if dropOnCtx(ctx) || dropOnCtx(xctx) {
 			return model.Result{}, err
 		}
 		// Exchange itself returns SERVFAIL results rather than dial errors

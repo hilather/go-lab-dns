@@ -116,11 +116,23 @@ func (c *Cache) Get(key Key, opts GetOpts) (Entry, bool) {
 		return Entry{}, false
 	}
 	now := c.clk.Now()
-	expired := !n.ent.ExpireAt.IsZero() && !now.Before(n.ent.ExpireAt)
+	naturallyExpired := !n.ent.ExpireAt.IsZero() && !now.Before(n.ent.ExpireAt)
 	if opts.TreatExpired {
-		expired = true
+		// Expire-this-request: miss (or stale copy) without deleting
+		// the shared entry or changing ExpireAt.
+		c.misses++
+		serveStale := opts.ServeStale || c.policy.StaleServing
+		if !serveStale || opts.ForceMiss {
+			return Entry{}, false
+		}
+		out := copyEntry(n.ent)
+		out.Stale = true
+		out.Result = copyResult(out.Result)
+		out.Result.Source = model.SourceCache
+		decayTTLs(&out.Result, now.Sub(n.ent.StoredAt), remainingTTL(n.ent, now))
+		return out, true
 	}
-	if expired {
+	if naturallyExpired {
 		serveStale := opts.ServeStale || c.policy.StaleServing
 		if !serveStale {
 			c.removeLocked(n)

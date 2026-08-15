@@ -380,6 +380,80 @@ func TestPlanSummaryCacheUpstreamPressure(t *testing.T) {
 	}
 }
 
+func TestRandomNonceStickyAcrossPhases(t *testing.T) {
+	st := sampleState(t)
+	for i := range st.Spec.Zones[0].Records {
+		st.Spec.Zones[0].Records[i].ChaosPolicyRefs = nil
+	}
+	st.Spec.Chaos.Policies = []model.ChaosPolicy{{
+		ID: "rand", Owner: "o", Reason: "r", Enabled: true, SafetyClass: model.SafetyClassLow,
+		Selector: model.ChaosSelector{Mode: model.SelectorRandom, Probability: 0.5},
+		Outcomes: []model.ChaosOutcome{{ID: "both", Weight: 1, Actions: []model.ChaosAction{
+			{Type: model.ActionCache, Value: CacheValueBypass, Phase: model.PhaseBeforeResolution},
+			{Type: model.ActionRCode, Value: "SERVFAIL", Phase: model.PhaseBeforeResponse},
+		}}},
+	}}
+	snap := compileSnap(t, st)
+	eng := NewEngine(testutil.NewFakeClock(time.Date(2026, 8, 15, 20, 0, 0, 0, time.UTC)), testutil.NewSeededRand(1))
+	in := DecisionIn{
+		Query:           model.Query{Name: "x.example.", Type: model.TypeA, Transport: model.TransportUDP},
+		SimulationNonce: "query-nonce-1",
+	}
+	in.Phase = PhasePreResolution
+	pre, err := eng.Decide(context.Background(), snap, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in.Phase = PhaseResponse
+	in.Base = &model.Result{RCode: model.RCodeNoError}
+	post, err := eng.Decide(context.Background(), snap, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preTrig, postTrig := false, false
+	var preOut, postOut string
+	for _, d := range pre.Decisions {
+		if d.PolicyID == "rand" && d.Triggered {
+			preTrig, preOut = true, d.OutcomeID
+		}
+	}
+	for _, d := range post.Decisions {
+		if d.PolicyID == "rand" && d.Triggered {
+			postTrig, postOut = true, d.OutcomeID
+		}
+	}
+	if preTrig != postTrig || preOut != postOut {
+		t.Fatalf("phases disagreed pre=%v/%s post=%v/%s", preTrig, preOut, postTrig, postOut)
+	}
+}
+
+func TestUniformUpstreamDelayIsMapped(t *testing.T) {
+	st := sampleState(t)
+	for i := range st.Spec.Zones[0].Records {
+		st.Spec.Zones[0].Records[i].ChaosPolicyRefs = nil
+	}
+	st.Spec.Chaos.Safety.MaxDelay = time.Second
+	st.Spec.Chaos.Policies = []model.ChaosPolicy{{
+		ID: "up", Owner: "o", Reason: "r", Enabled: true, SafetyClass: model.SafetyClassLow,
+		Selector: model.ChaosSelector{Mode: model.SelectorDeterministic, Seed: "u", Probability: 1},
+		Outcomes: []model.ChaosOutcome{{ID: "o", Weight: 1, Actions: []model.ChaosAction{
+			{Type: model.ActionUpstream, Value: UpstreamValueDelay, Phase: model.PhaseBeforeUpstream, Distribution: model.DistUniform, Min: 10 * time.Millisecond, Max: 20 * time.Millisecond},
+		}}},
+	}}
+	snap := compileSnap(t, st)
+	eng := NewEngine(testutil.NewFakeClock(time.Date(2026, 8, 15, 20, 0, 0, 0, time.UTC)), nil)
+	plan, err := eng.Decide(context.Background(), snap, DecisionIn{
+		Query: model.Query{Name: "x.example.", Type: model.TypeA, Transport: model.TransportUDP},
+		Phase: PhasePreResolution,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.Upstream.Delay < 10*time.Millisecond || plan.Upstream.Delay >= 20*time.Millisecond {
+		t.Fatalf("upstream delay %s", plan.Upstream.Delay)
+	}
+}
+
 func hasSkip(plan ActionPlan, id model.PolicyID, reason string) bool {
 	for _, d := range plan.Decisions {
 		if d.PolicyID == id && d.SkipReason == reason {

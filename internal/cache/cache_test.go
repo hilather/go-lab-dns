@@ -147,6 +147,19 @@ func TestChaosHooksAndCopy(t *testing.T) {
 	}
 }
 
+func TestTreatExpiredDoesNotDelete(t *testing.T) {
+	c := New(Policy{Enabled: true, MaxEntries: 4, MinimumTTL: time.Second, MaximumTTL: time.Minute, StaleServing: false}, nil)
+	k := Key{Revision: "r", Name: "a.", Type: model.TypeA, Class: model.ClassIN, Local: true}
+	c.Put(k, Entry{Result: model.Result{RCode: model.RCodeNoError, Answers: []model.RR{{TTL: time.Second, Data: "1.2.3.4"}}}}, PutOpts{})
+	if _, ok := c.Get(k, GetOpts{TreatExpired: true}); ok {
+		t.Fatal("expire-this-request must miss when stale serving is off")
+	}
+	got, ok := c.Get(k, GetOpts{})
+	if !ok || got.Result.Answers[0].Data != "1.2.3.4" {
+		t.Fatalf("shared entry must remain: ok=%v %+v", ok, got)
+	}
+}
+
 func TestRemainingTTLOnGet(t *testing.T) {
 	clk := testutil.NewFakeClock(time.Date(2026, 8, 15, 12, 0, 0, 0, time.UTC))
 	c := New(Policy{Enabled: true, MaxEntries: 4}, clk)

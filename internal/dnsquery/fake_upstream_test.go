@@ -25,6 +25,7 @@ type queryFake struct {
 	mu      sync.Mutex
 	rcode   model.RCode
 	answers []model.RR
+	hold    <-chan struct{}
 }
 
 func startQueryFake(t *testing.T) *queryFake {
@@ -56,6 +57,12 @@ func (f *queryFake) UDPAddr() string { return f.udp.LocalAddr().String() }
 func (f *queryFake) setAnswers(rrs ...model.RR) {
 	f.mu.Lock()
 	f.answers = rrs
+	f.mu.Unlock()
+}
+
+func (f *queryFake) setHold(ch <-chan struct{}) {
+	f.mu.Lock()
+	f.hold = ch
 	f.mu.Unlock()
 }
 
@@ -108,7 +115,11 @@ func (f *queryFake) reply(pkt []byte) []byte {
 	f.mu.Lock()
 	rcode := f.rcode
 	answers := append([]model.RR(nil), f.answers...)
+	hold := f.hold
 	f.mu.Unlock()
+	if hold != nil {
+		<-hold
+	}
 	req, err := dnswire.Parse(pkt, model.TransportUDP, queryFakeClient)
 	if err != nil || req == nil || !req.HeaderOK {
 		return nil

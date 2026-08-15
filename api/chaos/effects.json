@@ -18,7 +18,7 @@
     {"type": "truncate", "values": [], "notes": "UDP TC; TCP sends full (listener fallback)"},
     {"type": "tcp-close", "values": [], "notes": "optional hold>0 becomes hold-then-close"},
     {"type": "tcp-reset", "values": [], "notes": "RST, no DNS message"},
-    {"type": "cache", "values": ["bypass", "force-miss", "expire", "stale"], "notes": "request-path only; does not corrupt shared metadata"},
+    {"type": "cache", "values": ["bypass", "force-miss", "expire", "stale"], "notes": "request-path only; expire misses (or serves a stale copy) without deleting the shared entry"},
     {"type": "upstream", "values": ["delay", "unavailable", "force", "timeout", "transport-error", "failover", "SERVFAIL", "REFUSED"], "notes": "LabDNS behavior only; force uses upstreamId"},
     {"type": "pressure", "values": ["drop", "REFUSED", "SERVFAIL"], "notes": "policy budget maxRate (QPS) and maxConcurrency"}
   ]

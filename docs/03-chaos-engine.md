@@ -181,7 +181,7 @@ Fields:
 
 Per-entry delay is normally applied in `before response` after the RRset is selected. Delay must use context-aware timers and release concurrency budget on cancellation.
 
-Execution (CHA-002) lives in `internal/chaos/effects`. `Decide` still does not sleep. `effects.Session.Sleep` reserves one delayed-request token for the whole query, waits with `Clock.NewTimer`, and releases on return, context cancel, shutdown, or `CancelAll` (emergency disable). Budget exhaustion skips the delay and does not block. Uniform delay uses the frozen `hash-v1` second encoding (`field 10` = `delay` + nonce). First-GA distributions are `fixed` and `uniform` only.
+Execution (CHA-002) lives in `internal/chaos/effects`. `Decide` still does not sleep. `effects.Session.Sleep` reserves one delayed-request token for the whole query, waits with `Clock.NewTimer`, and releases on return, shutdown/peer cancel, or `CancelAll` (emergency disable). Query-timeout (`DeadlineExceeded`) does **not** abort a planned delay — the timer still runs so a documented 2s/10s delay becomes a delayed **answer**, not a silent drop. Emergency cancel skips remaining delay and returns success so the handler can send the base result (`HintSend`); it must not become SERVFAIL. `dnsquery` re-checks `Store.EmergencyChaosOff` before each later `Decide` / `ApplyResponse` / transport hint. A per-query nonce is passed to both phase `Decide` calls so `selector.mode: random` cannot pick disagreeing outcomes. Budget exhaustion skips the delay and does not block. Uniform delay (including `type: upstream` / `value: delay`) uses the frozen `hash-v1` second encoding (`field 10` = `delay` + nonce). First-GA distributions are `fixed` and `uniform` only.
 
 ### 2. RCODE and NODATA injection
 
@@ -256,10 +256,10 @@ Initial safe cache effects:
 
 - Bypass cache lookup.
 - Force cache miss without deleting the entry.
-- Expire the selected entry early for the current request.
+- Expire the selected entry early for the current request (miss, or a stale **copy** if stale serving is on). The shared entry and its `ExpireAt` stay in place.
 - Serve a stale entry only if a real stale copy exists and stale serving is enabled.
 
-Cache chaos must not corrupt shared cache metadata. It changes the request path or returns a copy.
+Cache chaos must not corrupt shared cache metadata. It changes the request path or returns a copy. Force-miss and expire-this-request never `delete` the stored entry.
 
 ### 12. Upstream behavior
 

@@ -2,6 +2,7 @@ package effects
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/hilather/go-lab-dns/internal/chaos"
@@ -20,7 +21,8 @@ type Session struct {
 
 	mu       sync.Mutex
 	tok      *chaos.Token
-	skipped  bool
+	skipped  bool // budget exhausted
+	stopped  bool // emergency: skip remaining delays
 	cancelCh chan struct{}
 	unreg    func()
 }
@@ -52,14 +54,17 @@ func NewSession(clk testutil.Clock, budgets *chaos.Budgets, snap *snapshot.Snaps
 }
 
 // Sleep waits for each delay action in phase. Budget exhaustion skips
-// remaining delays without failing the query. ctx or emergency cancel
-// stops the timer and releases the reservation.
+// remaining delays without failing the query. Query-timeout
+// (DeadlineExceeded) is not a cancel: the planned delay still runs so a
+// 2s/10s chaos delay is not turned into a silent drop. Shutdown / peer
+// cancel still aborts. Emergency CancelAll skips remaining delay and
+// returns nil so the caller can send the base answer.
 func (s *Session) Sleep(ctx context.Context, plan chaos.ActionPlan, phase string) error {
 	if s == nil {
 		return nil
 	}
 	if ctx != nil {
-		if err := ctx.Err(); err != nil {
+		if err := ctx.Err(); err != nil && !errors.Is(err, context.DeadlineExceeded) {
 			return err
 		}
 	}
@@ -82,7 +87,7 @@ func (s *Session) Sleep(ctx context.Context, plan chaos.ActionPlan, phase string
 
 func (s *Session) sleepOne(ctx context.Context, a chaos.PlannedAction) error {
 	s.mu.Lock()
-	if s.skipped {
+	if s.skipped || s.stopped {
 		s.mu.Unlock()
 		return nil
 	}
@@ -118,17 +123,38 @@ func (s *Session) sleepOne(ctx context.Context, a chaos.PlannedAction) error {
 	}
 	select {
 	case <-done:
+		if ctx != nil && errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			// Query budget elapsed; finish the planned delay or emergency.
+			return s.waitDelayOrEmergency(timer)
+		}
 		if s.metrics != nil {
 			s.metrics.DelayCanceled.Add(1)
 		}
 		return ctx.Err()
 	case <-s.cancelCh:
-		if s.metrics != nil {
-			s.metrics.DelayCanceled.Add(1)
-		}
-		return context.Canceled
+		s.markStopped()
+		return nil
 	case <-timer.C():
 		return nil
+	}
+}
+
+func (s *Session) waitDelayOrEmergency(timer testutil.Timer) error {
+	select {
+	case <-s.cancelCh:
+		s.markStopped()
+		return nil
+	case <-timer.C():
+		return nil
+	}
+}
+
+func (s *Session) markStopped() {
+	s.mu.Lock()
+	s.stopped = true
+	s.mu.Unlock()
+	if s.metrics != nil {
+		s.metrics.DelayCanceled.Add(1)
 	}
 }
 

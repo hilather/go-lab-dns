@@ -96,6 +96,51 @@ func TestConcurrentDelayBudget(t *testing.T) {
 	}
 }
 
+func TestSleepEmergencyReturnsNilNotCanceled(t *testing.T) {
+	clk := testutil.NewFakeClock(time.Date(2026, 8, 15, 20, 0, 0, 0, time.UTC))
+	eng := chaos.NewEngine(clk, nil)
+	snap := delaySnap(4, 4)
+	plan := chaos.ActionPlan{Actions: []chaos.PlannedAction{{
+		Type: model.ActionDelay, Phase: model.PhaseBeforeResponse, Delay: time.Hour, PolicyID: "p",
+	}}}
+	sess := NewSession(clk, eng.Budgets(), snap, eng.Stats())
+	defer sess.Release()
+	done := make(chan error, 1)
+	go func() { done <- sess.Sleep(context.Background(), plan, model.PhaseBeforeResponse) }()
+	deadline := time.Now().Add(time.Second)
+	for eng.Budgets().InFlight() == 0 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	eng.CancelDelays()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("emergency skip must not fail the query: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("emergency did not unblock")
+	}
+}
+
+func TestSleepDeadlineWaitsOutDelay(t *testing.T) {
+	eng := chaos.NewEngine(nil, nil)
+	snap := delaySnap(4, 4)
+	plan := chaos.ActionPlan{Actions: []chaos.PlannedAction{{
+		Type: model.ActionDelay, Phase: model.PhaseBeforeResponse, Delay: 60 * time.Millisecond, PolicyID: "p",
+	}}}
+	sess := NewSession(nil, eng.Budgets(), snap, nil)
+	defer sess.Release()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	if err := sess.Sleep(ctx, plan, model.PhaseBeforeResponse); err != nil {
+		t.Fatalf("deadline must not abort delay: %v", err)
+	}
+	if elapsed := time.Since(start); elapsed < 50*time.Millisecond {
+		t.Fatalf("slept %s, want full delay", elapsed)
+	}
+}
+
 func TestEmergencyCancelAllUnblocksDelays(t *testing.T) {
 	clk := testutil.NewFakeClock(time.Date(2026, 8, 15, 20, 0, 0, 0, time.UTC))
 	eng := chaos.NewEngine(clk, nil)

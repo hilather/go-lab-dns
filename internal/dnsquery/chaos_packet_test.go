@@ -68,6 +68,9 @@ func TestPacketRCodeAndEDE(t *testing.T) {
 		if string(msg.RCode) != rc {
 			t.Fatalf("%s: rcode=%s", rc, msg.RCode)
 		}
+		if rc == "SERVFAIL" && !wireHasEDE(t, out, 0, "lab-injected") {
+			t.Fatal("SERVFAIL missing EDE option 15")
+		}
 	}
 
 	st := chaosState(t)
@@ -227,15 +230,24 @@ func TestEmergencyDisableUnderDelayedLoad(t *testing.T) {
 	h := NewOpts(Opts{Store: store, Engine: eng, Clock: clk})
 
 	const n = 24
+	type outcome struct {
+		err  error
+		hint dnsserver.TransportHint
+		rc   model.RCode
+	}
+	got := make(chan outcome, n)
 	var wg sync.WaitGroup
-	errCh := make(chan error, n)
 	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			q := model.Query{Name: "ns.lab.example.", Type: model.TypeA, Class: model.ClassIN, Client: netip.MustParseAddr("10.42.0.10"), Transport: model.TransportUDP}
-			_, _, err := h.ServeDNS(context.Background(), &q)
-			errCh <- err
+			resp, hint, err := h.ServeDNS(context.Background(), &q)
+			rc := model.RCode("")
+			if resp != nil {
+				rc = resp.Result().RCode
+			}
+			got <- outcome{err: err, hint: hint, rc: rc}
 		}()
 	}
 	deadline := time.Now().Add(2 * time.Second)
@@ -252,6 +264,15 @@ func TestEmergencyDisableUnderDelayedLoad(t *testing.T) {
 	case <-done:
 	case <-time.After(2 * time.Second):
 		t.Fatal("emergency disable did not cancel delayed load")
+	}
+	close(got)
+	for o := range got {
+		if o.err != nil {
+			t.Fatalf("in-flight query failed after emergency: %v", o.err)
+		}
+		if o.hint != dnsserver.HintSend || o.rc != model.RCodeNoError {
+			t.Fatalf("emergency must send the base answer, hint=%s rcode=%s", o.hint, o.rc)
+		}
 	}
 
 	q := model.Query{Name: "ns.lab.example.", Type: model.TypeA, Class: model.ClassIN, Client: netip.MustParseAddr("10.42.0.10"), Transport: model.TransportUDP}
@@ -296,6 +317,231 @@ func TestQueryCancelReleasesBudget(t *testing.T) {
 	}
 	if eng.Budgets().InFlight() != 0 {
 		t.Fatalf("leaked %d", eng.Budgets().InFlight())
+	}
+}
+
+func TestEmergencyDisableDuringUpstreamNoPostChaos(t *testing.T) {
+	up := startQueryFake(t)
+	up.setAnswers(model.RR{Name: "out.example.", Type: model.TypeA, Class: model.ClassIN, TTL: 30 * time.Second, Data: "192.0.2.9"})
+	hold := make(chan struct{})
+	up.setHold(hold)
+	st := chaosState(t)
+	st.Spec.Forwarding = model.ForwardingSpec{
+		Policies: []model.ForwardingPolicy{{ID: "def", Suffix: ".", UpstreamPool: "p"}},
+		Pools: []model.UpstreamPool{{
+			ID: "p", Strategy: model.StrategyOrdered,
+			Upstreams: []model.Upstream{{ID: "u1", Endpoint: up.UDPAddr(), Transport: model.TransportUDP}},
+		}},
+	}
+	st.Spec.Chaos.Policies = []model.ChaosPolicy{{
+		ID: "mut", Owner: "o", Reason: "r", Enabled: true, SafetyClass: model.SafetyClassLow,
+		Scope:    model.ChaosScope{Owners: []model.Name{"out.example."}},
+		Selector: model.ChaosSelector{Mode: model.SelectorDeterministic, Seed: "m", Probability: 1},
+		Outcomes: []model.ChaosOutcome{{ID: "o", Weight: 1, Actions: []model.ChaosAction{
+			{Type: model.ActionRCode, Value: "SERVFAIL", Phase: model.PhaseBeforeResponse},
+			{Type: model.ActionTTL, Value: chaos.TTLValueZero, Phase: model.PhaseBeforeResponse},
+		}}},
+	}}
+	h, store, eng := buildChaos(t, st, nil)
+	done := make(chan struct {
+		res  model.Result
+		hint dnsserver.TransportHint
+		err  error
+	}, 1)
+	go func() {
+		q := model.Query{Name: "out.example.", Type: model.TypeA, Class: model.ClassIN, Client: netip.MustParseAddr("10.42.0.10"), Transport: model.TransportUDP, RD: true}
+		resp, hint, err := h.ServeDNS(context.Background(), &q)
+		out := model.Result{}
+		if resp != nil {
+			out = resp.Result()
+		}
+		done <- struct {
+			res  model.Result
+			hint dnsserver.TransportHint
+			err  error
+		}{out, hint, err}
+	}()
+	deadline := time.Now().Add(2 * time.Second)
+	for up.Packets.Load() == 0 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	if up.Packets.Load() == 0 {
+		t.Fatal("upstream never saw the query")
+	}
+	chaos.EmergencyDisable(store, eng)
+	close(hold)
+	select {
+	case o := <-done:
+		if o.err != nil {
+			t.Fatal(o.err)
+		}
+		if o.hint != dnsserver.HintSend || o.res.RCode != model.RCodeNoError {
+			t.Fatalf("want base answer, hint=%s rcode=%s", o.hint, o.res.RCode)
+		}
+		if len(o.res.Answers) != 1 || o.res.Answers[0].TTL == 0 {
+			t.Fatalf("must not apply post-phase TTL/RCODE: %+v", o.res.Answers)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("query did not finish")
+	}
+}
+
+func TestEmergencyDisableThroughListenerNoSERVFAIL(t *testing.T) {
+	st := chaosState(t)
+	st.Spec.Chaos.Policies = []model.ChaosPolicy{delayPolicy("slow", "a1", model.PhaseBeforeResponse, time.Hour, 0)}
+	h, store, eng := buildChaos(t, st, nil)
+	srv, err := dnsserver.New(dnsserver.Config{
+		UDPAddr: "127.0.0.1:0", TCPAddr: "127.0.0.1:0", Handler: h,
+		QueryTimeout: 2 * time.Second,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := srv.Start(); err != nil {
+		t.Fatal(err)
+	}
+	testutil.Cleanup(t, func() { _ = srv.Shutdown(t.Context()) })
+
+	q := packQuery(t, "ns.lab.example.", model.TypeA, false)
+	type read struct {
+		raw []byte
+	}
+	ch := make(chan read, 1)
+	go func() {
+		ch <- read{raw: exchangeUDPTimeout(t, srv.UDPAddr(), q, 2*time.Second)}
+	}()
+	deadline := time.Now().Add(2 * time.Second)
+	for eng.Budgets().InFlight() == 0 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	chaos.EmergencyDisable(store, eng)
+	got := <-ch
+	if got.raw == nil {
+		t.Fatal("expected a DNS answer after emergency, not silence")
+	}
+	msg, err := dnswire.UnpackUpstream(got.raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if msg.RCode == model.RCodeServFail {
+		t.Fatal("emergency must not inject SERVFAIL")
+	}
+	if msg.RCode != model.RCodeNoError || len(msg.Answers) == 0 {
+		t.Fatalf("want base answer, got rcode=%s answers=%v", msg.RCode, msg.Answers)
+	}
+}
+
+func TestDelayPhasesBeforeAndAfterUpstream(t *testing.T) {
+	up := startQueryFake(t)
+	up.setAnswers(model.RR{Name: "out.example.", Type: model.TypeA, Class: model.ClassIN, TTL: time.Second, Data: "192.0.2.9"})
+	st := chaosState(t)
+	st.Spec.Forwarding = model.ForwardingSpec{
+		Policies: []model.ForwardingPolicy{{ID: "def", Suffix: ".", UpstreamPool: "p"}},
+		Pools: []model.UpstreamPool{{
+			ID: "p", Strategy: model.StrategyOrdered,
+			Upstreams: []model.Upstream{{ID: "u1", Endpoint: up.UDPAddr(), Transport: model.TransportUDP}},
+		}},
+	}
+	st.Spec.Chaos.Policies = []model.ChaosPolicy{{
+		ID: "d1", Owner: "o", Reason: "r", Enabled: true, SafetyClass: model.SafetyClassLow,
+		Scope:    model.ChaosScope{Owners: []model.Name{"out.example."}},
+		Selector: model.ChaosSelector{Mode: model.SelectorDeterministic, Seed: "d", Probability: 1},
+		Outcomes: []model.ChaosOutcome{{ID: "o", Weight: 1, Actions: []model.ChaosAction{
+			{Type: model.ActionDelay, Phase: model.PhaseBeforeUpstream, Duration: 40 * time.Millisecond},
+		}}},
+	}}
+	h, _, _ := buildChaos(t, st, nil)
+	q := model.Query{Name: "out.example.", Type: model.TypeA, Class: model.ClassIN, Client: netip.MustParseAddr("10.42.0.10"), Transport: model.TransportUDP, RD: true}
+	start := time.Now()
+	res := serve(t, h, q)
+	if res.RCode != model.RCodeNoError {
+		t.Fatalf("rcode=%s", res.RCode)
+	}
+	if elapsed := time.Since(start); elapsed < 35*time.Millisecond {
+		t.Fatalf("before-upstream delay %s", elapsed)
+	}
+
+	st.Spec.Chaos.Policies[0].Outcomes[0].Actions[0].Phase = model.PhaseAfterUpstream
+	h, _, _ = buildChaos(t, st, nil)
+	start = time.Now()
+	res = serve(t, h, q)
+	if res.RCode != model.RCodeNoError {
+		t.Fatalf("rcode=%s", res.RCode)
+	}
+	if elapsed := time.Since(start); elapsed < 35*time.Millisecond {
+		t.Fatalf("after-upstream delay %s", elapsed)
+	}
+}
+
+func TestDelayAboveQueryTimeoutStillAnswers(t *testing.T) {
+	st := chaosState(t)
+	st.Spec.Chaos.Policies = []model.ChaosPolicy{delayPolicy("slow", "a1", model.PhaseBeforeResponse, 250*time.Millisecond, 0)}
+	h, _, _ := buildChaos(t, st, nil)
+	srv, err := dnsserver.New(dnsserver.Config{
+		UDPAddr: "127.0.0.1:0", TCPAddr: "127.0.0.1:0", Handler: h,
+		QueryTimeout: 80 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := srv.Start(); err != nil {
+		t.Fatal(err)
+	}
+	testutil.Cleanup(t, func() { _ = srv.Shutdown(t.Context()) })
+
+	start := time.Now()
+	out := exchangeUDPTimeout(t, srv.UDPAddr(), packQuery(t, "ns.lab.example.", model.TypeA, false), 2*time.Second)
+	if out == nil {
+		t.Fatal("delay above QueryTimeout must still answer")
+	}
+	msg, err := dnswire.UnpackUpstream(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if msg.RCode != model.RCodeNoError || len(msg.Answers) == 0 {
+		t.Fatalf("rcode=%s answers=%v", msg.RCode, msg.Answers)
+	}
+	if elapsed := time.Since(start); elapsed < 200*time.Millisecond {
+		t.Fatalf("expected full delay, elapsed %s", elapsed)
+	}
+
+	st = chaosState(t)
+	st.Spec.Chaos.Policies = []model.ChaosPolicy{delayPolicy("short", "a1", model.PhaseBeforeResponse, 40*time.Millisecond, 0)}
+	h, _, _ = buildChaos(t, st, nil)
+	srv, err = dnsserver.New(dnsserver.Config{
+		UDPAddr: "127.0.0.1:0", TCPAddr: "127.0.0.1:0", Handler: h,
+		QueryTimeout: 200 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := srv.Start(); err != nil {
+		t.Fatal(err)
+	}
+	testutil.Cleanup(t, func() { _ = srv.Shutdown(t.Context()) })
+	out = exchangeUDPTimeout(t, srv.UDPAddr(), packQuery(t, "ns.lab.example.", model.TypeA, false), time.Second)
+	if out == nil {
+		t.Fatal("delay below QueryTimeout must answer")
+	}
+}
+
+func TestRandomPolicyPhasesAgreeOnLivePath(t *testing.T) {
+	st := chaosState(t)
+	st.Spec.Chaos.Policies = []model.ChaosPolicy{{
+		ID: "rand", Owner: "o", Reason: "r", Enabled: true, SafetyClass: model.SafetyClassLow,
+		Scope:    model.ChaosScope{RecordIDs: []model.RecordID{"a1"}},
+		Selector: model.ChaosSelector{Mode: model.SelectorRandom, Probability: 1},
+		Outcomes: []model.ChaosOutcome{{ID: "both", Weight: 1, Actions: []model.ChaosAction{
+			{Type: model.ActionTTL, Value: chaos.TTLValueSet, TTL: 3 * time.Second, Phase: model.PhaseBeforeResponse},
+			{Type: model.ActionRCode, Value: "SERVFAIL", Phase: model.PhaseBeforeResponse},
+		}}},
+	}}
+	h, _, _ := buildChaos(t, st, nil)
+	for i := 0; i < 8; i++ {
+		res := serve(t, h, model.Query{Name: "ns.lab.example.", Type: model.TypeA, Class: model.ClassIN, Client: netip.MustParseAddr("10.42.0.10"), Transport: model.TransportUDP})
+		if res.RCode != model.RCodeServFail {
+			t.Fatalf("iter %d rcode=%s", i, res.RCode)
+		}
 	}
 }
 
@@ -403,6 +649,12 @@ func transportPolicy(id, typ string, tr []model.Transport) model.ChaosPolicy {
 
 func handlerFromState(t *testing.T, st *model.State, c *cache.Cache) *Handler {
 	t.Helper()
+	h, _, _ := buildChaos(t, st, c)
+	return h
+}
+
+func buildChaos(t *testing.T, st *model.State, c *cache.Cache) (*Handler, *snapshot.Store, *chaos.Engine) {
+	t.Helper()
 	if len(st.Spec.Zones) > 0 && len(st.Spec.Zones[0].Records) > 0 {
 		for _, p := range st.Spec.Chaos.Policies {
 			if len(p.Scope.RecordIDs) == 1 && p.Scope.RecordIDs[0] == "a1" {
@@ -417,7 +669,8 @@ func handlerFromState(t *testing.T, st *model.State, c *cache.Cache) *Handler {
 	store := snapshot.NewStore()
 	store.Swap(snap)
 	eng := chaos.NewEngine(nil, nil)
-	return NewOpts(Opts{Store: store, Engine: eng, Cache: c, Fwd: forwarder.NewRuntime(nil, nil, nil, nil)})
+	h := NewOpts(Opts{Store: store, Engine: eng, Cache: c, Fwd: forwarder.NewRuntime(nil, nil, nil, nil)})
+	return h, store, eng
 }
 
 func appendUniqueRef(ids []model.PolicyID, id model.PolicyID) []model.PolicyID {
@@ -538,9 +791,13 @@ func hasTCFlag(b []byte) bool {
 
 func wireHasEDE(t *testing.T, raw []byte, code uint16, text string) bool {
 	t.Helper()
-	// OPT type=41; EDE option code 15.
-	// Walk additional via miekg only inside dnswire; here scan option 15 text.
-	return containsBytes(raw, []byte(text)) && len(raw) > 12
+	// RFC 8914 option 15: code(2) + length(2) + INFO-CODE(2) + EXTRA-TEXT.
+	opt := make([]byte, 6+len(text))
+	opt[0], opt[1] = 0, 15
+	binary.BigEndian.PutUint16(opt[2:4], uint16(2+len(text)))
+	binary.BigEndian.PutUint16(opt[4:6], code)
+	copy(opt[6:], text)
+	return containsBytes(raw, opt)
 }
 
 func containsBytes(haystack, needle []byte) bool {
