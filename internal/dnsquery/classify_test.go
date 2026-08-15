@@ -31,6 +31,25 @@ func TestClassifyLongestPrefixAndUnknown(t *testing.T) {
 	}
 }
 
+func TestClassifyCompiledIndexWinsOverSpec(t *testing.T) {
+	empty, err := snapshot.CompileAccess(&model.State{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	snap := &snapshot.Snapshot{
+		Access: empty,
+		Canonical: &model.State{Spec: model.Spec{Access: model.AccessSpec{
+			ClientGroups: []model.ClientGroup{
+				{ID: "spec-only", CIDRs: []string{"10.0.0.0/8"}, AllowForward: true},
+			},
+		}}},
+	}
+	id, allow := classifyClient(snap, netip.MustParseAddr("10.1.1.1"))
+	if id != "" || allow {
+		t.Fatalf("compiled-empty must not fall back to spec: id=%s allow=%v", id, allow)
+	}
+}
+
 func TestClassifyNoForwardWithoutPolicy(t *testing.T) {
 	snap := &snapshot.Snapshot{
 		Canonical: &model.State{Spec: model.Spec{Access: model.AccessSpec{

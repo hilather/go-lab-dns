@@ -2,7 +2,7 @@
 
 Status: Implementation-confirmed for local resolution (RES-001) and forwarding/cache/orchestrator (FWD-001)
 Owners: DNS
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-15 (AccessIndex classify)
 Related ADRs: 0002, 0005
 
 ## Problem statement
@@ -149,7 +149,7 @@ Health is **query-driven**: no extra probe packets. An upstream is marked down a
 3. is **never forwarded** and does not fill cache from upstream;
 4. receives **REFUSED** (RA=0) only when there is no local path (no matching zone, or overlay fallthrough with no permitted policy).
 
-`ClientGroup.AllowForward=false` is the same gate for a known group. Empty `clientGroups` serves local zones to everyone and forwards to no one. `AccessIndex` fill is STA-001; until then `dnsquery` classifies from `snap.Canonical.Spec.Access` (longest-prefix CIDR).
+`ClientGroup.AllowForward=false` is the same gate for a known group. Empty `clientGroups` serves local zones to everyone and forwards to no one. Classification uses the compiled `AccessIndex` (longest-prefix CIDR). An uncompiled zero `AccessIndex` still walks `snap.Canonical.Spec.Access` so hand-built test snapshots classify. A compiled-empty index does **not** fall back to spec CIDRs.
 
 RD=1 does **not** grant forwarding to unknown or local-only clients. RD=0 does **not** suppress configured forwarding for a known `AllowForward` group.
 

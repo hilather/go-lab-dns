@@ -26,6 +26,7 @@ func runContext(ctx context.Context, args []string, stdout, stderr io.Writer) in
 	if len(args) < 2 {
 		_, _ = fmt.Fprintln(stderr, "usage: labdns <command>")
 		_, _ = fmt.Fprintln(stderr, "commands: version, serve")
+		_, _ = fmt.Fprintln(stderr, "serve: labdns serve --config PATH")
 		return 2
 	}
 	switch args[1] {
@@ -33,16 +34,9 @@ func runContext(ctx context.Context, args []string, stdout, stderr io.Writer) in
 		_, _ = fmt.Fprintln(stdout, buildinfo.Current().String())
 		return 0
 	case "serve":
-		return serve(ctx, stdout)
+		return serve(ctx, args[2:], stdout, stderr)
 	default:
 		_, _ = fmt.Fprintf(stderr, "unknown command: %s\n", args[1])
 		return 2
 	}
-}
-
-func serve(ctx context.Context, stdout io.Writer) int {
-	_, _ = fmt.Fprintln(stdout, "labdns: DNS listener not implemented; waiting for shutdown")
-	<-ctx.Done()
-	_, _ = fmt.Fprintln(stdout, "labdns: shutting down")
-	return 0
 }

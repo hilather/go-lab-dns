@@ -47,3 +47,14 @@ func (s *Store) Previous() *Snapshot {
 func (s *Store) SetBootstrap(next *Snapshot) {
 	s.bootstrap.Store(next)
 }
+
+// InstallBootstrap records next as bootstrap and installs it as active.
+// It does not mutate next. A nil receiver or nil next is a no-op so a
+// failed compile cannot clear a live store.
+func (s *Store) InstallBootstrap(next *Snapshot) *Snapshot {
+	if s == nil || next == nil {
+		return nil
+	}
+	s.SetBootstrap(next)
+	return s.Swap(next)
+}

@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: Architecture, DNS, Control Plane
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-15 (STA-001 bootstrap serve)
 Related ADRs: 0001, 0002, 0003, 0004, 0005
 
 ## Problem statement
@@ -187,7 +187,9 @@ The chaos engine receives a structured resolution context and cannot access mana
 
 `internal/dnsserver` binds UDP and TCP, applies admission, calls `Handler.ServeDNS`, and applies the returned `TransportHint`. It does not import snapshot, resolver, forwarder, or chaos.
 
-`internal/dnsquery` implements that handler: one `Store.Load` per query, client-group classification (spec CIDRs until `AccessIndex` lands), zone + forwarding selection, `resolver.Resolve`, then `forwarder.Exchange` only when the client may forward. Chaos `Decide` is not called yet.
+`internal/dnsquery` implements that handler: one `Store.Load` per query, client-group classification from the compiled `AccessIndex` (an uncompiled zero index still walks spec CIDRs), zone + forwarding selection, `resolver.Resolve`, then `forwarder.Exchange` only when the client may forward. Chaos `Decide` is not called yet.
+
+`labdns serve --config PATH` loads bootstrap YAML, runs `compiler.Compile`, installs the snapshot on `snapshot.Store` (`SetBootstrap` + `Swap`), and binds UDP/TCP. Invalid bootstrap does not bind DNS. Management HTTP is not started in this slice.
 
 Default listen address (first GA, configured later by CFG): `:5353` UDP+TCP.
 

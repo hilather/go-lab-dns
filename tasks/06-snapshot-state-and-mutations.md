@@ -1,6 +1,6 @@
 # STA-001: Snapshot State and Mutations
 
-Status: not-started
+Status: in-progress (STA-001 slice A: bootstrap compile/serve; plan/apply/reset is PR-08)
 Recommended owner: Application/state agent
 Dependencies: CFG-001 and resolver/forwarder compile interfaces
 Exclusive ownership: `internal/snapshot`, state compiler orchestration, `internal/app` mutation core
@@ -11,8 +11,8 @@ Implement bootstrap loading, immutable active snapshots, atomic swaps, revisions
 
 ## Work items
 
-- [ ] Implement active, bootstrap, and optional previous snapshot references.
-- [ ] Load one snapshot pointer per DNS request.
+- [x] Implement active, bootstrap, and optional previous snapshot references.
+- [x] Load one snapshot pointer per DNS request.
 - [ ] Implement full candidate-state copy, normalize, validate, compile, diff, and impact pipeline.
 - [ ] Implement dry-run planning and atomic apply.
 - [ ] Implement expected-revision conflict behavior.

@@ -86,6 +86,43 @@ func TestStoreSwapNilActive(t *testing.T) {
 	}
 }
 
+func TestStoreInstallBootstrap(t *testing.T) {
+	s := NewStore()
+	boot := &Snapshot{Generation: 0, Revision: "sha256:boot"}
+	if prev := s.InstallBootstrap(boot); prev != nil {
+		t.Fatalf("first InstallBootstrap previous = %p", prev)
+	}
+	if s.Bootstrap() != boot || s.Load() != boot {
+		t.Fatal("InstallBootstrap must set both bootstrap and active")
+	}
+	if s.Previous() != nil {
+		t.Fatal("first install must not invent a previous generation")
+	}
+	next := &Snapshot{Generation: 1, Revision: "sha256:next"}
+	if prev := s.Swap(next); prev != boot {
+		t.Fatalf("Swap after install returned %p", prev)
+	}
+	if s.Bootstrap() != boot || s.Load() != next || s.Previous() != boot {
+		t.Fatal("bootstrap must stay the installed snapshot after Swap")
+	}
+}
+
+func TestStoreInstallBootstrapNilNoOp(t *testing.T) {
+	s := NewStore()
+	live := &Snapshot{Generation: 1}
+	s.Swap(live)
+	if prev := s.InstallBootstrap(nil); prev != nil {
+		t.Fatalf("InstallBootstrap(nil) returned %p", prev)
+	}
+	if s.Load() != live || s.Bootstrap() != nil {
+		t.Fatal("nil install must not clear active or invent a bootstrap")
+	}
+	var none *Store
+	if prev := none.InstallBootstrap(live); prev != nil {
+		t.Fatalf("nil store returned %p", prev)
+	}
+}
+
 func TestStoreSetBootstrapIndependent(t *testing.T) {
 	s := NewStore()
 	boot1 := &Snapshot{Generation: 0}

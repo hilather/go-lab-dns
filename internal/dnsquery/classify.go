@@ -36,10 +36,18 @@ func classify(snap *snapshot.Snapshot, q model.Query) class {
 }
 
 func classifyClient(snap *snapshot.Snapshot, addr netip.Addr) (model.ClientGroupID, bool) {
-	if snap == nil || snap.Canonical == nil || !addr.IsValid() {
+	if snap == nil || !addr.IsValid() {
 		return "", false
 	}
-	// AccessIndex fill is PR-07. Zero value means fall back to spec CIDRs.
+	// Compiled AccessIndex is authoritative, including compiled-empty
+	// (no groups → unknown). Zero value is uncompiled: fall back to spec
+	// CIDRs so hand-built test snapshots still classify.
+	if snap.Access.Compiled() {
+		return snap.Access.Classify(addr)
+	}
+	if snap.Canonical == nil {
+		return "", false
+	}
 	bestBits := -1
 	var id model.ClientGroupID
 	allow := false

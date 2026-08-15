@@ -466,6 +466,10 @@ func compileSnap(t *testing.T, st *model.State) *snapshot.Snapshot {
 	if err != nil {
 		t.Fatal(err)
 	}
+	acc, err := snapshot.CompileAccess(st)
+	if err != nil {
+		t.Fatal(err)
+	}
 	rev, err := config.Revision(st)
 	if err != nil {
 		rev = "sha256:test"
@@ -474,6 +478,7 @@ func compileSnap(t *testing.T, st *model.State) *snapshot.Snapshot {
 		Canonical:  st,
 		Revision:   rev,
 		Generation: 1,
+		Access:     acc,
 		Zones:      z,
 		Forwarding: f,
 		Defaults: snapshot.DefaultsView{

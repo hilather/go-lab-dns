@@ -17,6 +17,9 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Compiled `snapshot.ForwardingIndex` (longest-suffix policies, default `.`) filled by `forwarder.Compile`. `Exchange` consumes a pre-selected policy ID.
 - Process-scoped positive/negative `internal/cache` namespaced by snapshot revision, with TTL clamps, LRU eviction, and chaos lookup hooks.
 - `internal/dnsquery` orchestrator (`dnsserver.Handler`): classify → resolve → optional exchange. No chaos `Decide` yet.
+- Compiled `snapshot.AccessIndex` (longest-prefix CIDR → client group) filled by `snapshot.CompileAccess`.
+- `compiler.Compile` orchestrates normalize/validate, zone/forwarding/access indexes, and `sha256:` revision hashing. Chaos compile is a no-op until CHA-001.
+- `labdns serve --config PATH` loads bootstrap YAML, compiles an immutable snapshot, and binds UDP/TCP DNS. Invalid bootstrap does not listen.
 
 ### Changed
 
@@ -62,7 +65,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Deployment and operations
 
-- None.
+- `labdns serve --config PATH` is the M1 process entry: compile bootstrap YAML and serve DNS on the configured listen address (default `:5353` UDP+TCP). Management HTTP is not bound.
 
 ### Observability
 
@@ -78,6 +81,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Forwarder, cache, snapshot bootstrap serve, and control-plane work have not started.
 - DNS listeners require a `dnsserver.Handler`; the process does not yet serve from a compiled snapshot (no `dnsquery` orchestrator yet).
 - Snapshot bootstrap serve (`compiler.Compile`, `AccessIndex` fill, `cmd/labdns serve`) has not started; `dnsquery` is constructed in tests against a hand-built `snapshot.Store`.
+- Plan/apply/export/reset and REST/MCP are not implemented; M1 serves only the compiled bootstrap snapshot.
 - Chaos `Decide` is not wired; cache/exchange hooks exist but are unused on the live path.
 - `make test-integration`, `make test-parity`, and `make test-container` fail closed until later PRs.
 - YAML configuration decode, JSON Schema, snapshot compilation, resolver, forwarder, and control-plane work have not started.

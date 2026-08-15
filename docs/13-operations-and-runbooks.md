@@ -66,8 +66,8 @@ Operators should monitor:
 
 ## Runbook: invalid new bootstrap file
 
-1. Do not restart a healthy process unnecessarily.
-2. Use `state:validate` against the candidate file.
+1. Do not restart a healthy process unnecessarily. A failed `labdns serve --config` start does not bind DNS.
+2. Use `state:validate` against the candidate file (control plane; not in M1). Until then, start against the file and read the structured load/compile error on stderr.
 3. Inspect structured field and invariant errors.
 4. Fix the deployment repository and rerun CI.
 5. Reset or redeploy only after validation passes.

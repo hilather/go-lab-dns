@@ -2,10 +2,10 @@
 
 Status: Proposed normative behavior
 Owners: Configuration, Application
-Last reviewed: 2026-08-15 (CFG-001 decode/schema)
+Last reviewed: 2026-08-15 (STA-001 bootstrap compile/serve)
 Related ADRs: 0003, 0005
 
-Canonical Go types live in `internal/model`. YAML/JSON decode, default materialization, validation, canonical export, revision hashing, and the published schema live in `internal/config` and [api/jsonschema/labdns.dev.v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/jsonschema/labdns.dev.v1alpha1.json).
+Canonical Go types live in `internal/model`. YAML/JSON decode, default materialization, validation, canonical export, revision hashing, and the published schema live in `internal/config` and [api/jsonschema/labdns.dev.v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/jsonschema/labdns.dev.v1alpha1.json). `compiler.Compile` orchestrates normalize/validate plus zone, forwarding, and access indexes into an immutable `snapshot.Snapshot`. Plan/apply/reset are not in this slice.
 
 ## Problem statement
 
@@ -47,7 +47,7 @@ read file
  -> bind listeners
 ```
 
-A normal startup does not bind DNS when bootstrap validation fails. An explicit emergency mode may start a management-only process for inspection but must not silently serve an empty resolver.
+A normal startup does not bind DNS when bootstrap validation or compile fails. `labdns serve --config PATH` is that path: load → compile → `Store.InstallBootstrap` → bind the configured DNS listen address (default `:5353`). An explicit emergency mode may start a management-only process for inspection but must not silently serve an empty resolver.
 
 ## Revisions
 

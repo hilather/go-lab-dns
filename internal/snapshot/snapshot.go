@@ -31,9 +31,6 @@ type Snapshot struct {
 // ChaosIndex is the compiled chaos policy structure. Zero value is valid.
 type ChaosIndex struct{}
 
-// AccessIndex is the compiled CIDR-to-client-group structure. Zero value is valid.
-type AccessIndex struct{}
-
 // ListenerView is the compiled listener bind configuration.
 type ListenerView struct {
 	DNSAddress        string

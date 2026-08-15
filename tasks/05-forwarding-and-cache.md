@@ -1,6 +1,6 @@
 # FWD-001: Forwarding and Cache
 
-Status: in-progress (FWD-001 data plane; AccessIndex/bootstrap serve is STA-001)
+Status: in-progress (FWD-001 data plane; AccessIndex/bootstrap serve is STA-001 slice A)
 Recommended owner: DNS forwarding agent
 Dependencies: CFG-001, DNS-001, RES-001 interfaces
 Exclusive ownership: `internal/forwarder`, `internal/cache`
