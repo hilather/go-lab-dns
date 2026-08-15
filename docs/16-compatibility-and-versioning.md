@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: Architecture, Release Engineering
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-15 (CHA-001 hash-v1 goldens)
 
 ## Public compatibility surfaces
 
@@ -39,6 +39,8 @@ Pin supported MCP protocol versions and test each. Do not automatically claim su
 ## Chaos algorithm versions
 
 A deterministic selector includes an algorithm identifier such as `hash-v1`. Changing hash inputs, weighting, or time-bucket mapping creates a new algorithm ID so existing experiments remain reproducible.
+
+`hash-v1` is frozen in [docs/03-chaos-engine.md](https://github.com/hilather/go-lab-dns/blob/main/docs/03-chaos-engine.md) and locked by [testdata/hash-v1/vectors.json](https://github.com/hilather/go-lab-dns/blob/main/testdata/hash-v1/vectors.json). Required vectors: `timeBucket: 1s` at two instants in the same UTC second (identical field 9 and digest) and at the next second (different field 9 and digest). Sub-second buckets remain a new algorithm ID.
 
 ## Deprecation
 

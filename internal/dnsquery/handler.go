@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 
 	"github.com/hilather/go-lab-dns/internal/cache"
+	"github.com/hilather/go-lab-dns/internal/chaos"
 	"github.com/hilather/go-lab-dns/internal/dnsserver"
 	"github.com/hilather/go-lab-dns/internal/forwarder"
 	"github.com/hilather/go-lab-dns/internal/model"
@@ -13,8 +14,11 @@ import (
 	"github.com/hilather/go-lab-dns/internal/testutil"
 )
 
-// Engine is reserved for chaos.Decide. This PR never calls it; pass nil.
-type Engine interface{}
+// Engine is chaos.Decide. Nil skips chaos. Effects are a structured no-op
+// until CHA-002 (delay/drop/RCODE are not applied to the wire).
+type Engine interface {
+	Decide(ctx context.Context, snap *snapshot.Snapshot, in chaos.DecisionIn) (chaos.ActionPlan, error)
+}
 
 // Logger is an optional diagnostic sink. Nil is silent.
 type Logger interface {
@@ -28,22 +32,24 @@ type Handler struct {
 	log    Logger
 	clk    testutil.Clock
 	fwd    *forwarder.Runtime
+	eng    Engine
 	denied atomic.Int64
 }
 
-// New returns a dnsserver.Handler. eng is unused until CHA-001.
-func New(store *snapshot.Store, _ Engine, c *cache.Cache, log Logger, clk testutil.Clock) dnsserver.Handler {
-	return NewOpts(Opts{Store: store, Cache: c, Log: log, Clock: clk})
+// New returns a dnsserver.Handler.
+func New(store *snapshot.Store, eng Engine, c *cache.Cache, log Logger, clk testutil.Clock) dnsserver.Handler {
+	return NewOpts(Opts{Store: store, Engine: eng, Cache: c, Log: log, Clock: clk})
 }
 
 // Opts is the test/production constructor surface.
 type Opts struct {
-	Store *snapshot.Store
-	Cache *cache.Cache
-	Log   Logger
-	Clock testutil.Clock
-	Rand  testutil.Rand
-	Fwd   *forwarder.Runtime
+	Store  *snapshot.Store
+	Engine Engine
+	Cache  *cache.Cache
+	Log    Logger
+	Clock  testutil.Clock
+	Rand   testutil.Rand
+	Fwd    *forwarder.Runtime
 }
 
 // NewOpts builds a Handler with injected runtime (fake upstreams, clock).
@@ -56,7 +62,7 @@ func NewOpts(o Opts) *Handler {
 	if fwd == nil {
 		fwd = forwarder.NewRuntime(clk, o.Rand, nil, nil)
 	}
-	return &Handler{store: o.Store, cache: o.Cache, log: o.Log, clk: clk, fwd: fwd}
+	return &Handler{store: o.Store, cache: o.Cache, log: o.Log, clk: clk, fwd: fwd, eng: o.Engine}
 }
 
 func (h *Handler) logf(format string, args ...any) {
@@ -96,6 +102,7 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (*dnsserver.Re
 	}
 
 	cl := classify(snap, q)
+	_ = h.decide(ctx, snap, q, cl, nil, chaos.PhasePreResolution)
 	res, err := h.answer(ctx, snap, q, cl)
 	if err != nil {
 		if ctx.Err() != nil {
@@ -103,6 +110,7 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (*dnsserver.Re
 		}
 		return dnsserver.NewResponse(model.Result{RCode: model.RCodeServFail}), dnsserver.HintSend, nil
 	}
+	_ = h.decide(ctx, snap, q, cl, &res, chaos.PhaseResponse)
 	applyRA(&res, cl)
 	if res.Explanation != nil {
 		res.Explanation.ClientGroupID = cl.Group
@@ -112,6 +120,26 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (*dnsserver.Re
 		}
 	}
 	return dnsserver.NewResponse(res), dnsserver.HintSend, nil
+}
+
+func (h *Handler) decide(ctx context.Context, snap *snapshot.Snapshot, q model.Query, cl class, base *model.Result, phase chaos.Phase) chaos.ActionPlan {
+	if h == nil || h.eng == nil {
+		return chaos.ActionPlan{}
+	}
+	plan, err := h.eng.Decide(ctx, snap, chaos.DecisionIn{
+		Query:         q,
+		ClientGroupID: cl.Group,
+		ZoneID:        cl.ZoneID,
+		ForwardingID:  cl.ForwardingID,
+		Base:          base,
+		Phase:         phase,
+	})
+	if err != nil {
+		h.logf("chaos decide: %v", err)
+		return chaos.ActionPlan{}
+	}
+	// CHA-002 executes delay/drop/RCODE. This slice only records the plan.
+	return plan
 }
 
 func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Query, cl class) (model.Result, error) {

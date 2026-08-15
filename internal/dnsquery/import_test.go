@@ -14,6 +14,7 @@ func TestNoMiekgAndImportDAG(t *testing.T) {
 		t.Fatal(err)
 	}
 	allowedProd := map[string]bool{
+		"github.com/hilather/go-lab-dns/internal/chaos":     true,
 		"github.com/hilather/go-lab-dns/internal/model":     true,
 		"github.com/hilather/go-lab-dns/internal/snapshot":  true,
 		"github.com/hilather/go-lab-dns/internal/resolver":  true,

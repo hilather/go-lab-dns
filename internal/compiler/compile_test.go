@@ -79,6 +79,12 @@ func TestCompilePackSampleAccessAndRevision(t *testing.T) {
 	if snap.EmergencyChaosOff {
 		t.Fatal("pack-sample must not compile with emergency off")
 	}
+	if !snap.Chaos.Compiled() || !snap.Chaos.Enabled {
+		t.Fatal("pack-sample chaos index missing")
+	}
+	if _, ok := snap.Chaos.Lookup("slow-tools"); !ok {
+		t.Fatal("slow-tools not indexed")
+	}
 }
 
 func TestCompileDeterministicForSameCanonicalJSON(t *testing.T) {

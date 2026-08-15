@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hilather/go-lab-dns/internal/chaos"
 	"github.com/hilather/go-lab-dns/internal/config"
 	"github.com/hilather/go-lab-dns/internal/forwarder"
 	"github.com/hilather/go-lab-dns/internal/model"
@@ -23,7 +24,6 @@ type CompileOpts struct {
 // Compile normalizes and validates st (copy-on-write), fills domain indexes,
 // hashes canonical JSON for Revision, and returns an immutable Snapshot.
 //
-// Chaos compile is a no-op until CHA-001: ChaosIndex stays the zero value.
 // Always normalize+validate rather than guessing whether the caller already
 // did; Normalize does not mutate st.
 func Compile(ctx context.Context, st *model.State, opts CompileOpts) (*snapshot.Snapshot, error) {
@@ -52,6 +52,10 @@ func Compile(ctx context.Context, st *model.State, opts CompileOpts) (*snapshot.
 	access, err := snapshot.CompileAccess(n)
 	if err != nil {
 		return nil, fmt.Errorf("compile access: %w", err)
+	}
+	ch, err := chaos.Compile(n)
+	if err != nil {
+		return nil, fmt.Errorf("compile chaos: %w", err)
 	}
 
 	rev, err := config.Revision(n)
@@ -83,6 +87,7 @@ func Compile(ctx context.Context, st *model.State, opts CompileOpts) (*snapshot.
 		},
 		Zones:      zones,
 		Forwarding: fwd,
+		Chaos:      ch,
 		CachePolicy: snapshot.CachePolicy{
 			Enabled:            n.Spec.Cache.Enabled,
 			MaxEntries:         n.Spec.Cache.MaxEntries,

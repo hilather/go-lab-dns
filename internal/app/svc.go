@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/hilather/go-lab-dns/internal/cache"
+	"github.com/hilather/go-lab-dns/internal/chaos"
 	"github.com/hilather/go-lab-dns/internal/compiler"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
 	"github.com/hilather/go-lab-dns/internal/forwarder"
@@ -33,6 +34,8 @@ type Options struct {
 	Cache          *cache.Cache
 	Health         *forwarder.Health
 	Clock          testutil.Clock
+	Rand           testutil.Rand
+	Engine         *chaos.Engine
 	BootstrapPath  string
 	IdempotencyMax int
 	AuditMax       int
@@ -45,6 +48,7 @@ type App struct {
 	cache         *cache.Cache
 	health        *forwarder.Health
 	clock         testutil.Clock
+	engine        *chaos.Engine
 	bootstrapPath string
 	idemp         *idempCache
 	audit         *auditRing
@@ -63,6 +67,9 @@ func New(opts Options) *App {
 	if opts.Clock == nil {
 		opts.Clock = testutil.SystemClock{}
 	}
+	if opts.Engine == nil {
+		opts.Engine = chaos.NewEngine(opts.Clock, opts.Rand)
+	}
 	// Non-positive caps would otherwise grow without bound.
 	idempMax := opts.IdempotencyMax
 	if idempMax <= 0 {
@@ -77,6 +84,7 @@ func New(opts Options) *App {
 		cache:         opts.Cache,
 		health:        opts.Health,
 		clock:         opts.Clock,
+		engine:        opts.Engine,
 		bootstrapPath: opts.BootstrapPath,
 		idemp:         newIdempCache(idempMax),
 		audit:         newAuditRing(auditMax),

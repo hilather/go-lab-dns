@@ -128,8 +128,7 @@ type UpstreamStatus struct {
 	Healthy   bool
 }
 
-// ChaosRuntimeStatus is YAML plus the emergency-off bit. Policy execution
-// still needs CHA-001.
+// ChaosRuntimeStatus is YAML plus the emergency-off bit.
 type ChaosRuntimeStatus struct {
 	Enabled           bool
 	EmergencyDisabled bool
@@ -210,7 +209,7 @@ type RecordList struct {
 	NextCursor string
 }
 
-// ResolveIn is a management-plane lookup. ApplyChaos is ignored until CHA-001.
+// ResolveIn is a management-plane lookup. ApplyChaos is reserved for CHA-002.
 type ResolveIn struct {
 	Name        model.Name
 	Type        model.RRType
@@ -241,17 +240,42 @@ type FlushIn struct {
 	All bool
 }
 
-// SimulateIn is accepted so the method exists; SimulateChaos is a stub.
+// SimulateIn is a side-effect-free chaos decision request.
 type SimulateIn struct {
-	Name     model.Name
-	Type     model.RRType
-	PolicyID model.PolicyID
+	Name         model.Name
+	Type         model.RRType
+	Class        model.RRClass
+	Client       netip.Addr
+	ClientGroup  model.ClientGroupID
+	Transport    model.Transport
+	ZoneID       model.ZoneID
+	ForwardingID model.PolicyID
+	PolicyID     model.PolicyID
+	PolicyIDs    []model.PolicyID
+	Nonce        string
+	Phase        string
+	Base         *model.Result
 }
 
-// SimulateOut is unused until CHA-001.
-type SimulateOut struct{}
+// SimulateOut is the explained decision. It never sleeps or consumes budgets.
+type SimulateOut struct {
+	Algorithm string
+	Disabled  bool
+	Reason    string
+	Triggered bool
+	Decisions []ChaosDecision
+}
 
-// ActivationIn is accepted so the method exists; activate/deactivate are stubs.
+// ChaosDecision is one evaluated policy in a simulation.
+type ChaosDecision struct {
+	PolicyID   model.PolicyID
+	OutcomeID  string
+	Triggered  bool
+	SkipReason string
+	DigestHex  string
+}
+
+// ActivationIn activates or deactivates a policy via Apply.
 type ActivationIn struct {
 	PolicyID         model.PolicyID
 	ExpectedRevision model.Revision

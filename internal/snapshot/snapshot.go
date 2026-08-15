@@ -28,9 +28,6 @@ type Snapshot struct {
 	EmergencyChaosOff bool
 }
 
-// ChaosIndex is the compiled chaos policy structure. Zero value is valid.
-type ChaosIndex struct{}
-
 // ListenerView is the compiled listener bind configuration.
 type ListenerView struct {
 	DNSAddress        string

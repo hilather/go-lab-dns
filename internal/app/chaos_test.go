@@ -3,23 +3,64 @@ package app
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hilather/go-lab-dns/internal/domainerr"
 	"github.com/hilather/go-lab-dns/internal/model"
 )
 
-func TestChaosActivateStubs(t *testing.T) {
-	path := copyFixture(t)
-	svc, _ := mustBoot(t, path)
+func TestChaosActivateDeactivateSimulate(t *testing.T) {
+	path := copyNamedFixture(t, "pack-sample.yaml")
+	svc, boot := mustBoot(t, path)
 	ctx := context.Background()
-	_, err := svc.ActivateChaos(ctx, actor(), ActivationIn{PolicyID: "slow-tools"})
-	requireCode(t, err, domainerr.CodeUnsupportedCapability)
-	_, err = svc.DeactivateChaos(ctx, actor(), ActivationIn{PolicyID: "slow-tools"})
-	requireCode(t, err, domainerr.CodeUnsupportedCapability)
-	_, err = svc.SetChaosExpiry(ctx, actor(), ExpiryIn{PolicyID: "slow-tools"})
-	requireCode(t, err, domainerr.CodeUnsupportedCapability)
-	_, err = svc.SimulateChaos(ctx, actor(), SimulateIn{})
-	requireCode(t, err, domainerr.CodeUnsupportedCapability)
+	if _, err := svc.ActivateChaos(ctx, actor(), ActivationIn{PolicyID: "nope", ExpectedRevision: boot.Revision}); err == nil {
+		t.Fatal("missing policy")
+	} else {
+		requireCode(t, err, domainerr.CodeNotFound)
+	}
+	res, err := svc.ActivateChaos(ctx, actor(), ActivationIn{PolicyID: "slow-tools", ExpectedRevision: boot.Revision, Reason: "lab"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.Applied {
+		t.Fatal("not applied")
+	}
+	live := svc.Store().Load()
+	found := false
+	for _, p := range live.Canonical.Spec.Chaos.Policies {
+		if p.ID == "slow-tools" && p.Enabled {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("slow-tools not enabled")
+	}
+	sim, err := svc.SimulateChaos(ctx, actor(), SimulateIn{
+		Name: "foo.tools.lab.example.net.", Type: model.TypeA,
+		ClientGroup: "test-devices", Nonce: "sim",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sim.Algorithm != "hash-v1" {
+		t.Fatalf("algo=%s", sim.Algorithm)
+	}
+	if !sim.Triggered {
+		t.Fatalf("expected trigger after activate: %+v", sim)
+	}
+	exp := live.CompiledAt.Add(time.Hour)
+	if _, err := svc.SetChaosExpiry(ctx, actor(), ExpiryIn{PolicyID: "slow-tools", ExpectedRevision: live.Revision, ExpiresAt: &exp}); err != nil {
+		t.Fatal(err)
+	}
+	live = svc.Store().Load()
+	if _, err := svc.DeactivateChaos(ctx, actor(), ActivationIn{PolicyID: "slow-tools", ExpectedRevision: live.Revision}); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range svc.Store().Load().Canonical.Spec.Chaos.Policies {
+		if p.ID == "slow-tools" && p.Enabled {
+			t.Fatal("still enabled")
+		}
+	}
 }
 
 func TestEmergencyDisableDoesNotChangeRevision(t *testing.T) {

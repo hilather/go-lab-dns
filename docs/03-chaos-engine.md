@@ -2,7 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Chaos, DNS, Security
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-15 (CHA-001 hash-v1 / Decide / Simulate)
 Related ADRs: 0005, 0007
 
 ## Problem statement
@@ -109,6 +109,41 @@ optional caller-supplied simulation nonce
 ```
 
 The implementation must document the hash and mapping algorithm and lock it with golden tests. Changing that algorithm is a compatibility change for deterministic experiments. CFG validation rejects `selector.timeBucket` values below `1s` so the `hash-v1` second-precision encoding cannot collapse windows.
+
+### `hash-v1` encoding (frozen)
+
+Hash: SHA-256.
+
+Concatenate, in this exact order:
+
+1. ASCII magic `labdns-hash-v1\n` (15 bytes, no length prefix).
+2. Ten length-prefixed fields. Each field is `uint32` big-endian length + exactly that many bytes (no NUL). Empty field = `0x00000000`.
+
+| # | Field | Bytes |
+|---|---|---|
+| 1 | algorithm id | `hash-v1` |
+| 2 | policy seed | UTF-8 seed string as configured |
+| 3 | revision | UTF-8 `model.Revision` including the `sha256:` prefix. If the policy carries an explicit `selector.revision`, use that; else the snapshot `Revision` |
+| 4 | policy ID | UTF-8 policy id |
+| 5 | QNAME | UTF-8 canonical FQDN (lower-case, trailing dot). Presentation form, not DNS wire compression |
+| 6 | QTYPE | UTF-8 RFC 1035 mnemonic in uppercase (`A`, `AAAA`, …) or `TYPE<n>` |
+| 7 | client-group | UTF-8 group id, or when `selector.samplingKey` is `client-bucket`, the first 8 bytes of SHA-256(client IP string) as lowercase hex. Unknown/empty is the empty field |
+| 8 | transport | exactly `udp` or `tcp` |
+| 9 | time bucket | If `selector.timeBucket` is unset/zero, empty. Else `floor(wall_UTC / bucket) * bucket` formatted as RFC3339 with `Z` (`2006-01-02T15:04:05Z`). Truncation is toward −∞ on the Unix timeline. `timeBucket` must be ≥ 1s |
+| 10 | simulation nonce | UTF-8 nonce, or empty when not simulating |
+
+Digest use:
+
+- `d = SHA-256(encoding)`
+- `u0 = uint64(d[0:8])` big-endian; `u1 = uint64(d[8:16])` big-endian
+- Uniform `[0,1)`: `p = float64(u0) / 2^64`, `w = float64(u1) / 2^64` (never integer `u/2^64`)
+- Probability gate: trigger iff `p < probability` (1.0 always triggers)
+- Weighted outcome: ignore weight ≤ 0. `total = sum(weights)` as `float64`. `t = w * total`. Walk outcomes in configured order; select the first whose cumulative weight is `> t`. `total == 0` skips the policy
+- Uniform delay in `[min,max)`: use `u1` of a second `hash-v1` encoding identical except field 10 is the UTF-8 string `delay` concatenated with the original nonce. Map `float64(u1)/2^64` into `[min,max)` as `min + unit*(max-min)`
+
+Not inputs: raw client IP (except the optional `client-bucket` hex), goroutine id, query id, wall time except the documented bucket.
+
+Goldens: [testdata/hash-v1/vectors.json](https://github.com/hilather/go-lab-dns/blob/main/testdata/hash-v1/vectors.json).
 
 ### Random
 
@@ -382,6 +417,8 @@ Provide three independent controls:
 3. Local signal or Unix-socket administrative path if the deployment requires recovery when HTTP auth is unavailable.
 
 Disabling chaos swaps to a snapshot with chaos execution off and cancels outstanding context-aware delays where possible.
+
+First-GA third control is **`SIGUSR1`** (Unix-socket management is out of first GA). `labdns serve --chaos-disable` and `LABDNS_CHAOS_DISABLE=1` are the startup override. `SIGUSR2` is reserved and ignored.
 
 ## Failure modes
 

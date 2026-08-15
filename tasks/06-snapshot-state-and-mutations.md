@@ -54,4 +54,4 @@ Implement bootstrap loading, immutable active snapshots, atomic swaps, revisions
 
 ## Handoff
 
-`app.Service` is the stable command/query interface. REST/MCP (PR-09/12/13) must call it. Chaos activate/simulate remain `unsupported_capability` until CHA-001.
+`app.Service` is the stable command/query interface. REST/MCP (PR-09/12/13) must call it. Chaos activate/simulate landed in CHA-001.

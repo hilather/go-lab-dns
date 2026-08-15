@@ -101,7 +101,7 @@ Frozen names live in `internal/capabilities` and the generated manifest `api/cap
 | Docs: DNS semantics | `GET /v1/docs/dns-semantics` | `dns_docs_get` (`id=dns-semantics`), `labdns://docs/dns-semantics` | `dns.read` |
 | Docs: chaos safety | `GET /v1/docs/chaos-safety` | `dns_docs_get` (`id=chaos-safety`), `labdns://docs/chaos-safety` | `dns.read` |
 
-The HTTP-less handler surface is `internal/app.Service`. REST and MCP must call it; they must not reimplement plan/apply/reset. Chaos activate/deactivate/simulate/set-expiry currently return `unsupported_capability` until CHA-001.
+The HTTP-less handler surface is `internal/app.Service`. REST and MCP must call it; they must not reimplement plan/apply/reset. Chaos activate/deactivate/set-expiry share `Apply` (`OpUpdate` + `TargetChaosActivation`). `SimulateChaos` is side-effect-free and uses `hash-v1`.
 
 `internal/capabilities` maps `domainerr` to REST `application/problem+json` status hints and MCP JSON-RPC `data` without implementing either server.
 

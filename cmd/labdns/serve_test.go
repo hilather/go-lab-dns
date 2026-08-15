@@ -19,7 +19,7 @@ import (
 func TestServeFromConfigPackSampleNS1(t *testing.T) {
 	path := ephemeralPackSample(t)
 	ctx := testutil.Context(t)
-	srv, snap, err := serveFromConfig(ctx, path)
+	srv, snap, err := serveFromConfig(ctx, serveFlags{Config: path})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestServeFromConfigInvalidDoesNotListen(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	srv, snap, err := serveFromConfig(context.Background(), path)
+	srv, snap, err := serveFromConfig(context.Background(), serveFlags{Config: path})
 	if err == nil || srv != nil || snap != nil {
 		t.Fatalf("invalid bootstrap bound: srv=%v snap=%v err=%v", srv, snap, err)
 	}
@@ -142,6 +142,17 @@ func TestServeCLIShutdown(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "shutting down") {
 		t.Fatalf("stdout %q missing shutdown", stdout.String())
+	}
+}
+
+func TestParseServeFlagsChaosDisable(t *testing.T) {
+	var stderr bytes.Buffer
+	f, err := parseServeFlags([]string{"--config", "/tmp/x.yaml", "--chaos-disable"}, &stderr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !f.ChaosDisable || f.Config != "/tmp/x.yaml" {
+		t.Fatalf("%+v", f)
 	}
 }
 

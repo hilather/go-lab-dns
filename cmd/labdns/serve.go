@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/hilather/go-lab-dns/internal/cache"
+	"github.com/hilather/go-lab-dns/internal/chaos"
 	"github.com/hilather/go-lab-dns/internal/compiler"
 	"github.com/hilather/go-lab-dns/internal/config"
 	"github.com/hilather/go-lab-dns/internal/dnsquery"
@@ -15,12 +16,17 @@ import (
 	"github.com/hilather/go-lab-dns/internal/snapshot"
 )
 
+type serveFlags struct {
+	Config       string
+	ChaosDisable bool
+}
+
 func serve(ctx context.Context, args []string, stdout, stderr io.Writer) int {
-	path, err := parseServeFlags(args, stderr)
+	flags, err := parseServeFlags(args, stderr)
 	if err != nil {
 		return 2
 	}
-	srv, snap, err := serveFromConfig(ctx, path)
+	srv, snap, err := serveFromConfig(ctx, flags)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "labdns serve: %v\n", err)
 		return 1
@@ -34,33 +40,45 @@ func serve(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func parseServeFlags(args []string, stderr io.Writer) (string, error) {
+func parseServeFlags(args []string, stderr io.Writer) (serveFlags, error) {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	path := fs.String("config", "", "path to bootstrap YAML or JSON")
+	disable := fs.Bool("chaos-disable", false, "inhibit chaos regardless of YAML (also LABDNS_CHAOS_DISABLE=1)")
 	if err := fs.Parse(args); err != nil {
-		return "", err
+		return serveFlags{}, err
 	}
 	if *path == "" {
 		_, _ = fmt.Fprintln(stderr, "labdns serve: --config is required")
-		return "", fmt.Errorf("missing --config")
+		return serveFlags{}, fmt.Errorf("missing --config")
 	}
-	return *path, nil
+	return serveFlags{Config: *path, ChaosDisable: *disable || chaos.EnvChaosDisable()}, nil
 }
 
 // serveFromConfig loads, validates, and compiles path, installs the snapshot,
 // then binds DNS. It does not bind on any load/validate/compile error.
-func serveFromConfig(ctx context.Context, path string) (*dnsserver.Server, *snapshot.Snapshot, error) {
+func serveFromConfig(ctx context.Context, flags serveFlags) (*dnsserver.Server, *snapshot.Snapshot, error) {
+	path := flags.Config
 	st, err := config.LoadFile(path)
 	if err != nil {
 		return nil, nil, fmt.Errorf("load %s: %w", path, err)
 	}
-	snap, err := compiler.Compile(ctx, st, compiler.CompileOpts{})
+	eng := chaos.NewEngine(nil, nil)
+	snap, err := compiler.Compile(ctx, st, compiler.CompileOpts{EmergencyChaosOff: flags.ChaosDisable})
 	if err != nil {
 		return nil, nil, fmt.Errorf("compile: %w", err)
 	}
 	store := snapshot.NewStore()
+	if flags.ChaosDisable {
+		store.SetEmergencyChaosOff(true)
+	}
 	store.InstallBootstrap(snap)
+
+	sigCh, stopSig := chaos.NotifyUSR1()
+	go func() {
+		chaos.ServeSignals(ctx, sigCh, store, eng)
+		stopSig()
+	}()
 
 	c := cache.New(cache.Policy{
 		Enabled:            snap.CachePolicy.Enabled,
@@ -70,7 +88,7 @@ func serveFromConfig(ctx context.Context, path string) (*dnsserver.Server, *snap
 		MaximumNegativeTTL: snap.CachePolicy.MaximumNegativeTTL,
 		StaleServing:       snap.CachePolicy.StaleServing,
 	}, nil)
-	h := dnsquery.New(store, nil, c, nil, nil)
+	h := dnsquery.New(store, eng, c, nil, nil)
 
 	udpAddr, tcpAddr := dnsListenAddrs(snap)
 	if udpAddr == "" && tcpAddr == "" {

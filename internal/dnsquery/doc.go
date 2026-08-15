@@ -10,5 +10,7 @@
 // receive local answers with RA=0 and are never forwarded. REFUSED is
 // returned only when there is no local path.
 //
-// This v1 does not call chaos.Decide.
+// Pre- and post-resolution chaos.Decide use the already-classified
+// client-group, zone, and forwarding IDs. Effect execution is a structured
+// no-op until CHA-002.
 package dnsquery

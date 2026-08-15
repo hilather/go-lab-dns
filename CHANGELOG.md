@@ -16,9 +16,9 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Compiled `snapshot.ZoneIndex` (existence tree, RRsets, wildcards, longest-suffix `Select`) filled by `resolver.Compile`. `Resolve` consumes a pre-selected zone ID.
 - Compiled `snapshot.ForwardingIndex` (longest-suffix policies, default `.`) filled by `forwarder.Compile`. `Exchange` consumes a pre-selected policy ID.
 - Process-scoped positive/negative `internal/cache` namespaced by snapshot revision, with TTL clamps, LRU eviction, and chaos lookup hooks.
-- `internal/dnsquery` orchestrator (`dnsserver.Handler`): classify → resolve → optional exchange. No chaos `Decide` yet.
+- `internal/dnsquery` orchestrator (`dnsserver.Handler`): classify → pre `chaos.Decide` → resolve → optional exchange → post `chaos.Decide`. Effect execution is a structured no-op until CHA-002.
 - Compiled `snapshot.AccessIndex` (longest-prefix CIDR → client group) filled by `snapshot.CompileAccess`.
-- `compiler.Compile` orchestrates normalize/validate, zone/forwarding/access indexes, and `sha256:` revision hashing. Chaos compile is a no-op until CHA-001.
+- `compiler.Compile` orchestrates normalize/validate, zone/forwarding/chaos/access indexes, and `sha256:` revision hashing.
 - `labdns serve --config PATH` loads bootstrap YAML, compiles an immutable snapshot, and binds UDP/TCP DNS. Invalid bootstrap does not listen.
 - `internal/app.Service` mutation core: `Plan`/`Apply`/`Validate`/`Export`/`Reset`, zone/record/resolve/explain queries, forwarding/cache views, in-memory audit ring, and `EmergencyDisableChaos`. REST/MCP adapters are not implemented.
 - Frozen capability registry in `internal/capabilities` covering every first-GA REST↔MCP table row. Health live/ready are REST-only (not tools). Generated manifest: [api/capabilities/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/capabilities/v1.json).
@@ -49,8 +49,15 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Chaos behavior
 
-- `ActivateChaos` / `DeactivateChaos` / `SetChaosExpiry` / `SimulateChaos` return `unsupported_capability` until CHA-001.
+- Compiled `snapshot.ChaosIndex` (record/wildcard/owner/zone/forwarding/pool/group/global) filled by `chaos.Compile`.
+- Deterministic selector `hash-v1` (SHA-256, ten length-prefixed fields, `u0`/`u1` uniforms). Goldens in [testdata/hash-v1/vectors.json](https://github.com/hilather/go-lab-dns/blob/main/testdata/hash-v1/vectors.json) include `timeBucket: 1s` same UTC second vs next second.
+- `Engine.Decide` / `Simulate` use pre-classified client-group, zone, and forwarding IDs. Simulation never sleeps, writes cache, or consumes budgets.
+- Gates: enabled, start/expiry, periodic flap, every-Nth. Composition: compose / terminal / exclusive-group.
+- Global and per-policy delay/concurrency budgets with reservation/release. Protected names, protected client groups, and `chaosExempt` skip execution.
+- `ActivateChaos` / `DeactivateChaos` / `SetChaosExpiry` compile to `OpUpdate` + `TargetChaosActivation` via `Apply`.
+- `SimulateChaos` returns explained `hash-v1` decisions.
 - `EmergencyDisableChaos` sets a store-level inhibit bit that `Store.Swap` stamps onto every snapshot (apply cannot clear it). The emergency path CAS-stamps the current snapshot and does not roll back a concurrent apply. YAML `emergencyDisabled` still forces the bit on.
+- `SIGUSR1` (and `labdns serve --chaos-disable` / `LABDNS_CHAOS_DISABLE=1`) set the same inhibit bit. `SIGUSR2` is ignored.
 
 ### REST API
 
@@ -88,8 +95,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Snapshot bootstrap serve (`compiler.Compile`, `AccessIndex` fill, `cmd/labdns serve`) has not started; `dnsquery` is constructed in tests against a hand-built `snapshot.Store`.
 - Plan/apply/export/reset and REST/MCP are not implemented; M1 serves only the compiled bootstrap snapshot.
 - REST/MCP adapters are not implemented; `app.Service` is the HTTP-less mutation surface.
-- Chaos activate/deactivate/simulate/set-expiry are `unsupported_capability` stubs until CHA-001.
-- Chaos `Decide` is not wired; cache/exchange hooks exist but are unused on the live path.
+- Chaos packet effects (delay/drop/RCODE/TTL/transport) are structured no-ops until CHA-002.
+- `labdns chaos emergency-disable --pid-file` is not implemented until DEP-001.
 - `make test-integration`, `make test-parity`, and `make test-container` fail closed until later PRs.
 - YAML configuration decode, JSON Schema, snapshot compilation, resolver, forwarder, and control-plane work have not started.
 - DNS listeners require a `dnsserver.Handler`; the process does not yet serve from a compiled snapshot.

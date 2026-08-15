@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: Operations
-Last reviewed: 2026-08-15 (STA-001 reset/idempotency)
+Last reviewed: 2026-08-15 (CHA-001 SIGUSR1 emergency)
 
 ## Routine checks
 
@@ -39,8 +39,8 @@ Operators should monitor:
 
 ## Runbook: chaos runaway
 
-1. Invoke emergency disable through the privileged path.
-2. If unavailable, restart with the startup chaos-disable override.
+1. Invoke emergency disable through the privileged path (`app.Service.EmergencyDisableChaos`, or `SIGUSR1` to the process).
+2. If unavailable, restart with `labdns serve --chaos-disable` or `LABDNS_CHAOS_DISABLE=1`.
 3. Confirm no new policy actions are selected and delayed-request count drains.
 4. Preserve audit and telemetry evidence.
 5. Identify missing cap, cancellation, scope, or expiry control.

@@ -1,6 +1,6 @@
 # CHA-001: Chaos Core
 
-Status: not-started
+Status: done
 Recommended owner: Chaos engine agent
 Dependencies: CFG-001, RES-001, STA-001
 Exclusive ownership: `internal/chaos` policy compiler, selectors, budgets, simulation
@@ -11,42 +11,42 @@ Implement policy indexing, matching, deterministic decisions, schedules, weighte
 
 ## Work items
 
-- [ ] Compile policies by record, wildcard source, owner, zone, forwarding rule, upstream pool, client group, and global scope.
-- [ ] Implement precedence, priority, compose, terminal, and exclusive-group behavior.
-- [ ] Implement deterministic selector `hash-v1` with documented inputs.
-- [ ] Implement random selector behind an injected decision source.
-- [ ] Implement weighted outcome selection.
-- [ ] Implement start, expiry, duration-after-activation, periodic flap, and every-Nth gates using fake-clock-friendly interfaces.
-- [ ] Implement global caps and per-policy requested budgets.
-- [ ] Implement delayed-request concurrency reservation interfaces.
-- [ ] Implement protected name/client checks.
-- [ ] Implement activation/deactivation and emergency-disabled state as snapshot data.
-- [ ] Implement simulation that never sleeps or mutates.
-- [ ] Implement explanation records for matched/skipped policies, decisions, outcomes, and clamping.
-- [ ] Add audit event domain structures.
+- [x] Compile policies by record, wildcard source, owner, zone, forwarding rule, upstream pool, client group, and global scope.
+- [x] Implement precedence, priority, compose, terminal, and exclusive-group behavior.
+- [x] Implement deterministic selector `hash-v1` with documented inputs.
+- [x] Implement random selector behind an injected decision source.
+- [x] Implement weighted outcome selection.
+- [x] Implement start, expiry, duration-after-activation, periodic flap, and every-Nth gates using fake-clock-friendly interfaces.
+- [x] Implement global caps and per-policy requested budgets.
+- [x] Implement delayed-request concurrency reservation interfaces.
+- [x] Implement protected name/client checks.
+- [x] Implement activation/deactivation and emergency-disabled state as snapshot data.
+- [x] Implement simulation that never sleeps or mutates.
+- [x] Implement explanation records for matched/skipped policies, decisions, outcomes, and clamping.
+- [x] Add audit event domain structures.
 
 ## Required tests
 
-- [ ] Golden vectors for `hash-v1` across platforms.
-- [ ] Same inputs reproduce across process restarts.
-- [ ] Different seeds and policy IDs produce expected divergence.
-- [ ] Weighted selection statistical bounds tests.
-- [ ] Fake-clock start/expiry/flap tests.
-- [ ] Precedence and composition matrix.
-- [ ] Protected-object tests.
-- [ ] Cap clamp/reject tests.
-- [ ] Concurrent budget reservation and release tests.
-- [ ] Emergency disable prevents new selections.
-- [ ] Simulation has no sleeps, cache writes, budget consumption, or state changes.
-- [ ] Fuzz policy combinations and selector inputs.
-- [ ] Regression test for every discovered chaos-core bug.
+- [x] Golden vectors for `hash-v1` across platforms.
+- [x] Same inputs reproduce across process restarts.
+- [x] Different seeds and policy IDs produce expected divergence.
+- [x] Weighted selection statistical bounds tests.
+- [x] Fake-clock start/expiry/flap tests.
+- [x] Precedence and composition matrix.
+- [x] Protected-object tests.
+- [x] Cap clamp/reject tests.
+- [x] Concurrent budget reservation and release tests.
+- [x] Emergency disable prevents new selections.
+- [x] Simulation has no sleeps, cache writes, budget consumption, or state changes.
+- [x] Fuzz policy combinations and selector inputs.
+- [x] Regression test for every discovered chaos-core bug.
 
 ## Documentation updates
 
-- [ ] Record exact deterministic algorithm and golden vectors.
-- [ ] Finalize selector and schedule schema.
-- [ ] Update compatibility and error docs.
-- [ ] Add release-note entry for chaos policy foundation.
+- [x] Record exact deterministic algorithm and golden vectors.
+- [x] Finalize selector and schedule schema.
+- [x] Update compatibility and error docs.
+- [x] Add release-note entry for chaos policy foundation.
 
 ## Acceptance criteria
 

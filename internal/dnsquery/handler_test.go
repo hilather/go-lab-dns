@@ -1,6 +1,7 @@
 package dnsquery
 
 import (
+	"context"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hilather/go-lab-dns/internal/cache"
+	"github.com/hilather/go-lab-dns/internal/chaos"
 	"github.com/hilather/go-lab-dns/internal/config"
 	"github.com/hilather/go-lab-dns/internal/dnsserver"
 	"github.com/hilather/go-lab-dns/internal/forwarder"
@@ -417,6 +419,50 @@ func TestEmptyClientGroupsServesLocalForwardsNone(t *testing.T) {
 	}
 }
 
+type recEng struct {
+	calls []chaos.DecisionIn
+}
+
+func (r *recEng) Decide(_ context.Context, _ *snapshot.Snapshot, in chaos.DecisionIn) (chaos.ActionPlan, error) {
+	r.calls = append(r.calls, in)
+	return chaos.ActionPlan{Algorithm: chaos.AlgorithmID}, nil
+}
+
+func TestDecideUsesPreclassifiedIDs(t *testing.T) {
+	st := loadPack(t)
+	snap := compileSnap(t, st)
+	store := snapshot.NewStore()
+	store.Swap(snap)
+	eng := &recEng{}
+	h := New(store, eng, nil, nil, nil)
+	res := serve(t, h, model.Query{
+		Name:      "ns1.lab.example.net.",
+		Type:      model.TypeA,
+		Class:     model.ClassIN,
+		Client:    netip.MustParseAddr("10.42.0.10"),
+		Transport: model.TransportUDP,
+	})
+	if res.RCode != model.RCodeNoError {
+		t.Fatalf("rcode=%s", res.RCode)
+	}
+	if len(eng.calls) != 2 {
+		t.Fatalf("calls=%d", len(eng.calls))
+	}
+	pre, post := eng.calls[0], eng.calls[1]
+	if pre.Base != nil || pre.Phase != chaos.PhasePreResolution {
+		t.Fatalf("pre=%+v", pre)
+	}
+	if post.Base == nil || post.Phase != chaos.PhaseResponse {
+		t.Fatalf("post=%+v", post)
+	}
+	if pre.ClientGroupID != "test-devices" || pre.ZoneID != "lab-zone" {
+		t.Fatalf("pre ids group=%s zone=%s fwd=%s", pre.ClientGroupID, pre.ZoneID, pre.ForwardingID)
+	}
+	if pre.ZoneID != post.ZoneID || pre.ForwardingID != post.ForwardingID || pre.ClientGroupID != post.ClientGroupID {
+		t.Fatal("pre/post classified IDs diverged")
+	}
+}
+
 func TestNilSnapshotSERVFAIL(t *testing.T) {
 	h := New(snapshot.NewStore(), nil, nil, nil, nil)
 	res := serve(t, h, model.Query{Name: "x.", Type: model.TypeA, Class: model.ClassIN})
@@ -470,6 +516,10 @@ func compileSnap(t *testing.T, st *model.State) *snapshot.Snapshot {
 	if err != nil {
 		t.Fatal(err)
 	}
+	ch, err := chaos.Compile(st)
+	if err != nil {
+		t.Fatal(err)
+	}
 	rev, err := config.Revision(st)
 	if err != nil {
 		rev = "sha256:test"
@@ -481,6 +531,7 @@ func compileSnap(t *testing.T, st *model.State) *snapshot.Snapshot {
 		Access:     acc,
 		Zones:      z,
 		Forwarding: f,
+		Chaos:      ch,
 		Defaults: snapshot.DefaultsView{
 			TTL:         st.Spec.Defaults.TTL,
 			NegativeTTL: st.Spec.Defaults.NegativeTTL,

@@ -26,7 +26,7 @@ func runContext(ctx context.Context, args []string, stdout, stderr io.Writer) in
 	if len(args) < 2 {
 		_, _ = fmt.Fprintln(stderr, "usage: labdns <command>")
 		_, _ = fmt.Fprintln(stderr, "commands: version, serve")
-		_, _ = fmt.Fprintln(stderr, "serve: labdns serve --config PATH")
+		_, _ = fmt.Fprintln(stderr, "serve: labdns serve --config PATH [--chaos-disable]")
 		return 2
 	}
 	switch args[1] {
