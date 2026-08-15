@@ -1,10 +1,17 @@
 package mcp
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
+	"github.com/hilather/go-lab-dns/internal/capabilities"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
+)
+
+var (
+	promptToolRE     = regexp.MustCompile(`\bdns_[a-z0-9_]+`)
+	promptResourceRE = regexp.MustCompile(`labdns://[a-z0-9_./{}-]+`)
 )
 
 func TestFourSafePrompts(t *testing.T) {
@@ -33,23 +40,28 @@ func TestFourSafePrompts(t *testing.T) {
 		}
 	}
 
-	got, err := cs.GetPrompt(t.Context(), &sdk.GetPromptParams{
-		Name:      "plan_dns_override",
-		Arguments: map[string]string{"name": "www.lab.example.net.", "type": "A", "value": "10.42.0.80"},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(got.Messages) == 0 {
-		t.Fatal("empty prompt")
-	}
-	text := got.Messages[0].Content.(*sdk.TextContent).Text
-	for _, tool := range []string{"dns_state_get", "dns_change_plan", "dns_change_apply"} {
-		if !strings.Contains(text, tool) {
-			t.Errorf("prompt missing tool %s", tool)
+	args := map[string]string{"name": "www.lab.example.net.", "type": "A", "value": "10.42.0.80"}
+	for _, name := range PromptNames() {
+		got, err := cs.GetPrompt(t.Context(), &sdk.GetPromptParams{Name: name, Arguments: args})
+		if err != nil {
+			t.Fatalf("GetPrompt %s: %v", name, err)
 		}
-	}
-	if strings.Contains(text, "shell") || strings.Contains(text, "/bin/") {
-		t.Fatal("prompt must not introduce new capabilities")
+		if len(got.Messages) == 0 {
+			t.Fatalf("empty prompt %s", name)
+		}
+		text := got.Messages[0].Content.(*sdk.TextContent).Text
+		if strings.Contains(text, "shell") || strings.Contains(text, "/bin/") {
+			t.Fatalf("%s must not introduce new capabilities", name)
+		}
+		for _, tool := range promptToolRE.FindAllString(text, -1) {
+			if len(capabilities.LookupTool(tool)) == 0 {
+				t.Errorf("%s names unknown tool %s", name, tool)
+			}
+		}
+		for _, uri := range promptResourceRE.FindAllString(text, -1) {
+			if _, ok := capabilities.LookupResource(uri); !ok {
+				t.Errorf("%s names unknown resource %s", name, uri)
+			}
+		}
 	}
 }

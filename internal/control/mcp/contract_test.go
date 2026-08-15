@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hilather/go-lab-dns/internal/capabilities"
 	"github.com/hilather/go-lab-dns/internal/model"
@@ -26,9 +27,25 @@ func TestToolsRegisteredFromRegistry(t *testing.T) {
 			t.Errorf("%s missing input schema", tool.Name)
 		}
 	}
-	for _, name := range capabilities.Tools() {
+	want := capabilities.Tools()
+	if len(seen) != len(want) {
+		t.Errorf("live tools=%d registry=%d", len(seen), len(want))
+	}
+	for _, name := range want {
 		if !seen[name] {
 			t.Errorf("missing tool %s", name)
+		}
+	}
+	for name := range seen {
+		found := false
+		for _, w := range want {
+			if w == name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("extra live tool %s", name)
 		}
 	}
 	if seen["health.live"] || seen["dns_health_live"] {
@@ -53,9 +70,25 @@ func TestResourcesRegisteredFromRegistry(t *testing.T) {
 		}
 		seen[tmpl.URITemplate] = true
 	}
-	for _, uri := range capabilities.Resources() {
+	want := capabilities.Resources()
+	if len(seen) != len(want) {
+		t.Errorf("live resources=%d registry=%d", len(seen), len(want))
+	}
+	for _, uri := range want {
 		if !seen[uri] {
 			t.Errorf("missing resource %s", uri)
+		}
+	}
+	for uri := range seen {
+		found := false
+		for _, w := range want {
+			if w == uri {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("extra live resource %s", uri)
 		}
 	}
 }
@@ -233,6 +266,77 @@ func TestContractForwardingCacheAudit(t *testing.T) {
 	missing := callToolExpectError(t, cs, "dns_audit_get", map[string]any{"id": "nope"})
 	if domainCode(t, missing) != "not_found" {
 		t.Fatalf("audit get: %v", missing)
+	}
+}
+
+func TestContractChaosMutations(t *testing.T) {
+	s, _ := newTestServerFixture(t, "pack-sample.yaml")
+	ts := startHTTP(t, s)
+	cs := connectClient(t, ts)
+
+	st := structuredMap(t, callTool(t, cs, "dns_chaos_status", map[string]any{}))
+	if st["enabled"] == nil || st["emergencyDisabled"] == true {
+		t.Fatalf("chaos status=%v", st)
+	}
+	rev, _ := structuredMap(t, callTool(t, cs, "dns_state_get", map[string]any{}))["runtimeRevision"].(string)
+	act := structuredMap(t, callTool(t, cs, "dns_chaos_activate", map[string]any{
+		"id": "slow-tools", "expectedRevision": rev, "reason": "lab",
+	}))
+	if act["applied"] != true {
+		t.Fatalf("activate=%v", act)
+	}
+	rev, _ = act["candidateRevision"].(string)
+	deact := structuredMap(t, callTool(t, cs, "dns_chaos_deactivate", map[string]any{
+		"id": "slow-tools", "expectedRevision": rev, "reason": "lab",
+	}))
+	if deact["applied"] != true {
+		t.Fatalf("deactivate=%v", deact)
+	}
+	rev, _ = deact["candidateRevision"].(string)
+	_ = structuredMap(t, callTool(t, cs, "dns_chaos_activate", map[string]any{
+		"id": "slow-tools", "expectedRevision": rev, "reason": "lab",
+	}))
+	sim := structuredMap(t, callTool(t, cs, "dns_chaos_simulate", map[string]any{
+		"name": "foo.tools.lab.example.net.", "type": "A",
+		"clientContext": map[string]any{"clientGroup": "test-devices"},
+		"nonce":         "sim",
+	}))
+	if sim["algorithm"] != "hash-v1" {
+		t.Fatalf("simulate=%v", sim)
+	}
+	rev, _ = structuredMap(t, callTool(t, cs, "dns_state_get", map[string]any{}))["runtimeRevision"].(string)
+	exp := structuredMap(t, callTool(t, cs, "dns_chaos_set_expiry", map[string]any{
+		"id": "slow-tools", "expectedRevision": rev,
+		"expiresAt": time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339),
+	}))
+	if exp["applied"] != true {
+		t.Fatalf("expiry=%v", exp)
+	}
+	off := structuredMap(t, callTool(t, cs, "dns_chaos_emergency_disable", map[string]any{"reason": "stop"}))
+	if off["applied"] != true {
+		t.Fatalf("emergency disable=%v", off)
+	}
+	after := structuredMap(t, callTool(t, cs, "dns_chaos_status", map[string]any{}))
+	if after["emergencyDisabled"] != true {
+		t.Fatalf("status after emergency=%v", after)
+	}
+	on := structuredMap(t, callTool(t, cs, "dns_chaos_emergency_enable", map[string]any{"reason": "resume"}))
+	if on["applied"] != true {
+		t.Fatalf("emergency enable=%v", on)
+	}
+}
+
+func TestExportFormatCaseInsensitive(t *testing.T) {
+	s, _ := newTestServer(t)
+	ts := startHTTP(t, s)
+	cs := connectClient(t, ts)
+	exp := structuredMap(t, callTool(t, cs, "dns_state_export", map[string]any{"format": "YAML"}))
+	if exp["format"] != "yaml" && exp["body"] == nil {
+		t.Fatalf("export YAML=%v", exp)
+	}
+	expj := structuredMap(t, callTool(t, cs, "dns_state_export", map[string]any{"format": "JSON"}))
+	if expj["format"] != "json" {
+		t.Fatalf("export JSON=%v", expj)
 	}
 }
 

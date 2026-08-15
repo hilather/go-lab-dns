@@ -133,6 +133,7 @@ func New(cfg Config) (*Server, error) {
 		},
 		SchemaCache: sdk.NewSchemaCache(),
 	})
+	sdkSrv.AddReceivingMiddleware(pinProtocolMiddleware)
 
 	s := &Server{
 		cfg:      cfg,
@@ -173,8 +174,18 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	reqID := requestID(r)
 	w.Header().Set(headerRequestID, reqID)
 
+	if s.closed.Load() {
+		writeRPC(w, http.StatusServiceUnavailable, domainerr.Internal("server closed"))
+		return
+	}
+
+	if err := validateOrigin(r, s.cfg.AllowedOrigins); err != nil {
+		writeRPC(w, http.StatusForbidden, err)
+		return
+	}
 	if r.Method == http.MethodOptions {
-		writeRPC(w, http.StatusForbidden, domainerr.Forbidden("origin not allowed"))
+		w.Header().Set("Allow", "POST")
+		writeRPC(w, http.StatusMethodNotAllowed, domainerr.MethodNotAllowed("method not allowed"))
 		return
 	}
 
@@ -201,10 +212,6 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	if err := validateOrigin(r, s.cfg.AllowedOrigins); err != nil {
-		writeRPC(w, http.StatusForbidden, err)
-		return
-	}
 	if err := validateProtocolVersion(r); err != nil {
 		writeRPC(w, http.StatusBadRequest, err)
 		return

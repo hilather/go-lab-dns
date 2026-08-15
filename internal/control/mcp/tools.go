@@ -3,6 +3,8 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"strings"
 
 	"github.com/hilather/go-lab-dns/internal/app"
 	"github.com/hilather/go-lab-dns/internal/auth"
@@ -98,7 +100,7 @@ func (s *Server) registerTools() {
 	})
 	addTool(s, "dns_state_export", exportDesc, false, true, func(ctx context.Context, actor auth.Actor, in exportIn) (any, error) {
 		format := app.ExportYAML
-		switch in.Format {
+		switch strings.ToLower(in.Format) {
 		case "", "yaml", "yml":
 			format = app.ExportYAML
 		case "json":
@@ -213,10 +215,14 @@ func (s *Server) registerTools() {
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"upstreams": ups}, nil
+		return map[string]any{"upstreams": fromUpstreams(ups)}, nil
 	})
 	addTool(s, "dns_cache_status", cacheStatusDesc, false, true, func(ctx context.Context, actor auth.Actor, _ emptyIn) (any, error) {
-		return s.svc.CacheStatus(ctx, actor)
+		st, err := s.svc.CacheStatus(ctx, actor)
+		if err != nil {
+			return nil, err
+		}
+		return fromCache(st), nil
 	})
 	addTool(s, "dns_cache_flush", cacheFlushDesc, true, true, func(ctx context.Context, actor auth.Actor, in flushIn) (any, error) {
 		if err := s.svc.CacheFlush(ctx, actor, app.FlushIn{All: in.All}); err != nil {
@@ -225,7 +231,11 @@ func (s *Server) registerTools() {
 		return map[string]any{"ok": true}, nil
 	})
 	addTool(s, "dns_chaos_status", chaosStatusDesc, false, true, func(ctx context.Context, actor auth.Actor, _ emptyIn) (any, error) {
-		return s.svc.ChaosStatus(ctx, actor)
+		st, err := s.svc.ChaosStatus(ctx, actor)
+		if err != nil {
+			return nil, err
+		}
+		return fromChaosStatus(st), nil
 	})
 	addTool(s, "dns_chaos_policies_list", chaosListDesc, false, true, func(ctx context.Context, actor auth.Actor, _ emptyIn) (any, error) {
 		pols, err := s.svc.ListChaosPolicies(ctx, actor)
@@ -250,7 +260,11 @@ func (s *Server) registerTools() {
 			return nil, domainerr.ValidationFailed("invalid client address",
 				domainerr.FieldViolation{Path: "clientContext.client", Code: "invalid_value", Message: "client must be an IP address"})
 		}
-		return s.svc.SimulateChaos(ctx, actor, si)
+		out, err := s.svc.SimulateChaos(ctx, actor, si)
+		if err != nil {
+			return nil, err
+		}
+		return fromSimulate(out), nil
 	})
 	addTool(s, "dns_chaos_activate", activateDesc, true, false, func(ctx context.Context, actor auth.Actor, in activationIn) (any, error) {
 		ain, err := in.toActivation()
@@ -300,14 +314,22 @@ func (s *Server) registerTools() {
 		return fromApply(r), nil
 	})
 	addTool(s, "dns_audit_query", auditQueryDesc, false, true, func(ctx context.Context, actor auth.Actor, in auditQueryIn) (any, error) {
-		return s.svc.QueryAudit(ctx, actor, app.AuditQuery{Limit: in.Limit})
+		list, err := s.svc.QueryAudit(ctx, actor, app.AuditQuery{Limit: in.Limit})
+		if err != nil {
+			return nil, err
+		}
+		return fromAuditList(list), nil
 	})
 	addTool(s, "dns_audit_get", auditGetDesc, false, true, func(ctx context.Context, actor auth.Actor, in idIn) (any, error) {
 		if in.ID == "" {
 			return nil, domainerr.ValidationFailed("id is required",
 				domainerr.FieldViolation{Path: "id", Code: "required", Message: "id is required"})
 		}
-		return s.svc.GetAudit(ctx, actor, in.ID)
+		ev, err := s.svc.GetAudit(ctx, actor, in.ID)
+		if err != nil {
+			return nil, err
+		}
+		return fromAuditEvent(ev), nil
 	})
 }
 
@@ -335,7 +357,7 @@ func addTool[In any](s *Server, name, desc string, mutating, idempotent bool, h 
 		Annotations: ann,
 	}, func(ctx context.Context, _ *sdk.CallToolRequest, in In) (*sdk.CallToolResult, any, error) {
 		if err := ctx.Err(); err != nil {
-			return nil, nil, rpcError(domainerr.Internal("request canceled"))
+			return toolErrorResult(canceledError(err)), nil, nil
 		}
 		out, err := h(ctx, actorFrom(ctx), in)
 		if err != nil {
@@ -352,6 +374,13 @@ func addTool[In any](s *Server, name, desc string, mutating, idempotent bool, h 
 }
 
 func boolPtr(v bool) *bool { return &v }
+
+func canceledError(err error) error {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return domainerr.Internal("request deadline exceeded")
+	}
+	return domainerr.Internal("request canceled")
+}
 
 const (
 	versionDesc     = "Read-only. Build and protocol versions (MCP " + ProtocolVersion + ")."

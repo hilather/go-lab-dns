@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -41,7 +42,7 @@ func TestToolCancellation(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("canceled call did not return")
 	}
-	if !slow.sawCancel {
+	if slow.sawCancel.Load() == 0 {
 		t.Fatal("service did not observe cancellation")
 	}
 }
@@ -49,7 +50,7 @@ func TestToolCancellation(t *testing.T) {
 type slowVersion struct {
 	*app.App
 	started   chan struct{}
-	sawCancel bool
+	sawCancel atomic.Uint32
 }
 
 func (s *slowVersion) Version(ctx context.Context, actor auth.Actor) (*buildinfo.Info, error) {
@@ -60,7 +61,7 @@ func (s *slowVersion) Version(ctx context.Context, actor auth.Actor) (*buildinfo
 	}
 	select {
 	case <-ctx.Done():
-		s.sawCancel = true
+		s.sawCancel.Store(1)
 		return nil, ctx.Err()
 	case <-time.After(5 * time.Second):
 		info := buildinfo.Current()

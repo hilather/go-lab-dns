@@ -255,130 +255,415 @@ func (in pageIn) page() app.Page {
 	return app.Page{Limit: in.Limit, Cursor: in.Cursor}
 }
 
-func fromVersion(info *buildinfo.Info) map[string]any {
+// Output DTOs twin REST camelCase. Do not marshal untagged app structs.
+type versionJSON struct {
+	Version   string           `json:"version"`
+	Commit    string           `json:"commit"`
+	BuildTime string           `json:"buildTime"`
+	Protocols versionProtocols `json:"protocols"`
+}
+
+type versionProtocols struct {
+	ConfigAPI string `json:"configAPI"`
+	REST      string `json:"rest"`
+	MCP       string `json:"mcp"`
+	Chaos     string `json:"chaos"`
+}
+
+type capabilityViewJSON struct {
+	Capabilities []capabilityInfoJSON `json:"capabilities"`
+}
+
+type capabilityInfoJSON struct {
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	Description string `json:"description"`
+	Mutating    bool   `json:"mutating"`
+	Idempotent  bool   `json:"idempotent"`
+}
+
+type statusJSON struct {
+	Version   versionJSON      `json:"version"`
+	Revisions revisionJSON     `json:"revisions"`
+	Listeners []listenerJSON   `json:"listeners"`
+	Cache     cacheSummaryJSON `json:"cache"`
+	Upstreams []upstreamJSON   `json:"upstreams"`
+	Chaos     chaosStatusJSON  `json:"chaos"`
+	Warnings  []warningJSON    `json:"warnings,omitempty"`
+}
+
+type revisionJSON struct {
+	BootstrapRevision string `json:"bootstrapRevision"`
+	RuntimeRevision   string `json:"runtimeRevision"`
+	Generation        uint64 `json:"generation"`
+	Drifted           bool   `json:"drifted"`
+	LoadedAt          string `json:"loadedAt,omitempty"`
+}
+
+type listenerJSON struct {
+	Name    string `json:"name"`
+	Address string `json:"address"`
+}
+
+type cacheSummaryJSON struct {
+	Enabled    bool `json:"enabled"`
+	MaxEntries int  `json:"maxEntries"`
+	Entries    int  `json:"entries"`
+	Hits       int  `json:"hits"`
+	Misses     int  `json:"misses"`
+	Evicts     int  `json:"evicts"`
+}
+
+type upstreamJSON struct {
+	ID        string `json:"id"`
+	PoolID    string `json:"poolId"`
+	Endpoint  string `json:"endpoint"`
+	Transport string `json:"transport"`
+	Healthy   bool   `json:"healthy"`
+}
+
+type chaosStatusJSON struct {
+	Enabled           bool   `json:"enabled"`
+	EmergencyDisabled bool   `json:"emergencyDisabled"`
+	ActivePolicies    int    `json:"activePolicies"`
+	NearestExpiry     string `json:"nearestExpiry,omitempty"`
+}
+
+type warningJSON struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+type stateViewJSON struct {
+	BootstrapRevision string `json:"bootstrapRevision"`
+	RuntimeRevision   string `json:"runtimeRevision"`
+	Generation        uint64 `json:"generation"`
+	Drifted           bool   `json:"drifted"`
+	LoadedAt          string `json:"loadedAt,omitempty"`
+	Canonical         any    `json:"canonical,omitempty"`
+}
+
+type zoneListJSON struct {
+	Zones      []model.Zone `json:"zones"`
+	NextCursor string       `json:"nextCursor,omitempty"`
+}
+
+type recordListJSON struct {
+	Records    []model.Record `json:"records"`
+	NextCursor string         `json:"nextCursor,omitempty"`
+}
+
+type planJSON struct {
+	PreviousRevision  string            `json:"previousRevision"`
+	CandidateRevision string            `json:"candidateRevision"`
+	Drifted           bool              `json:"drifted"`
+	Diff              []app.DiffEntry   `json:"diff,omitempty"`
+	Impact            impactJSON        `json:"impact"`
+	Warnings          []warningJSON     `json:"warnings,omitempty"`
+	Operations        []model.Operation `json:"operations,omitempty"`
+	Auth              authJSON          `json:"auth"`
+}
+
+type applyJSON struct {
+	planJSON
+	Applied      bool   `json:"applied"`
+	Generation   uint64 `json:"generation"`
+	AuditEventID string `json:"auditEventId,omitempty"`
+}
+
+type impactJSON struct {
+	Names                 []string      `json:"names,omitempty"`
+	Zones                 []string      `json:"zones,omitempty"`
+	WildcardCoverage      bool          `json:"wildcardCoverage"`
+	AuthoritativeMisses   bool          `json:"authoritativeMisses"`
+	ClientGroups          []string      `json:"clientGroups,omitempty"`
+	ForwardingChanged     bool          `json:"forwardingChanged"`
+	ChaosPolicies         []chaosImpact `json:"chaosPolicies,omitempty"`
+	CompatibilityWarnings []string      `json:"compatibilityWarnings,omitempty"`
+	RequiredPermissions   []string      `json:"requiredPermissions,omitempty"`
+	SuggestedProbes       []string      `json:"suggestedProbes,omitempty"`
+}
+
+type chaosImpact struct {
+	ID        string `json:"id"`
+	Enabled   bool   `json:"enabled"`
+	ExpiresAt string `json:"expiresAt,omitempty"`
+}
+
+type authJSON struct {
+	Allowed bool     `json:"allowed"`
+	Scopes  []string `json:"scopes,omitempty"`
+}
+
+type simulateOutJSON struct {
+	Algorithm string              `json:"algorithm"`
+	Disabled  bool                `json:"disabled"`
+	Reason    string              `json:"reason,omitempty"`
+	Triggered bool                `json:"triggered"`
+	Decisions []chaosDecisionJSON `json:"decisions,omitempty"`
+}
+
+type chaosDecisionJSON struct {
+	PolicyID   string `json:"policyId"`
+	OutcomeID  string `json:"outcomeId,omitempty"`
+	Triggered  bool   `json:"triggered"`
+	SkipReason string `json:"skipReason,omitempty"`
+	DigestHex  string `json:"digestHex,omitempty"`
+}
+
+type auditListJSON struct {
+	Events []auditEventJSON `json:"events"`
+}
+
+type auditEventJSON struct {
+	ID         string `json:"id"`
+	Time       string `json:"time"`
+	ActorID    string `json:"actorId,omitempty"`
+	Capability string `json:"capability,omitempty"`
+	Reason     string `json:"reason,omitempty"`
+	Ticket     string `json:"ticket,omitempty"`
+	Revision   string `json:"revision,omitempty"`
+	Previous   string `json:"previous,omitempty"`
+}
+
+func fromVersion(info *buildinfo.Info) versionJSON {
 	if info == nil {
-		return map[string]any{}
+		return versionJSON{}
 	}
-	return map[string]any{
-		"version":   info.Version,
-		"commit":    info.Commit,
-		"buildTime": info.BuildTime,
-		"protocols": map[string]any{
-			"configAPI": info.Protocols.ConfigAPI,
-			"rest":      info.Protocols.REST,
-			"mcp":       info.Protocols.MCP,
-			"chaos":     info.Protocols.Chaos,
+	return versionJSON{
+		Version:   info.Version,
+		Commit:    info.Commit,
+		BuildTime: info.BuildTime,
+		Protocols: versionProtocols{
+			ConfigAPI: info.Protocols.ConfigAPI,
+			REST:      info.Protocols.REST,
+			MCP:       info.Protocols.MCP,
+			Chaos:     info.Protocols.Chaos,
 		},
 	}
 }
 
-func fromCapabilities(v *app.CapabilityView) map[string]any {
-	caps := []map[string]any{}
-	if v != nil {
-		for _, c := range v.Capabilities {
-			caps = append(caps, map[string]any{
-				"name": c.Name, "version": c.Version, "description": c.Description,
-				"mutating": c.Mutating, "idempotent": c.Idempotent,
-			})
+func fromCapabilities(v *app.CapabilityView) capabilityViewJSON {
+	out := capabilityViewJSON{}
+	if v == nil {
+		return out
+	}
+	out.Capabilities = make([]capabilityInfoJSON, len(v.Capabilities))
+	for i, c := range v.Capabilities {
+		out.Capabilities[i] = capabilityInfoJSON{
+			Name: c.Name, Version: c.Version, Description: c.Description,
+			Mutating: c.Mutating, Idempotent: c.Idempotent,
 		}
 	}
-	return map[string]any{"capabilities": caps}
-}
-
-func fromStatus(st *app.Status) map[string]any {
-	if st == nil {
-		return map[string]any{}
-	}
-	v := fromVersion(&st.Version)
-	return map[string]any{
-		"version":   v,
-		"revisions": fromRevision(st.Revisions),
-		"listeners": st.Listeners,
-		"cache":     st.Cache,
-		"upstreams": st.Upstreams,
-		"chaos":     st.Chaos,
-		"warnings":  st.Warnings,
-	}
-}
-
-func fromRevision(v app.RevisionView) map[string]any {
-	return map[string]any{
-		"bootstrapRevision": string(v.BootstrapRevision),
-		"runtimeRevision":   string(v.RuntimeRevision),
-		"generation":        uint64(v.Generation),
-		"drifted":           v.Drifted,
-		"loadedAt":          rfc3339(v.LoadedAt),
-	}
-}
-
-func fromZoneList(list *app.ZoneList) map[string]any {
-	zones := []model.Zone{}
-	next := ""
-	if list != nil {
-		zones = list.Zones
-		next = list.NextCursor
-	}
-	return map[string]any{"zones": zones, "nextCursor": next}
-}
-
-func fromRecordList(list *app.RecordList) map[string]any {
-	recs := []model.Record{}
-	next := ""
-	if list != nil {
-		recs = list.Records
-		next = list.NextCursor
-	}
-	return map[string]any{"records": recs, "nextCursor": next}
-}
-
-func fromPlan(p *app.Plan) map[string]any {
-	if p == nil {
-		return map[string]any{}
-	}
-	return map[string]any{
-		"previousRevision":  string(p.PreviousRevision),
-		"candidateRevision": string(p.CandidateRevision),
-		"drifted":           p.Drifted,
-		"diff":              p.Diff,
-		"impact":            p.Impact,
-		"warnings":          p.Warnings,
-		"operations":        p.Operations,
-		"auth":              p.Auth,
-	}
-}
-
-func fromApply(r *app.ApplyResult) map[string]any {
-	if r == nil {
-		return map[string]any{}
-	}
-	out := fromPlan(&r.Plan)
-	out["applied"] = r.Applied
-	out["generation"] = uint64(r.Generation)
-	out["auditEventId"] = r.AuditEventID
 	return out
 }
 
-func fromStateView(v *app.StateView) (any, error) {
+func fromStatus(st *app.Status) statusJSON {
+	if st == nil {
+		return statusJSON{}
+	}
+	out := statusJSON{
+		Version:   fromVersion(&st.Version),
+		Revisions: fromRevision(st.Revisions),
+		Cache:     fromCache(&st.Cache),
+		Chaos:     fromChaosStatus(&st.Chaos),
+		Warnings:  fromWarnings(st.Warnings),
+	}
+	for _, l := range st.Listeners {
+		out.Listeners = append(out.Listeners, listenerJSON{Name: l.Name, Address: l.Address})
+	}
+	out.Upstreams = fromUpstreams(st.Upstreams)
+	return out
+}
+
+func fromRevision(v app.RevisionView) revisionJSON {
+	return revisionJSON{
+		BootstrapRevision: string(v.BootstrapRevision),
+		RuntimeRevision:   string(v.RuntimeRevision),
+		Generation:        uint64(v.Generation),
+		Drifted:           v.Drifted,
+		LoadedAt:          rfc3339(v.LoadedAt),
+	}
+}
+
+func fromCache(st *app.CacheSummary) cacheSummaryJSON {
+	if st == nil {
+		return cacheSummaryJSON{}
+	}
+	return cacheSummaryJSON{
+		Enabled: st.Enabled, MaxEntries: st.MaxEntries, Entries: st.Entries,
+		Hits: st.Hits, Misses: st.Misses, Evicts: st.Evicts,
+	}
+}
+
+func fromUpstreams(in []app.UpstreamStatus) []upstreamJSON {
+	out := make([]upstreamJSON, 0, len(in))
+	for _, u := range in {
+		out = append(out, upstreamJSON{
+			ID: string(u.ID), PoolID: string(u.PoolID), Endpoint: u.Endpoint,
+			Transport: string(u.Transport), Healthy: u.Healthy,
+		})
+	}
+	return out
+}
+
+func fromChaosStatus(st *app.ChaosRuntimeStatus) chaosStatusJSON {
+	if st == nil {
+		return chaosStatusJSON{}
+	}
+	out := chaosStatusJSON{
+		Enabled: st.Enabled, EmergencyDisabled: st.EmergencyDisabled, ActivePolicies: st.ActivePolicies,
+	}
+	if st.NearestExpiry != nil {
+		out.NearestExpiry = rfc3339(*st.NearestExpiry)
+	}
+	return out
+}
+
+func fromWarnings(in []app.Warning) []warningJSON {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]warningJSON, len(in))
+	for i, w := range in {
+		out[i] = warningJSON{Code: w.Code, Message: w.Message}
+	}
+	return out
+}
+
+func fromZoneList(list *app.ZoneList) zoneListJSON {
+	out := zoneListJSON{Zones: []model.Zone{}}
+	if list == nil {
+		return out
+	}
+	out.Zones = list.Zones
+	out.NextCursor = list.NextCursor
+	return out
+}
+
+func fromRecordList(list *app.RecordList) recordListJSON {
+	out := recordListJSON{Records: []model.Record{}}
+	if list == nil {
+		return out
+	}
+	out.Records = list.Records
+	out.NextCursor = list.NextCursor
+	return out
+}
+
+func fromPlan(p *app.Plan) planJSON {
+	if p == nil {
+		return planJSON{}
+	}
+	return planJSON{
+		PreviousRevision:  string(p.PreviousRevision),
+		CandidateRevision: string(p.CandidateRevision),
+		Drifted:           p.Drifted,
+		Diff:              p.Diff,
+		Impact:            fromImpact(p.Impact),
+		Warnings:          fromWarnings(p.Warnings),
+		Operations:        p.Operations,
+		Auth:              authJSON{Allowed: p.Auth.Allowed, Scopes: p.Auth.Scopes},
+	}
+}
+
+func fromApply(r *app.ApplyResult) applyJSON {
+	if r == nil {
+		return applyJSON{}
+	}
+	return applyJSON{
+		planJSON:     fromPlan(&r.Plan),
+		Applied:      r.Applied,
+		Generation:   uint64(r.Generation),
+		AuditEventID: r.AuditEventID,
+	}
+}
+
+func fromImpact(in app.Impact) impactJSON {
+	out := impactJSON{
+		WildcardCoverage:      in.WildcardCoverage,
+		AuthoritativeMisses:   in.AuthoritativeMisses,
+		ForwardingChanged:     in.ForwardingChanged,
+		CompatibilityWarnings: in.CompatibilityWarnings,
+		RequiredPermissions:   in.RequiredPermissions,
+		SuggestedProbes:       in.SuggestedProbes,
+	}
+	for _, n := range in.Names {
+		out.Names = append(out.Names, string(n))
+	}
+	for _, z := range in.Zones {
+		out.Zones = append(out.Zones, string(z))
+	}
+	for _, g := range in.ClientGroups {
+		out.ClientGroups = append(out.ClientGroups, string(g))
+	}
+	for _, c := range in.ChaosPolicies {
+		ci := chaosImpact{ID: string(c.ID), Enabled: c.Enabled}
+		if c.ExpiresAt != nil {
+			ci.ExpiresAt = rfc3339(*c.ExpiresAt)
+		}
+		out.ChaosPolicies = append(out.ChaosPolicies, ci)
+	}
+	return out
+}
+
+func fromSimulate(o *app.SimulateOut) simulateOutJSON {
+	if o == nil {
+		return simulateOutJSON{}
+	}
+	out := simulateOutJSON{
+		Algorithm: o.Algorithm, Disabled: o.Disabled, Reason: o.Reason, Triggered: o.Triggered,
+	}
+	for _, d := range o.Decisions {
+		out.Decisions = append(out.Decisions, chaosDecisionJSON{
+			PolicyID: string(d.PolicyID), OutcomeID: d.OutcomeID, Triggered: d.Triggered,
+			SkipReason: d.SkipReason, DigestHex: d.DigestHex,
+		})
+	}
+	return out
+}
+
+func fromAuditList(l *app.AuditList) auditListJSON {
+	out := auditListJSON{Events: []auditEventJSON{}}
+	if l == nil {
+		return out
+	}
+	for _, e := range l.Events {
+		out.Events = append(out.Events, fromAuditEvent(&e))
+	}
+	return out
+}
+
+func fromAuditEvent(e *app.AuditEvent) auditEventJSON {
+	if e == nil {
+		return auditEventJSON{}
+	}
+	return auditEventJSON{
+		ID: e.ID, Time: rfc3339(e.Time), ActorID: e.ActorID, Capability: e.Capability,
+		Reason: e.Reason, Ticket: e.Ticket, Revision: string(e.Revision), Previous: string(e.Previous),
+	}
+}
+
+func fromStateView(v *app.StateView) (stateViewJSON, error) {
+	out := stateViewJSON{}
 	if v == nil {
-		return map[string]any{}, nil
+		return out, nil
 	}
-	out := map[string]any{
-		"bootstrapRevision": string(v.BootstrapRevision),
-		"runtimeRevision":   string(v.RuntimeRevision),
-		"generation":        uint64(v.Generation),
-		"drifted":           v.Drifted,
-		"loadedAt":          rfc3339(v.LoadedAt),
-	}
+	out.BootstrapRevision = string(v.BootstrapRevision)
+	out.RuntimeRevision = string(v.RuntimeRevision)
+	out.Generation = uint64(v.Generation)
+	out.Drifted = v.Drifted
+	out.LoadedAt = rfc3339(v.LoadedAt)
 	if v.Canonical != nil {
 		raw, err := marshalAPI(v.Canonical)
 		if err != nil {
-			return nil, err
+			return out, err
 		}
 		var tree any
 		if err := json.Unmarshal(raw, &tree); err != nil {
-			return nil, err
+			return out, err
 		}
-		out["canonical"] = tree
+		out.Canonical = tree
 	}
 	return out, nil
 }

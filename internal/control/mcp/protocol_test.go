@@ -36,11 +36,42 @@ func TestPinnedProtocolDiscover(t *testing.T) {
 	if ir == nil {
 		t.Fatal("missing initialize/discover result")
 	}
-	if ir.ProtocolVersion != "" && ir.ProtocolVersion != ProtocolVersion {
+	if ir.ProtocolVersion != ProtocolVersion {
 		t.Fatalf("negotiated %q want %s", ir.ProtocolVersion, ProtocolVersion)
 	}
 	if buildinfo.Current().Protocols.MCP != ProtocolVersion {
 		t.Fatalf("buildinfo MCP=%q", buildinfo.Current().Protocols.MCP)
+	}
+}
+
+func TestDiscoverAdvertisesOnlyPinnedVersion(t *testing.T) {
+	s, _ := newTestServer(t)
+	body := rpcCall(1, "server/discover", map[string]any{
+		"_meta": map[string]any{
+			"io.modelcontextprotocol/protocolVersion": ProtocolVersion,
+			"io.modelcontextprotocol/clientInfo": map[string]any{
+				"name": "labdns-test", "version": "dev",
+			},
+			"io.modelcontextprotocol/clientCapabilities": map[string]any{},
+		},
+	})
+	rec := doRaw(t, s.Handler(), body, map[string]string{
+		"Content-Type":        "application/json",
+		"Accept":              "application/json, text/event-stream",
+		headerProtocolVersion: ProtocolVersion,
+		"Mcp-Method":          "server/discover",
+	}, "127.0.0.1:1")
+	if rec.Code != http.StatusOK && rec.Code != http.StatusAccepted {
+		t.Fatalf("discover status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	m := decodeRPC(t, rec)
+	result, _ := m["result"].(map[string]any)
+	if result == nil {
+		t.Fatalf("discover missing result: %s", rec.Body.String())
+	}
+	raw, _ := result["supportedVersions"].([]any)
+	if len(raw) != 1 || raw[0] != ProtocolVersion {
+		t.Fatalf("supportedVersions=%v want [%s]", raw, ProtocolVersion)
 	}
 }
 
@@ -52,6 +83,19 @@ func TestStreamableHTTPOnlyPOST(t *testing.T) {
 	}, "127.0.0.1:1")
 	if req.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("GET status=%d want 405 body=%s", req.Code, req.Body.String())
+	}
+}
+
+func TestClosedRejectsRequests(t *testing.T) {
+	s, _ := newTestServer(t)
+	s.Close()
+	rec := doRaw(t, s.Handler(), rpcCall(1, "ping", nil), map[string]string{
+		"Content-Type":        "application/json",
+		"Accept":              "application/json, text/event-stream",
+		headerProtocolVersion: ProtocolVersion,
+	}, "127.0.0.1:1")
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("closed status=%d body=%s", rec.Code, rec.Body.String())
 	}
 }
 

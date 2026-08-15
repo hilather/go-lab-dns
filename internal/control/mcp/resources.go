@@ -127,14 +127,14 @@ func (s *Server) resourceBody(ctx context.Context, actor auth.Actor, uri string)
 		if err != nil {
 			return nil, "", err
 		}
-		b, err := marshalAPI(map[string]any{"upstreams": v})
+		b, err := marshalAPI(map[string]any{"upstreams": fromUpstreams(v)})
 		return b, "application/json", err
 	case uri == "labdns://audit/recent":
 		v, err := s.svc.QueryAudit(ctx, actor, app.AuditQuery{})
 		if err != nil {
 			return nil, "", err
 		}
-		b, err := marshalAPI(v)
+		b, err := marshalAPI(fromAuditList(v))
 		return b, "application/json", err
 	case uri == "labdns://docs/dns-semantics":
 		b, err := s.svc.Docs(ctx, actor, "dns-semantics")
@@ -181,15 +181,40 @@ func (s *Server) resourceBody(ctx context.Context, actor auth.Actor, uri string)
 }
 
 func (s *Server) findRecord(ctx context.Context, actor auth.Actor, recordID string) (*model.Record, error) {
-	zones, err := s.svc.ListZones(ctx, actor, app.Page{Limit: 10_000})
-	if err != nil {
-		return nil, err
-	}
-	for _, z := range zones.Zones {
-		rec, err := s.svc.GetRecord(ctx, actor, z.ID, model.RecordID(recordID))
-		if err == nil {
-			return rec, nil
+	// Catalog URI has no zoneId; scan every page and fail closed on ambiguity
+	// or unexpected errors so a later zone-scoped deny is not swallowed.
+	var found *model.Record
+	page := app.Page{Limit: 256}
+	for {
+		zones, err := s.svc.ListZones(ctx, actor, page)
+		if err != nil {
+			return nil, err
 		}
+		if zones == nil {
+			break
+		}
+		for _, z := range zones.Zones {
+			rec, err := s.svc.GetRecord(ctx, actor, z.ID, model.RecordID(recordID))
+			if err != nil {
+				if de, ok := domainerr.As(err); ok && de.Code == domainerr.CodeNotFound {
+					continue
+				}
+				return nil, err
+			}
+			if found != nil {
+				return nil, domainerr.ValidationFailed("record id is not unique",
+					domainerr.FieldViolation{Path: "recordId", Code: "ambiguous", Message: "record id matches multiple zones; use dns_record_get with zoneId"})
+			}
+			cp := *rec
+			found = &cp
+		}
+		if zones.NextCursor == "" {
+			break
+		}
+		page.Cursor = zones.NextCursor
 	}
-	return nil, domainerr.NotFound("record " + recordID + " not found")
+	if found == nil {
+		return nil, domainerr.NotFound("record " + recordID + " not found")
+	}
+	return found, nil
 }

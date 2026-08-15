@@ -1,10 +1,12 @@
 package mcp
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
 	"github.com/hilather/go-lab-dns/internal/domainerr"
+	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // validateProtocolVersion pins first GA to 2026-07-28. Older SDK revisions
@@ -18,4 +20,24 @@ func validateProtocolVersion(r *http.Request) error {
 		return domainerr.UnsupportedProtocolVersion("unsupported MCP protocol version " + ver + "; only " + ProtocolVersion + " is supported")
 	}
 	return nil
+}
+
+// pinProtocolMiddleware keeps discover/_meta on the first-GA pin. The SDK
+// transport otherwise advertises every version it can speak.
+func pinProtocolMiddleware(next sdk.MethodHandler) sdk.MethodHandler {
+	return func(ctx context.Context, method string, req sdk.Request) (sdk.Result, error) {
+		if sr, ok := req.(interface{ ProtocolVersion() string }); ok {
+			if v := sr.ProtocolVersion(); v != "" && v != ProtocolVersion {
+				return nil, rpcError(domainerr.UnsupportedProtocolVersion("unsupported MCP protocol version " + v + "; only " + ProtocolVersion + " is supported"))
+			}
+		}
+		res, err := next(ctx, method, req)
+		if err != nil {
+			return nil, err
+		}
+		if dr, ok := res.(*sdk.DiscoverResult); ok && dr != nil {
+			dr.SupportedVersions = []string{ProtocolVersion}
+		}
+		return res, nil
+	}
 }
