@@ -1,4 +1,4 @@
-package app
+package capabilities
 
 import (
 	"go/parser"
@@ -7,35 +7,24 @@ import (
 	"testing"
 )
 
-func TestAppImportDAG(t *testing.T) {
+func TestImportDAG(t *testing.T) {
 	fset := token.NewFileSet()
 	pkgs, err := parser.ParseDir(fset, ".", nil, parser.ImportsOnly)
 	if err != nil {
 		t.Fatal(err)
 	}
 	allowed := map[string]bool{
-		"github.com/hilather/go-lab-dns/internal/auth":         true,
-		"github.com/hilather/go-lab-dns/internal/buildinfo":    true,
-		"github.com/hilather/go-lab-dns/internal/cache":        true,
-		"github.com/hilather/go-lab-dns/internal/capabilities": true,
-		"github.com/hilather/go-lab-dns/internal/compiler":     true,
-		"github.com/hilather/go-lab-dns/internal/config":       true,
-		"github.com/hilather/go-lab-dns/internal/domainerr":    true,
-		"github.com/hilather/go-lab-dns/internal/forwarder":    true,
-		"github.com/hilather/go-lab-dns/internal/model":        true,
-		"github.com/hilather/go-lab-dns/internal/resolver":     true,
-		"github.com/hilather/go-lab-dns/internal/snapshot":     true,
-		"github.com/hilather/go-lab-dns/internal/testutil":     true,
+		"github.com/hilather/go-lab-dns/internal/domainerr": true,
 	}
 	forbiddenPref := []string{
 		"github.com/miekg/dns",
 		"github.com/modelcontextprotocol",
 		"github.com/coredns",
-		"github.com/hilather/go-lab-dns/internal/dnsquery",
+		"github.com/hilather/go-lab-dns/internal/app",
+		"github.com/hilather/go-lab-dns/internal/control",
 		"github.com/hilather/go-lab-dns/internal/dnsserver",
 		"github.com/hilather/go-lab-dns/internal/dnswire",
-		"github.com/hilather/go-lab-dns/internal/control",
-		"github.com/hilather/go-lab-dns/internal/chaos",
+		"github.com/hilather/go-lab-dns/internal/dnsquery",
 		"net/http",
 	}
 	for _, pkg := range pkgs {

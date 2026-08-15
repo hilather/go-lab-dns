@@ -2,7 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Application, REST, MCP
-Last reviewed: 2026-08-15 (STA-001 app.Service mutation contract)
+Last reviewed: 2026-08-15 (capability registry freeze)
 Related ADRs: 0004, 0006
 
 ## Problem statement
@@ -63,26 +63,45 @@ The registry is the source for:
 
 ## Core capabilities
 
-| Capability | REST | MCP |
-|---|---|---|
-| Get state | `GET /v1/state` | resource `labdns://state` or `dns_state_get` |
-| Validate candidate | `POST /v1/state:validate` | `dns_state_validate` |
-| Plan changes | `POST /v1/changes:plan` | `dns_change_plan` |
-| Apply changes | `POST /v1/changes:apply` | `dns_change_apply` |
-| Export state | `GET /v1/state:export` | `dns_state_export` |
-| Reset bootstrap | `POST /v1/state:reset` | `dns_state_reset` |
-| List/get zones | `GET /v1/zones` | `dns_zones_list`, resources |
-| Resolve | `POST /v1/resolve` | `dns_resolve` |
-| Explain | `POST /v1/resolve:explain` | `dns_explain_resolution` |
-| Upstream status | `GET /v1/upstreams/status` | resource or `dns_upstreams_status` |
-| List/get chaos | `GET /v1/chaos/policies` | `dns_chaos_policies_list` |
-| Simulate chaos | `POST /v1/chaos:simulate` | `dns_chaos_simulate` |
-| Activate chaos | `POST /v1/chaos/policies/{id}:activate` | `dns_chaos_activate` |
-| Deactivate chaos | `POST /v1/chaos/policies/{id}:deactivate` | `dns_chaos_deactivate` |
-| Emergency disable | `POST /v1/chaos:emergency-disable` | `dns_chaos_emergency_disable` |
-| Query audit | `GET /v1/audit` | resource or `dns_audit_query` |
+Frozen names live in `internal/capabilities` and the generated manifest `api/capabilities/v1.json`. Renaming a tool, resource, or REST path requires a coordinated catalog + manifest + design-table change. Health live/ready are REST-only process probes and are not MCP tools.
+
+| Capability | REST | MCP tool / resource | Scopes |
+|---|---|---|---|
+| Health live | `GET /v1/health/live` | *not a tool* (process-local) | none |
+| Health ready | `GET /v1/health/ready` | *not a tool* | none |
+| Version | `GET /v1/version` | `dns_version_get` | `dns.read` |
+| Capabilities | `GET /v1/capabilities` | `dns_capabilities_get`, `labdns://capabilities` | `dns.read` |
+| Agent status | `GET /v1/status` | `dns_status_get`, `labdns://status` | `dns.read` |
+| Config schema | `GET /v1/schema/config` | `dns_schema_get`, `labdns://schema/config` | `dns.read` |
+| Get state | `GET /v1/state` | `dns_state_get`, `labdns://state` | `dns.read` |
+| Validate | `POST /v1/state:validate` | `dns_state_validate` | `dns.write` |
+| Plan | `POST /v1/changes:plan` | `dns_change_plan` | `dns.write` |
+| Apply | `POST /v1/changes:apply` | `dns_change_apply` | `dns.write` |
+| Export | `GET /v1/state:export` | `dns_state_export` | `dns.read` |
+| Reset | `POST /v1/state:reset` | `dns_state_reset` | `dns.admin` |
+| Zones list/get | `GET /v1/zones`, `GET /v1/zones/{zoneId}` | `dns_zones_list`, `dns_zone_get`, `labdns://zones/{zoneId}` | `dns.read` |
+| Records list/get | `GET /v1/zones/{zoneId}/records`, `GET /v1/zones/{zoneId}/records/{recordId}` | `dns_records_list`, `dns_record_get`, `labdns://records/{recordId}` | `dns.read` |
+| Resolve | `POST /v1/resolve` | `dns_resolve` | `dns.read` |
+| Explain | `POST /v1/resolve:explain` | `dns_explain_resolution` | `dns.read` |
+| Forwarding | `GET /v1/forwarding/policies` | `dns_forwarding_policies_list` | `dns.forwarders.read` |
+| Pools | `GET /v1/upstream-pools` | `dns_upstream_pools_list` | `dns.forwarders.read` |
+| Upstream status | `GET /v1/upstreams/status` | `dns_upstreams_status`, `labdns://upstreams` | `dns.forwarders.read` |
+| Cache status | `GET /v1/cache/status` | `dns_cache_status` | `dns.read` |
+| Cache flush | `POST /v1/cache:flush` | `dns_cache_flush` | `dns.admin` |
+| Chaos status | `GET /v1/chaos/status` | `dns_chaos_status` | `dns.chaos.read` |
+| Chaos policies | `GET /v1/chaos/policies`, `GET /v1/chaos/policies/{policyId}` | `dns_chaos_policies_list`, `dns_chaos_policy_get`, `labdns://chaos/policies/{policyId}` | `dns.chaos.read` |
+| Simulate | `POST /v1/chaos:simulate` | `dns_chaos_simulate` | `dns.chaos.read` |
+| Activate / deactivate | `POST /v1/chaos/policies/{id}:activate`, `:deactivate` | `dns_chaos_activate`, `dns_chaos_deactivate` | `dns.chaos.activate` |
+| Set expiry | `POST /v1/chaos/policies/{id}:expire` | `dns_chaos_set_expiry` | `dns.chaos.activate` |
+| Emergency disable / enable | `POST /v1/chaos:emergency-disable`, `:emergency-enable` | `dns_chaos_emergency_disable`, `dns_chaos_emergency_enable` | `dns.chaos.emergency` |
+| Audit list | `GET /v1/audit` | `dns_audit_query`, `labdns://audit/recent` | `dns.audit.read` |
+| Audit get | `GET /v1/audit/{eventId}` | `dns_audit_get` | `dns.audit.read` |
+| Docs: DNS semantics | `GET /v1/docs/dns-semantics` | `dns_docs_get` (`id=dns-semantics`), `labdns://docs/dns-semantics` | `dns.read` |
+| Docs: chaos safety | `GET /v1/docs/chaos-safety` | `dns_docs_get` (`id=chaos-safety`), `labdns://docs/chaos-safety` | `dns.read` |
 
 The HTTP-less handler surface is `internal/app.Service`. REST and MCP must call it; they must not reimplement plan/apply/reset. Chaos activate/deactivate/simulate/set-expiry currently return `unsupported_capability` until CHA-001.
+
+`internal/capabilities` maps `domainerr` to REST `application/problem+json` status hints and MCP JSON-RPC `data` without implementing either server.
 
 ## Mutation contract
 
@@ -170,4 +189,4 @@ Capability names and schema versions are stable public surfaces. Renaming an MCP
 
 ## Open questions
 
-- Whether read-only MCP resources are sufficient for all list/get capabilities or read tools are also provided for clients with limited resource support.
+- Read tools and resources: first GA ships both (implementation design / ADR 0004). Resources mirror REST GET representations; every list/get also has a read tool so clients without resource support stay unblocked.

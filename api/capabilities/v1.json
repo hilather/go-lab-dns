@@ -1,0 +1,927 @@
+{
+  "apiVersion": "labdns.dev/capabilities/v1",
+  "generatedBy": "scripts/generate; DO NOT EDIT.",
+  "capabilities": [
+    {
+      "id": "health.live",
+      "title": "Health live",
+      "version": "v1",
+      "description": "Process liveness. Not an MCP tool; chaos must not affect it.",
+      "mutating": false,
+      "idempotent": true,
+      "restOnly": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/health/live"
+        }
+      ],
+      "mcp": null
+    },
+    {
+      "id": "health.ready",
+      "title": "Health ready",
+      "version": "v1",
+      "description": "Readiness (valid snapshot, listeners bound). Not an MCP tool.",
+      "mutating": false,
+      "idempotent": true,
+      "restOnly": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/health/ready"
+        }
+      ],
+      "mcp": null
+    },
+    {
+      "id": "version",
+      "title": "Version",
+      "version": "v1",
+      "description": "Build and protocol versions. The same payload is also embedded in dns_capabilities_get.",
+      "outputSchema": {
+        "name": "buildinfo.Info"
+      },
+      "requiredScopes": [
+        "dns.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/version"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_version_get"
+        ]
+      },
+      "serviceMethods": [
+        "Version"
+      ]
+    },
+    {
+      "id": "capabilities",
+      "title": "Capabilities",
+      "version": "v1",
+      "description": "Capability list and protocol metadata.",
+      "outputSchema": {
+        "name": "CapabilityView"
+      },
+      "requiredScopes": [
+        "dns.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/capabilities"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_capabilities_get"
+        ],
+        "resources": [
+          "labdns://capabilities"
+        ]
+      },
+      "serviceMethods": [
+        "Capabilities"
+      ]
+    },
+    {
+      "id": "status",
+      "title": "Agent status",
+      "version": "v1",
+      "description": "Single agent-readable status DTO.",
+      "outputSchema": {
+        "name": "Status"
+      },
+      "requiredScopes": [
+        "dns.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/status"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_status_get"
+        ],
+        "resources": [
+          "labdns://status"
+        ]
+      },
+      "serviceMethods": [
+        "Status"
+      ]
+    },
+    {
+      "id": "schema.config",
+      "title": "Config schema",
+      "version": "v1",
+      "description": "Published v1alpha1 config JSON Schema.",
+      "requiredScopes": [
+        "dns.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/schema/config"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_schema_get"
+        ],
+        "resources": [
+          "labdns://schema/config"
+        ]
+      },
+      "serviceMethods": [
+        "ConfigSchema"
+      ]
+    },
+    {
+      "id": "state.get",
+      "title": "Get state",
+      "version": "v1",
+      "description": "Active revisions and a copy of canonical state.",
+      "outputSchema": {
+        "name": "StateView"
+      },
+      "requiredScopes": [
+        "dns.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/state"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_state_get"
+        ],
+        "resources": [
+          "labdns://state"
+        ]
+      },
+      "serviceMethods": [
+        "GetState"
+      ]
+    },
+    {
+      "id": "state.validate",
+      "title": "Validate",
+      "version": "v1",
+      "description": "Validate a candidate document and/or operations without writing.",
+      "inputSchema": {
+        "name": "ValidateIn"
+      },
+      "outputSchema": {
+        "name": "Plan"
+      },
+      "requiredScopes": [
+        "dns.write"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "POST",
+          "path": "/v1/state:validate"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_state_validate"
+        ]
+      },
+      "serviceMethods": [
+        "Validate"
+      ]
+    },
+    {
+      "id": "change.plan",
+      "title": "Plan",
+      "version": "v1",
+      "description": "Dry-run operations against the active snapshot.",
+      "inputSchema": {
+        "name": "ChangeIn"
+      },
+      "outputSchema": {
+        "name": "Plan"
+      },
+      "requiredScopes": [
+        "dns.write"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "POST",
+          "path": "/v1/changes:plan"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_change_plan"
+        ]
+      },
+      "serviceMethods": [
+        "Plan"
+      ]
+    },
+    {
+      "id": "change.apply",
+      "title": "Apply",
+      "version": "v1",
+      "description": "Apply operations. Also requires resource-scoped writes when the change set touches those resources.",
+      "inputSchema": {
+        "name": "ChangeIn"
+      },
+      "outputSchema": {
+        "name": "ApplyResult"
+      },
+      "requiredScopes": [
+        "dns.write"
+      ],
+      "mutating": true,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "POST",
+          "path": "/v1/changes:apply"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_change_apply"
+        ]
+      },
+      "serviceMethods": [
+        "Apply"
+      ]
+    },
+    {
+      "id": "state.export",
+      "title": "Export",
+      "version": "v1",
+      "description": "Canonical export plus bootstrap-to-runtime operations.",
+      "outputSchema": {
+        "name": "Export"
+      },
+      "requiredScopes": [
+        "dns.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/state:export"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_state_export"
+        ]
+      },
+      "serviceMethods": [
+        "Export"
+      ]
+    },
+    {
+      "id": "state.reset",
+      "title": "Reset",
+      "version": "v1",
+      "description": "Reread the bootstrap mount, compile, and swap. Never writes the file.",
+      "inputSchema": {
+        "name": "ResetIn"
+      },
+      "outputSchema": {
+        "name": "ApplyResult"
+      },
+      "requiredScopes": [
+        "dns.admin"
+      ],
+      "mutating": true,
+      "idempotent": false,
+      "rest": [
+        {
+          "method": "POST",
+          "path": "/v1/state:reset"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_state_reset"
+        ]
+      },
+      "serviceMethods": [
+        "Reset"
+      ]
+    },
+    {
+      "id": "zones",
+      "title": "Zones list/get",
+      "version": "v1",
+      "description": "List zones or get one zone by ID.",
+      "outputSchema": {
+        "name": "Zone"
+      },
+      "requiredScopes": [
+        "dns.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/zones"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/zones/{zoneId}"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_zones_list",
+          "dns_zone_get"
+        ],
+        "resources": [
+          "labdns://zones/{zoneId}"
+        ]
+      },
+      "serviceMethods": [
+        "ListZones",
+        "GetZone"
+      ]
+    },
+    {
+      "id": "records",
+      "title": "Records list/get",
+      "version": "v1",
+      "description": "List records in a zone or get one record by ID.",
+      "outputSchema": {
+        "name": "Record"
+      },
+      "requiredScopes": [
+        "dns.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/zones/{zoneId}/records"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/zones/{zoneId}/records/{recordId}"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_records_list",
+          "dns_record_get"
+        ],
+        "resources": [
+          "labdns://records/{recordId}"
+        ]
+      },
+      "serviceMethods": [
+        "ListRecords",
+        "GetRecord"
+      ]
+    },
+    {
+      "id": "resolve",
+      "title": "Resolve",
+      "version": "v1",
+      "description": "Management-plane resolve. Defaults to not consuming live chaos.",
+      "inputSchema": {
+        "name": "ResolveIn"
+      },
+      "outputSchema": {
+        "name": "ResolveOut"
+      },
+      "requiredScopes": [
+        "dns.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "POST",
+          "path": "/v1/resolve"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_resolve"
+        ]
+      },
+      "serviceMethods": [
+        "Resolve"
+      ]
+    },
+    {
+      "id": "resolve.explain",
+      "title": "Explain",
+      "version": "v1",
+      "description": "Explain a resolve decision without changing live state.",
+      "inputSchema": {
+        "name": "ResolveIn"
+      },
+      "outputSchema": {
+        "name": "ExplainOut"
+      },
+      "requiredScopes": [
+        "dns.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "POST",
+          "path": "/v1/resolve:explain"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_explain_resolution"
+        ]
+      },
+      "serviceMethods": [
+        "Explain"
+      ]
+    },
+    {
+      "id": "forwarding.policies",
+      "title": "Forwarding",
+      "version": "v1",
+      "description": "List compiled forwarding policies.",
+      "requiredScopes": [
+        "dns.forwarders.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/forwarding/policies"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_forwarding_policies_list"
+        ]
+      },
+      "serviceMethods": [
+        "ListForwardingPolicies"
+      ]
+    },
+    {
+      "id": "upstream.pools",
+      "title": "Pools",
+      "version": "v1",
+      "description": "List configured upstream pools.",
+      "requiredScopes": [
+        "dns.forwarders.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/upstream-pools"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_upstream_pools_list"
+        ]
+      },
+      "serviceMethods": [
+        "ListUpstreamPools"
+      ]
+    },
+    {
+      "id": "upstreams.status",
+      "title": "Upstream status",
+      "version": "v1",
+      "description": "Upstream health view.",
+      "requiredScopes": [
+        "dns.forwarders.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/upstreams/status"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_upstreams_status"
+        ],
+        "resources": [
+          "labdns://upstreams"
+        ]
+      },
+      "serviceMethods": [
+        "UpstreamsStatus"
+      ]
+    },
+    {
+      "id": "cache.status",
+      "title": "Cache status",
+      "version": "v1",
+      "description": "Process cache bounds and counters.",
+      "outputSchema": {
+        "name": "CacheSummary"
+      },
+      "requiredScopes": [
+        "dns.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/cache/status"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_cache_status"
+        ]
+      },
+      "serviceMethods": [
+        "CacheStatus"
+      ]
+    },
+    {
+      "id": "cache.flush",
+      "title": "Cache flush",
+      "version": "v1",
+      "description": "Flush the process cache. Does not change desired state.",
+      "inputSchema": {
+        "name": "FlushIn"
+      },
+      "requiredScopes": [
+        "dns.admin"
+      ],
+      "mutating": true,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "POST",
+          "path": "/v1/cache:flush"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_cache_flush"
+        ]
+      },
+      "serviceMethods": [
+        "CacheFlush"
+      ]
+    },
+    {
+      "id": "chaos.status",
+      "title": "Chaos status",
+      "version": "v1",
+      "description": "Chaos runtime status including the emergency-off bit.",
+      "outputSchema": {
+        "name": "ChaosRuntimeStatus"
+      },
+      "requiredScopes": [
+        "dns.chaos.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/chaos/status"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_chaos_status"
+        ]
+      },
+      "serviceMethods": [
+        "ChaosStatus"
+      ]
+    },
+    {
+      "id": "chaos.policies",
+      "title": "Chaos policies",
+      "version": "v1",
+      "description": "List chaos policies or get one policy by ID.",
+      "requiredScopes": [
+        "dns.chaos.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/chaos/policies"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/chaos/policies/{policyId}"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_chaos_policies_list",
+          "dns_chaos_policy_get"
+        ],
+        "resources": [
+          "labdns://chaos/policies/{policyId}"
+        ]
+      },
+      "serviceMethods": [
+        "ListChaosPolicies",
+        "GetChaosPolicy"
+      ]
+    },
+    {
+      "id": "chaos.simulate",
+      "title": "Simulate",
+      "version": "v1",
+      "description": "Simulate chaos decisions without sleeping, sending packets, or mutating cache.",
+      "inputSchema": {
+        "name": "SimulateIn"
+      },
+      "outputSchema": {
+        "name": "SimulateOut"
+      },
+      "requiredScopes": [
+        "dns.chaos.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "POST",
+          "path": "/v1/chaos:simulate"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_chaos_simulate"
+        ]
+      },
+      "serviceMethods": [
+        "SimulateChaos"
+      ]
+    },
+    {
+      "id": "chaos.activate",
+      "title": "Activate / deactivate",
+      "version": "v1",
+      "description": "Typed wrappers around apply for chaos policy enabled state.",
+      "inputSchema": {
+        "name": "ActivationIn"
+      },
+      "outputSchema": {
+        "name": "ApplyResult"
+      },
+      "requiredScopes": [
+        "dns.chaos.activate"
+      ],
+      "mutating": true,
+      "idempotent": false,
+      "rest": [
+        {
+          "method": "POST",
+          "path": "/v1/chaos/policies/{id}:activate"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/chaos/policies/{id}:deactivate"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_chaos_activate",
+          "dns_chaos_deactivate"
+        ]
+      },
+      "serviceMethods": [
+        "ActivateChaos",
+        "DeactivateChaos"
+      ]
+    },
+    {
+      "id": "chaos.set_expiry",
+      "title": "Set expiry",
+      "version": "v1",
+      "description": "Extend or shorten a chaos policy expiry via the shared apply path.",
+      "inputSchema": {
+        "name": "ExpiryIn"
+      },
+      "outputSchema": {
+        "name": "ApplyResult"
+      },
+      "requiredScopes": [
+        "dns.chaos.activate"
+      ],
+      "mutating": true,
+      "idempotent": false,
+      "rest": [
+        {
+          "method": "POST",
+          "path": "/v1/chaos/policies/{id}:expire"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_chaos_set_expiry"
+        ]
+      },
+      "serviceMethods": [
+        "SetChaosExpiry"
+      ]
+    },
+    {
+      "id": "chaos.emergency",
+      "title": "Emergency disable / enable",
+      "version": "v1",
+      "description": "Set or clear the runtime EmergencyChaosOff bit.",
+      "inputSchema": {
+        "name": "EmergencyIn"
+      },
+      "outputSchema": {
+        "name": "ApplyResult"
+      },
+      "requiredScopes": [
+        "dns.chaos.emergency"
+      ],
+      "mutating": true,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "POST",
+          "path": "/v1/chaos:emergency-disable"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/chaos:emergency-enable"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_chaos_emergency_disable",
+          "dns_chaos_emergency_enable"
+        ]
+      },
+      "serviceMethods": [
+        "EmergencyDisableChaos",
+        "EmergencyEnableChaos"
+      ]
+    },
+    {
+      "id": "audit.list",
+      "title": "Audit list",
+      "version": "v1",
+      "description": "Query recent in-memory audit events.",
+      "inputSchema": {
+        "name": "AuditQuery"
+      },
+      "outputSchema": {
+        "name": "AuditList"
+      },
+      "requiredScopes": [
+        "dns.audit.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/audit"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_audit_query"
+        ],
+        "resources": [
+          "labdns://audit/recent"
+        ]
+      },
+      "serviceMethods": [
+        "QueryAudit"
+      ]
+    },
+    {
+      "id": "audit.get",
+      "title": "Audit get",
+      "version": "v1",
+      "description": "Get one audit event by ID.",
+      "outputSchema": {
+        "name": "AuditEvent"
+      },
+      "requiredScopes": [
+        "dns.audit.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/audit/{eventId}"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_audit_get"
+        ]
+      },
+      "serviceMethods": [
+        "GetAudit"
+      ]
+    },
+    {
+      "id": "docs.dns-semantics",
+      "title": "Docs: DNS semantics",
+      "version": "v1",
+      "description": "Embedded DNS semantics document.",
+      "requiredScopes": [
+        "dns.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/docs/dns-semantics"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_docs_get"
+        ],
+        "resources": [
+          "labdns://docs/dns-semantics"
+        ],
+        "docsId": "dns-semantics"
+      },
+      "serviceMethods": [
+        "Docs"
+      ]
+    },
+    {
+      "id": "docs.chaos-safety",
+      "title": "Docs: chaos safety",
+      "version": "v1",
+      "description": "Embedded chaos-engine safety document.",
+      "requiredScopes": [
+        "dns.read"
+      ],
+      "mutating": false,
+      "idempotent": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/v1/docs/chaos-safety"
+        }
+      ],
+      "mcp": {
+        "tools": [
+          "dns_docs_get"
+        ],
+        "resources": [
+          "labdns://docs/chaos-safety"
+        ],
+        "docsId": "chaos-safety"
+      },
+      "serviceMethods": [
+        "Docs"
+      ]
+    }
+  ]
+}

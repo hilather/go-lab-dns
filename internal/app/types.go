@@ -178,12 +178,12 @@ type AuthDecision struct {
 	Scopes  []string
 }
 
-// CapabilityView lists first-GA capability names for discovery.
+// CapabilityView lists frozen capability names for discovery.
 type CapabilityView struct {
 	Capabilities []CapabilityInfo
 }
 
-// CapabilityInfo is one registry row shell. Bindings land in PR-09.
+// CapabilityInfo is one registry discovery row (tool name, or health.* id).
 type CapabilityInfo struct {
 	Name        string
 	Version     string

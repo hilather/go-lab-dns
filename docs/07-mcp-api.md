@@ -51,6 +51,12 @@ Do not rely on connection-scoped initialization, client identity, selected zone,
 Recommended names:
 
 ```text
+dns_version_get
+dns_capabilities_get
+dns_status_get
+dns_schema_get
+dns_docs_get
+
 dns_state_get
 dns_state_validate
 dns_change_plan
@@ -78,12 +84,15 @@ dns_chaos_policy_get
 dns_chaos_simulate
 dns_chaos_activate
 dns_chaos_deactivate
+dns_chaos_set_expiry
 dns_chaos_emergency_disable
 dns_chaos_emergency_enable
 
 dns_audit_query
-dns_capabilities_get
+dns_audit_get
 ```
+
+These names are frozen in `internal/capabilities`. Health live/ready have no tools. `dns_docs_get` is parameterized (`id=dns-semantics` or `id=chaos-safety`).
 
 Tools use explicit nouns and verbs, stable schemas, and descriptions that state whether the operation is read-only, state-changing, reversible, or high-impact.
 
@@ -160,7 +169,7 @@ Example chaos simulation result:
 
 ## Domain errors
 
-Map shared domain errors to MCP JSON-RPC errors with stable `data.code`, `data.retryable`, revision fields, field violations, and remediation hints. Do not encode failures only as unstructured text.
+Map shared domain errors to MCP JSON-RPC errors with stable `data.code`, `data.retryable`, revision fields, field violations, and remediation hints. Do not encode failures only as unstructured text. `capabilities.JSONRPCFrom` is the shared helper; adapters must not invent a second mapping.
 
 ## Security considerations
 
@@ -192,5 +201,5 @@ MCP protocol versions, tool names, schemas, resource URIs, and result/error stru
 
 ## Open questions
 
-- Whether to support the immediately previous MCP protocol version at initial release.
-- Whether stdio ships in the production image or a developer-specific image.
+- MCP protocol versions: first GA pins **2026-07-28 only** (ADR 0006).
+- Stdio: developer adapter only; not in the production image.

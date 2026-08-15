@@ -56,11 +56,57 @@ internal_error
 
 ## REST mapping
 
-REST uses `application/problem+json`, appropriate status codes, and the domain error in extension fields.
+REST uses `application/problem+json`, appropriate status codes, and the domain error in extension fields. Helpers live in `internal/capabilities` (`ProblemFrom`); adapters do not re-implement the table.
+
+`type` is `urn:labdns:error:` plus the code with underscores replaced by hyphens (example: `urn:labdns:error:revision-conflict`).
+
+| Domain code | HTTP status |
+|---|---|
+| `validation_failed` | 400 |
+| `unsupported_protocol_version` | 400 |
+| `unauthenticated` | 401 |
+| `forbidden` | 403 |
+| `protected_object` | 403 |
+| `not_found` | 404 |
+| `revision_conflict` | 409 |
+| `idempotency_conflict` | 409 |
+| `already_exists` | 409 |
+| `chaos_disabled` | 409 |
+| `policy_expired` | 409 |
+| `rate_limited` | 429 |
+| `chaos_budget_exceeded` | 429 |
+| `unsupported_capability` | 501 |
+| `resolution_failed` | 502 |
+| `upstream_unavailable` | 503 |
+| `internal_error` | 500 |
+
+Unknown or non-domain errors map to `internal_error` / 500 and must not leak raw text.
 
 ## MCP mapping
 
-MCP uses JSON-RPC errors with the same domain error under `data`. Tool-level expected failures may use structured tool error results only when consistent with the pinned MCP SDK and specification; the domain code remains stable.
+MCP uses JSON-RPC errors with the same domain error under `data`. Tool-level expected failures may use structured tool error results only when consistent with the pinned MCP SDK and specification; the domain code remains stable. Helpers live in `internal/capabilities` (`JSONRPCFrom`).
+
+JSON-RPC transport codes differ from HTTP; `data.code` matches REST.
+
+| Domain code | JSON-RPC code |
+|---|---|
+| `validation_failed` | -32602 |
+| `unsupported_capability` | -32601 |
+| `unsupported_protocol_version` | -32600 |
+| `unauthenticated` | -32001 |
+| `forbidden` | -32003 |
+| `protected_object` | -32003 |
+| `not_found` | -32004 |
+| `rate_limited` | -32005 |
+| `chaos_budget_exceeded` | -32005 |
+| `revision_conflict` | -32009 |
+| `idempotency_conflict` | -32009 |
+| `already_exists` | -32009 |
+| `chaos_disabled` | -32009 |
+| `policy_expired` | -32009 |
+| `upstream_unavailable` | -32013 |
+| `resolution_failed` | -32013 |
+| `internal_error` | -32603 |
 
 ## DNS mapping
 

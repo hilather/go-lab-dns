@@ -193,6 +193,18 @@ func TestVersionSchemaDocsStatus(t *testing.T) {
 	if err != nil || len(caps.Capabilities) == 0 {
 		t.Fatalf("caps=%v err=%v", caps, err)
 	}
+	var sawHealth, sawApply bool
+	for _, c := range caps.Capabilities {
+		if c.Name == "health.live" {
+			sawHealth = true
+		}
+		if c.Name == "dns_change_apply" && c.Mutating {
+			sawApply = true
+		}
+	}
+	if !sawHealth || !sawApply {
+		t.Fatalf("capabilities discovery missing health or apply: %+v", caps.Capabilities)
+	}
 	st, err := svc.Status(ctx, actor())
 	if err != nil {
 		t.Fatal(err)

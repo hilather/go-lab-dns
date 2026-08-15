@@ -16,7 +16,7 @@ Related ADRs: 0004
 
 - Base path: `/v1`.
 - JSON request and response bodies unless exporting YAML.
-- Problem responses use `application/problem+json` with a stable domain error code.
+- Problem responses use `application/problem+json` with a stable domain error code. Status hints are produced by `capabilities.ProblemFrom` (no HTTP server in the registry package).
 - Mutations accept `Idempotency-Key` and expected revision in the body or a documented conditional header.
 - Request bodies and response sizes are bounded.
 - Management listener is not public by default.
@@ -30,7 +30,13 @@ GET /v1/health/live
 GET /v1/health/ready
 GET /v1/version
 GET /v1/capabilities
+GET /v1/status
+GET /v1/schema/config
+GET /v1/docs/dns-semantics
+GET /v1/docs/chaos-safety
 ```
+
+Health live/ready are process-local probes and are not MCP tools. Paths and operation names are frozen in `internal/capabilities` / `api/capabilities/v1.json`.
 
 ### State
 
@@ -77,9 +83,12 @@ GET  /v1/chaos/policies/{policyId}
 POST /v1/chaos:simulate
 POST /v1/chaos/policies/{policyId}:activate
 POST /v1/chaos/policies/{policyId}:deactivate
+POST /v1/chaos/policies/{id}:expire
 POST /v1/chaos:emergency-disable
 POST /v1/chaos:emergency-enable
 ```
+
+Activate/deactivate/expire path templates are frozen as `{id}` in the capability table (`POST /v1/chaos/policies/{id}:activate` and siblings). `{policyId}` above is the same identifier for the GET representation.
 
 ### Audit
 

@@ -21,6 +21,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - `compiler.Compile` orchestrates normalize/validate, zone/forwarding/access indexes, and `sha256:` revision hashing. Chaos compile is a no-op until CHA-001.
 - `labdns serve --config PATH` loads bootstrap YAML, compiles an immutable snapshot, and binds UDP/TCP DNS. Invalid bootstrap does not listen.
 - `internal/app.Service` mutation core: `Plan`/`Apply`/`Validate`/`Export`/`Reset`, zone/record/resolve/explain queries, forwarding/cache views, in-memory audit ring, and `EmergencyDisableChaos`. REST/MCP adapters are not implemented.
+- Frozen capability registry in `internal/capabilities` covering every first-GA REST↔MCP table row. Health live/ready are REST-only (not tools). Generated manifest: [api/capabilities/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/capabilities/v1.json).
+- Domain-error mapping helpers: `domainerr` → RFC 9457 `application/problem+json` status hints and MCP JSON-RPC `data` (no HTTP or MCP server yet). Parity harness fails if a table row is missing or renamed.
 
 ### Changed
 
@@ -52,11 +54,11 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### REST API
 
-- None.
+- Capability names, `/v1` paths, and problem+json status hints are frozen in the shared registry. No REST server is implemented yet.
 
 ### MCP API and protocol compatibility
 
-- None.
+- MCP tool names and `labdns://` resource templates are frozen in the shared registry. No MCP server is implemented yet.
 
 ### Configuration and schema
 

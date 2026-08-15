@@ -74,7 +74,7 @@ make test-fuzz-smoke
 make security-scan
 ```
 
-`make generate` writes `testdata/generated/fixture.txt` from `testdata/generated/source.txt` and `go.mod`. `make verify-generated` fails when that fixture is stale.
+`make generate` writes `testdata/generated/fixture.txt` from `testdata/generated/source.txt` and `go.mod`, and writes the frozen capability manifest to [`api/capabilities/v1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/capabilities/v1.json). `make verify-generated` fails when either generated file is stale.
 
 `make test-config-compat` runs the v1alpha1 positive and negative configuration fixtures under `testdata/config`.
 
