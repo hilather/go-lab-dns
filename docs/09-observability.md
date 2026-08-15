@@ -52,6 +52,7 @@ Do not log complete QNAMEs or client addresses by default. Optional debug modes 
 - Budget saturation and clamping.
 - Drops, truncations, resets, synthetic RCODEs, TTL changes, alternate answers, and cache faults.
 - Emergency-disabled state.
+- CHA-002 process counters on `chaos.Engine.Stats` (no QNAME/client-IP labels): delayed, delay-canceled, budget-skipped, drops, truncations, TCP close/reset/hold, RCODEs, TTL, alternates, cache hooks, upstream hooks, pressure rejects. Policy ID remains an allowed bounded label when OBS-001 catalogs these.
 
 ### Control plane
 

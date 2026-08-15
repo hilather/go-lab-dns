@@ -141,6 +141,10 @@ func TestChaosHooksAndCopy(t *testing.T) {
 	if !ok || got2.Result.Answers[0].Data != "1.2.3.4" {
 		t.Fatal("Get must return a copy")
 	}
+	stale, ok := c.Get(k, GetOpts{TreatExpired: true, ServeStale: true})
+	if !ok || !stale.Stale {
+		t.Fatalf("treat-expired stale %+v ok=%v", stale, ok)
+	}
 }
 
 func TestRemainingTTLOnGet(t *testing.T) {

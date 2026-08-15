@@ -46,9 +46,10 @@ type Entry struct {
 
 // GetOpts are chaos/request-path hooks. Zero value is a normal lookup.
 type GetOpts struct {
-	Bypass     bool // skip the cache entirely
-	ForceMiss  bool // pretend miss; leave the entry
-	ServeStale bool // return an expired copy when StaleServing is on
+	Bypass       bool // skip the cache entirely
+	ForceMiss    bool // pretend miss; leave the entry
+	ServeStale   bool // return an expired copy when StaleServing is on
+	TreatExpired bool // expire-this-request: treat the live entry as expired
 }
 
 // PutOpts are chaos/request-path hooks. Zero value stores normally.
@@ -116,6 +117,9 @@ func (c *Cache) Get(key Key, opts GetOpts) (Entry, bool) {
 	}
 	now := c.clk.Now()
 	expired := !n.ent.ExpireAt.IsZero() && !now.Before(n.ent.ExpireAt)
+	if opts.TreatExpired {
+		expired = true
+	}
 	if expired {
 		serveStale := opts.ServeStale || c.policy.StaleServing
 		if !serveStale {
@@ -387,7 +391,17 @@ func copyResult(r model.Result) model.Result {
 			v := *ex.ClosestEncloser
 			ex.ClosestEncloser = &v
 		}
+		if ex.ChaosPolicyIDs != nil {
+			ex.ChaosPolicyIDs = append([]model.PolicyID(nil), ex.ChaosPolicyIDs...)
+		}
+		if ex.ChaosActions != nil {
+			ex.ChaosActions = append([]string(nil), ex.ChaosActions...)
+		}
 		r.Explanation = &ex
+	}
+	if r.EDE != nil {
+		e := *r.EDE
+		r.EDE = &e
 	}
 	return r
 }

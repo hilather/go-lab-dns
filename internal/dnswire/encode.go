@@ -93,12 +93,20 @@ func buildMsg(req *Request, result model.Result, opts EncodeOpts) (*dns.Msg, err
 		return nil, err
 	}
 
-	if req.HasEDNS || opts.BadVers {
+	if req.HasEDNS || opts.BadVers || result.EDE != nil {
 		adv := opts.AdvertisedUDPSize
 		if adv == 0 {
 			adv = defaultAdvertisedUDP
 		}
 		m.SetEdns0(adv, req.EDNS.DO)
+		if result.EDE != nil {
+			if opt := m.IsEdns0(); opt != nil {
+				opt.Option = append(opt.Option, &dns.EDNS0_EDE{
+					InfoCode:  uint16(result.EDE.Code),
+					ExtraText: result.EDE.Text,
+				})
+			}
+		}
 	}
 	return m, nil
 }

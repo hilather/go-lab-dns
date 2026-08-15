@@ -11,6 +11,7 @@
 // returned only when there is no local path.
 //
 // Pre- and post-resolution chaos.Decide use the already-classified
-// client-group, zone, and forwarding IDs. Effect execution is a structured
-// no-op until CHA-002.
+// client-group, zone, and forwarding IDs. CHA-002 executes the plan:
+// context-aware delay, RCODE/TTL/answer/EDE mutation, transport hints,
+// and cache/upstream/pressure hooks. Malformed-wire effects are excluded.
 package dnsquery

@@ -2,7 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Chaos, DNS, Security
-Last reviewed: 2026-08-15 (CHA-001 hash-v1 / Decide / Simulate)
+Last reviewed: 2026-08-15 (CHA-002 effect execution)
 Related ADRs: 0005, 0007
 
 ## Problem statement
@@ -181,6 +181,8 @@ Fields:
 
 Per-entry delay is normally applied in `before response` after the RRset is selected. Delay must use context-aware timers and release concurrency budget on cancellation.
 
+Execution (CHA-002) lives in `internal/chaos/effects`. `Decide` still does not sleep. `effects.Session.Sleep` reserves one delayed-request token for the whole query, waits with `Clock.NewTimer`, and releases on return, context cancel, shutdown, or `CancelAll` (emergency disable). Budget exhaustion skips the delay and does not block. Uniform delay uses the frozen `hash-v1` second encoding (`field 10` = `delay` + nonce). First-GA distributions are `fixed` and `uniform` only.
+
 ### 2. RCODE and NODATA injection
 
 Supported initial outcomes:
@@ -191,7 +193,7 @@ Supported initial outcomes:
 - NODATA: NOERROR with empty answer and correct authority data when available.
 - FORMERR and NOTIMP only for protocol-client testing and only with an explicit medium/high safety class.
 
-An optional Extended DNS Error can explain an injected failure. EDE never changes the base RCODE meaning.
+An optional Extended DNS Error can explain an injected failure. EDE never changes the base RCODE meaning. Injected EDE is encoded as RFC 8914 option 15 on the response OPT (OPT is added when the query had no EDNS). NODATA is `NOERROR` with an empty answer and authority left in place. FORMERR and NOTIMP require `safetyClass` medium or high at validate time.
 
 ### 3. Silent drop or bounded no-response
 
@@ -269,6 +271,8 @@ Cache chaos must not corrupt shared cache metadata. It changes the request path 
 - Return a configured synthetic upstream RCODE.
 
 These effects apply to LabDNS behavior, not to the actual upstream server.
+
+First-GA action `value` vocabulary and support matrix: [api/chaos/effects.json](https://github.com/hilather/go-lab-dns/blob/main/api/chaos/effects.json).
 
 ### 13. Rate and concurrency pressure
 

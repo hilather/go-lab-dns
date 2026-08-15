@@ -1,0 +1,25 @@
+{
+  "id": "labdns-chaos-effects-v1alpha1",
+  "algorithm": "hash-v1",
+  "malformedWire": false,
+  "adr0007": "excluded",
+  "distributions": ["fixed", "uniform"],
+  "phases": ["before-resolution", "before-upstream", "after-upstream", "before-response"],
+  "effects": [
+    {"type": "delay", "values": [], "notes": "fixed duration or uniform [min,max); clamped by safety.maxDelay; one budget token per query"},
+    {"type": "rcode", "values": ["SERVFAIL", "REFUSED", "NXDOMAIN", "NODATA", "NOERROR", "FORMERR", "NOTIMP"], "notes": "FORMERR/NOTIMP require medium/high safetyClass; optional ede"},
+    {"type": "ttl", "values": ["set", "clamp", "zero", "jitter"], "notes": "final TTL clamped to [0, 2^32-1 seconds]"},
+    {"type": "alternate", "values": [], "notes": "values[] replace the answer; addresses must pass allowedAddressCIDRs; CNAME loops skipped"},
+    {"type": "omit", "values": [], "notes": "values[] are RDATA to remove; copy-on-write"},
+    {"type": "limit", "values": [], "notes": "keep first N answers"},
+    {"type": "shuffle", "values": [], "notes": "deterministic Fisher-Yates from hash-v1 u1"},
+    {"type": "rotate", "values": [], "notes": "limit is the rotation offset (default 1)"},
+    {"type": "drop", "values": [], "notes": "UDP silence; TCP hold-then-close"},
+    {"type": "truncate", "values": [], "notes": "UDP TC; TCP sends full (listener fallback)"},
+    {"type": "tcp-close", "values": [], "notes": "optional hold>0 becomes hold-then-close"},
+    {"type": "tcp-reset", "values": [], "notes": "RST, no DNS message"},
+    {"type": "cache", "values": ["bypass", "force-miss", "expire", "stale"], "notes": "request-path only; does not corrupt shared metadata"},
+    {"type": "upstream", "values": ["delay", "unavailable", "force", "timeout", "transport-error", "failover", "SERVFAIL", "REFUSED"], "notes": "LabDNS behavior only; force uses upstreamId"},
+    {"type": "pressure", "values": ["drop", "REFUSED", "SERVFAIL"], "notes": "policy budget maxRate (QPS) and maxConcurrency"}
+  ]
+}

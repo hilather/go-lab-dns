@@ -78,6 +78,7 @@ type Result struct {
 	Fallthrough     bool         `json:"fallthrough"`
 	ForwardingID    PolicyID     `json:"forwardingId,omitempty"`
 	UpstreamID      UpstreamID   `json:"upstreamId,omitempty"`
+	EDE             *EDE         `json:"ede,omitempty"`
 	Explanation     *Explanation `json:"explanation,omitempty"`
 }
 
@@ -94,4 +95,9 @@ type Explanation struct {
 	PoolID          PoolID        `json:"poolId,omitempty"`
 	UpstreamID      UpstreamID    `json:"upstreamId,omitempty"`
 	Revision        Revision      `json:"revision,omitempty"`
+	BaseRCode       RCode         `json:"baseRcode,omitempty"`
+	ChaosDisabled   bool          `json:"chaosDisabled,omitempty"`
+	ChaosReason     string        `json:"chaosReason,omitempty"`
+	ChaosPolicyIDs  []PolicyID    `json:"chaosPolicyIds,omitempty"`
+	ChaosActions    []string      `json:"chaosActions,omitempty"`
 }

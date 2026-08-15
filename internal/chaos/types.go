@@ -76,6 +76,11 @@ type ActionPlan struct {
 	TransportHint string
 	SkipResolve   bool
 	Clamped       []ClampRecord
+	Cache         CachePlan
+	Upstream      UpstreamPlan
+	Pressure      PressurePlan
+	EDE           *model.EDE
+	Hold          time.Duration
 }
 
 // PolicyDecision is one evaluated policy.
@@ -100,7 +105,72 @@ type PlannedAction struct {
 	RCode        string
 	Value        string
 	Clamped      bool
+	EDE          *model.EDE
+	TTL          time.Duration
+	Min          time.Duration
+	Max          time.Duration
+	Values       []string
+	Limit        int
+	UpstreamID   model.UpstreamID
+	Hold         time.Duration
+	Seed         uint64 // deterministic shuffle/jitter/rotate
+	Skip         bool   // planned but not executable (budget)
+	Rate         float64
+	Concurrency  int
 }
+
+// CachePlan is the request-path cache hook derived from selected actions.
+type CachePlan struct {
+	Bypass     bool
+	ForceMiss  bool
+	ServeStale bool
+	Expire     bool
+}
+
+// UpstreamPlan is the request-path forwarder hook derived from selected actions.
+type UpstreamPlan struct {
+	Delay          time.Duration
+	Unavailable    []model.UpstreamID
+	Force          model.UpstreamID
+	Timeout        bool
+	TransportError bool
+	Failover       bool
+	SyntheticRCode model.RCode
+}
+
+// PressurePlan is policy-scoped QPS/concurrency pressure.
+type PressurePlan struct {
+	PolicyID model.PolicyID
+	MaxRate  float64
+	MaxConc  int
+	OnExceed string
+}
+
+// First-GA action value vocabulary. Unknown values are ignored at execution.
+const (
+	CacheValueBypass    = "bypass"
+	CacheValueForceMiss = "force-miss"
+	CacheValueExpire    = "expire"
+	CacheValueStale     = "stale"
+
+	TTLValueSet    = "set"
+	TTLValueClamp  = "clamp"
+	TTLValueZero   = "zero"
+	TTLValueJitter = "jitter"
+
+	UpstreamValueDelay          = "delay"
+	UpstreamValueUnavailable    = "unavailable"
+	UpstreamValueForce          = "force"
+	UpstreamValueTimeout        = "timeout"
+	UpstreamValueTransportError = "transport-error"
+	UpstreamValueFailover       = "failover"
+
+	PressureValueDrop     = "drop"
+	PressureValueRefused  = "REFUSED"
+	PressureValueServFail = "SERVFAIL"
+
+	RCodeNODATA = "NODATA"
+)
 
 // ClampRecord explains a safety cap that changed an action.
 type ClampRecord struct {

@@ -16,7 +16,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Compiled `snapshot.ZoneIndex` (existence tree, RRsets, wildcards, longest-suffix `Select`) filled by `resolver.Compile`. `Resolve` consumes a pre-selected zone ID.
 - Compiled `snapshot.ForwardingIndex` (longest-suffix policies, default `.`) filled by `forwarder.Compile`. `Exchange` consumes a pre-selected policy ID.
 - Process-scoped positive/negative `internal/cache` namespaced by snapshot revision, with TTL clamps, LRU eviction, and chaos lookup hooks.
-- `internal/dnsquery` orchestrator (`dnsserver.Handler`): classify → pre `chaos.Decide` → resolve → optional exchange → post `chaos.Decide`. Effect execution is a structured no-op until CHA-002.
+- `internal/dnsquery` orchestrator (`dnsserver.Handler`): classify → pre `chaos.Decide` → resolve → optional exchange → post `chaos.Decide`. CHA-002 executes delay, RCODE/TTL/answer/EDE, transport hints, and cache/upstream/pressure hooks.
 - Compiled `snapshot.AccessIndex` (longest-prefix CIDR → client group) filled by `snapshot.CompileAccess`.
 - `compiler.Compile` orchestrates normalize/validate, zone/forwarding/chaos/access indexes, and `sha256:` revision hashing.
 - `labdns serve --config PATH` loads bootstrap YAML, compiles an immutable snapshot, and binds UDP/TCP DNS. Invalid bootstrap does not listen.
@@ -58,6 +58,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - `SimulateChaos` returns explained `hash-v1` decisions.
 - `EmergencyDisableChaos` sets a store-level inhibit bit that `Store.Swap` stamps onto every snapshot (apply cannot clear it). The emergency path CAS-stamps the current snapshot and does not roll back a concurrent apply. YAML `emergencyDisabled` still forces the bit on.
 - `SIGUSR1` (and `labdns serve --chaos-disable` / `LABDNS_CHAOS_DISABLE=1`) set the same inhibit bit. `SIGUSR2` is ignored.
+- CHA-002 executes the first-GA catalog in `internal/chaos/effects`: context-aware `fixed`/`uniform` delay (all four phases, budgets, cancel), RCODE/NODATA/EDE, TTL set/clamp/zero/jitter, alternate/omit/limit/shuffle/rotate, UDP drop/TC, TCP close/reset/hold, cache bypass/force-miss/expire/stale, upstream delay/unavailable/force/timeout/transport-error/failover/synthetic RCODE, and policy-scoped pressure. ADR 0007 malformed-wire effects are not implemented. Support matrix: [api/chaos/effects.json](https://github.com/hilather/go-lab-dns/blob/main/api/chaos/effects.json).
 
 ### REST API
 
@@ -95,7 +96,6 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Snapshot bootstrap serve (`compiler.Compile`, `AccessIndex` fill, `cmd/labdns serve`) has not started; `dnsquery` is constructed in tests against a hand-built `snapshot.Store`.
 - Plan/apply/export/reset and REST/MCP are not implemented; M1 serves only the compiled bootstrap snapshot.
 - REST/MCP adapters are not implemented; `app.Service` is the HTTP-less mutation surface.
-- Chaos packet effects (delay/drop/RCODE/TTL/transport) are structured no-ops until CHA-002.
 - `labdns chaos emergency-disable --pid-file` is not implemented until DEP-001.
 - `make test-integration`, `make test-parity`, and `make test-container` fail closed until later PRs.
 - YAML configuration decode, JSON Schema, snapshot compilation, resolver, forwarder, and control-plane work have not started.

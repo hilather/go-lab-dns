@@ -6,6 +6,7 @@ import (
 
 	"github.com/hilather/go-lab-dns/internal/cache"
 	"github.com/hilather/go-lab-dns/internal/chaos"
+	"github.com/hilather/go-lab-dns/internal/chaos/effects"
 	"github.com/hilather/go-lab-dns/internal/dnsserver"
 	"github.com/hilather/go-lab-dns/internal/forwarder"
 	"github.com/hilather/go-lab-dns/internal/model"
@@ -14,8 +15,7 @@ import (
 	"github.com/hilather/go-lab-dns/internal/testutil"
 )
 
-// Engine is chaos.Decide. Nil skips chaos. Effects are a structured no-op
-// until CHA-002 (delay/drop/RCODE are not applied to the wire).
+// Engine is chaos.Decide. Nil skips chaos.
 type Engine interface {
 	Decide(ctx context.Context, snap *snapshot.Snapshot, in chaos.DecisionIn) (chaos.ActionPlan, error)
 }
@@ -102,15 +102,45 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (*dnsserver.Re
 	}
 
 	cl := classify(snap, q)
-	_ = h.decide(ctx, snap, q, cl, nil, chaos.PhasePreResolution)
-	res, err := h.answer(ctx, snap, q, cl)
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, dnsserver.HintDrop, ctx.Err()
-		}
-		return dnsserver.NewResponse(model.Result{RCode: model.RCodeServFail}), dnsserver.HintSend, nil
+	pre := h.decide(ctx, snap, q, cl, nil, chaos.PhasePreResolution)
+	sess := effects.NewSession(h.clk, h.budgets(), snap, h.metrics())
+	defer sess.Release()
+
+	if err := sess.Sleep(ctx, pre, model.PhaseBeforeResolution); err != nil {
+		return nil, dnsserver.HintDrop, err
 	}
-	_ = h.decide(ctx, snap, q, cl, &res, chaos.PhaseResponse)
+
+	press := effects.CheckPressure(h.pressure(), pre, h.clk.Now(), h.metrics())
+	defer press.Release()
+	if press.Exceeded {
+		if press.Drop {
+			return nil, dnsserver.HintDrop, nil
+		}
+		res := model.Result{RCode: press.RCode, Source: model.SourceNegative}
+		applyRA(&res, cl)
+		return dnsserver.NewResponse(res), dnsserver.HintSend, nil
+	}
+
+	var res model.Result
+	if pre.SkipResolve && pre.EarlyRCode != "" {
+		res = effects.EarlyFailure(pre, q)
+	} else {
+		var err error
+		res, err = h.answer(ctx, snap, q, cl, pre, func() error {
+			return sess.Sleep(ctx, pre, model.PhaseBeforeUpstream)
+		})
+		if err != nil {
+			if ctx.Err() != nil {
+				return nil, dnsserver.HintDrop, ctx.Err()
+			}
+			return dnsserver.NewResponse(model.Result{RCode: model.RCodeServFail}), dnsserver.HintSend, nil
+		}
+	}
+
+	post := h.decide(ctx, snap, q, cl, &res, chaos.PhaseResponse)
+	base := res
+	res = effects.ApplyResponse(res, post, q, h.metrics())
+	effects.Annotate(&res, base, pre, post)
 	applyRA(&res, cl)
 	if res.Explanation != nil {
 		res.Explanation.ClientGroupID = cl.Group
@@ -119,7 +149,27 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (*dnsserver.Re
 			res.Explanation.Revision = snap.Revision
 		}
 	}
-	return dnsserver.NewResponse(res), dnsserver.HintSend, nil
+	if err := sess.Sleep(ctx, post, model.PhaseAfterUpstream); err != nil {
+		return nil, dnsserver.HintDrop, err
+	}
+	if err := sess.Sleep(ctx, post, model.PhaseBeforeResponse); err != nil {
+		return nil, dnsserver.HintDrop, err
+	}
+
+	hintPlan := post
+	if hintPlan.TransportHint == "" {
+		hintPlan = pre
+	}
+	hint := effects.Hint(hintPlan, q.Transport, h.metrics())
+	resp := dnsserver.NewResponse(res)
+	hold := hintPlan.Hold
+	if hold == 0 {
+		hold = pre.Hold
+	}
+	if hold > 0 {
+		_ = resp.SetHoldFor(hold)
+	}
+	return resp, hint, nil
 }
 
 func (h *Handler) decide(ctx context.Context, snap *snapshot.Snapshot, q model.Query, cl class, base *model.Result, phase chaos.Phase) chaos.ActionPlan {
@@ -138,12 +188,11 @@ func (h *Handler) decide(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 		h.logf("chaos decide: %v", err)
 		return chaos.ActionPlan{}
 	}
-	// CHA-002 executes delay/drop/RCODE. This slice only records the plan.
 	return plan
 }
 
-func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Query, cl class) (model.Result, error) {
-	if ent, ok := h.lookupCache(snap, q, cl); ok {
+func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Query, cl class, plan chaos.ActionPlan, beforeUpstream func() error) (model.Result, error) {
+	if ent, ok := h.lookupCache(snap, q, cl, plan); ok {
 		return ent.Result, nil
 	}
 
@@ -157,7 +206,7 @@ func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 		local = res
 		haveLocal = true
 		if !res.Fallthrough {
-			h.storeCache(snap, q, cl, res, true)
+			h.storeCache(snap, q, cl, res, true, plan)
 			return res, nil
 		}
 	}
@@ -166,6 +215,11 @@ func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 		h.denied.Add(1)
 		h.logf("denied_forward group=%s zone=%s policy=%s", cl.Group, cl.ZoneID, cl.ForwardingID)
 		return refused(snap, q, cl), nil
+	}
+	if beforeUpstream != nil {
+		if err := beforeUpstream(); err != nil {
+			return model.Result{}, err
+		}
 	}
 
 	fq := q
@@ -186,7 +240,7 @@ func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 			exchangeID = tid
 		}
 	}
-	up, err := h.fwd.Exchange(ctx, snap, fq, exchangeID)
+	up, err := h.fwd.ExchangeOpts(ctx, snap, fq, exchangeID, effects.Exchange(plan, h.metrics()))
 	if err != nil {
 		if ctx.Err() != nil {
 			return model.Result{}, err
@@ -202,14 +256,15 @@ func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 		up.ZoneID = local.ZoneID
 		up.ZoneMode = local.ZoneMode
 	}
-	h.storeCache(snap, q, cl, up, false)
+	h.storeCache(snap, q, cl, up, false, plan)
 	return up, nil
 }
 
-func (h *Handler) lookupCache(snap *snapshot.Snapshot, q model.Query, cl class) (cache.Entry, bool) {
+func (h *Handler) lookupCache(snap *snapshot.Snapshot, q model.Query, cl class, plan chaos.ActionPlan) (cache.Entry, bool) {
 	if h.cache == nil {
 		return cache.Entry{}, false
 	}
+	opts := effects.CacheGet(plan, h.metrics())
 	localKey := cache.Key{
 		Revision: snap.Revision,
 		Name:     q.Name,
@@ -217,7 +272,7 @@ func (h *Handler) lookupCache(snap *snapshot.Snapshot, q model.Query, cl class) 
 		Class:    q.Class,
 		Local:    true,
 	}
-	if ent, ok := h.cache.Get(localKey, cache.GetOpts{}); ok {
+	if ent, ok := h.cache.Get(localKey, opts); ok {
 		return ent, true
 	}
 	if cl.ForwardingID == "" {
@@ -232,10 +287,10 @@ func (h *Handler) lookupCache(snap *snapshot.Snapshot, q model.Query, cl class) 
 		ForwardingID: cl.ForwardingID,
 		Local:        false,
 	}
-	return h.cache.Get(upKey, cache.GetOpts{})
+	return h.cache.Get(upKey, opts)
 }
 
-func (h *Handler) storeCache(snap *snapshot.Snapshot, q model.Query, cl class, res model.Result, local bool) {
+func (h *Handler) storeCache(snap *snapshot.Snapshot, q model.Query, cl class, res model.Result, local bool, plan chaos.ActionPlan) {
 	if h.cache == nil {
 		return
 	}
@@ -262,7 +317,36 @@ func (h *Handler) storeCache(snap *snapshot.Snapshot, q model.Query, cl class, r
 		Original: res.Source,
 		Upstream: res.UpstreamID,
 		Policy:   res.ForwardingID,
-	}, cache.PutOpts{})
+	}, effects.CachePut(plan))
+}
+
+func (h *Handler) liveEngine() *chaos.Engine {
+	if h == nil {
+		return nil
+	}
+	e, _ := h.eng.(*chaos.Engine)
+	return e
+}
+
+func (h *Handler) budgets() *chaos.Budgets {
+	if e := h.liveEngine(); e != nil {
+		return e.Budgets()
+	}
+	return nil
+}
+
+func (h *Handler) metrics() *chaos.Metrics {
+	if e := h.liveEngine(); e != nil {
+		return e.Stats()
+	}
+	return nil
+}
+
+func (h *Handler) pressure() *chaos.Pressure {
+	if e := h.liveEngine(); e != nil {
+		return e.PressureTracker()
+	}
+	return nil
 }
 
 func cacheable(res model.Result) bool {

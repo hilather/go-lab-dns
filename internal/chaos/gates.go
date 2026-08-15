@@ -120,6 +120,8 @@ func actionPhaseOf(a model.ChaosAction) string {
 		return model.PhaseBeforeResponse
 	case model.ActionCache, model.ActionUpstream:
 		return model.PhaseBeforeUpstream
+	case model.ActionPressure:
+		return model.PhaseBeforeResolution
 	default:
 		return a.Phase
 	}

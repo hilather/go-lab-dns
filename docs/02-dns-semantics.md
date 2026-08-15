@@ -159,7 +159,7 @@ Implemented in `internal/cache` (process-scoped; **not** a Snapshot field).
 
 - Keys include Revision, QNAME, QTYPE, QCLASS, a local/upstream bit, and (for upstream) CD + forwarding policy ID. Revision namespaces so a mutation cannot return a pre-swap local override. Unknown/local-only clients never look up or fill upstream entries.
 - Positive TTLs are clamped to `[minimumTTL, maximumTTL]` when those bounds are > 0. Negative TTLs are capped by `maximumNegativeTTL`. A zero bound means no clamp on that side. A clamped TTL of 0 is not stored.
-- Get returns a **copy** whose RR TTLs are `min(storedTTL − elapsed, ExpireAt − now)` (floor 0). `ExpireAt` is the clamped lifetime, so a `maximumTTL` cap cannot be advertised past. Chaos hooks (`bypass`, `force-miss`, `serve-stale`, skip-put) change the request path or the returned copy; CHA-002 wires them.
+- Get returns a **copy** whose RR TTLs are `min(storedTTL − elapsed, ExpireAt − now)` (floor 0). `ExpireAt` is the clamped lifetime, so a `maximumTTL` cap cannot be advertised past. Chaos hooks (`bypass`, `force-miss`, `serve-stale`, `treat-expired`/expire-this-request, skip-put) change the request path or the returned copy.
 - SERVFAIL/REFUSED/FORMERR/NOTIMP are not cached. Overlay `Fallthrough` results are not cached until a forward completes.
 
 ## DNS flags

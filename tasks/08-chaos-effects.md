@@ -1,6 +1,6 @@
 # CHA-002: Chaos Effects
 
-Status: not-started
+Status: done
 Recommended owner: DNS chaos effects agent
 Dependencies: CHA-001, DNS-001, RES-001, FWD-001
 Exclusive ownership: effect execution and integration adapters
@@ -13,63 +13,63 @@ Implement the initial safe chaos effect catalog, including per-DNS-entry network
 
 ### Delay
 
-- [ ] Implement context-aware fixed delay.
-- [ ] Implement context-aware uniform delay.
-- [ ] Support before-resolution, before-upstream, after-upstream, and before-response phases.
-- [ ] Enforce max delay and concurrent delayed-request budgets.
+- [x] Implement context-aware fixed delay.
+- [x] Implement context-aware uniform delay.
+- [x] Support before-resolution, before-upstream, after-upstream, and before-response phases.
+- [x] Enforce max delay and concurrent delayed-request budgets.
 
 ### DNS response effects
 
-- [ ] Implement SERVFAIL, REFUSED, NXDOMAIN, NODATA, FORMERR, and NOTIMP injection with safety-class validation.
-- [ ] Implement optional EDE annotation.
-- [ ] Implement fixed, clamped, zero, and jittered TTL.
-- [ ] Implement alternate answers with CIDR/suffix allowlists.
-- [ ] Implement value omission, answer limit, deterministic shuffle, rotation, and weighted subset.
+- [x] Implement SERVFAIL, REFUSED, NXDOMAIN, NODATA, FORMERR, and NOTIMP injection with safety-class validation.
+- [x] Implement optional EDE annotation.
+- [x] Implement fixed, clamped, zero, and jittered TTL.
+- [x] Implement alternate answers with CIDR/suffix allowlists.
+- [x] Implement value omission, answer limit, deterministic shuffle, rotation, and weighted subset.
 
 ### Transport effects
 
-- [ ] Implement UDP silent drop.
-- [ ] Implement UDP forced truncation.
-- [ ] Implement bounded TCP no-response then close.
-- [ ] Implement TCP close and reset.
+- [x] Implement UDP silent drop.
+- [x] Implement UDP forced truncation.
+- [x] Implement bounded TCP no-response then close.
+- [x] Implement TCP close and reset.
 
 ### Cache and upstream effects
 
-- [ ] Implement cache bypass and force miss.
-- [ ] Implement safe stale-copy serving if available.
-- [ ] Implement upstream delay, unavailable, forced selection, timeout, transport error, and failover.
-- [ ] Implement policy-scoped rate/concurrency response behavior.
+- [x] Implement cache bypass and force miss.
+- [x] Implement safe stale-copy serving if available.
+- [x] Implement upstream delay, unavailable, forced selection, timeout, transport error, and failover.
+- [x] Implement policy-scoped rate/concurrency response behavior.
 
 ### Lifecycle
 
-- [ ] Cancel delayed effects on query cancellation, shutdown, reset, or emergency disable where applicable.
-- [ ] Emit metrics and audit/explanation data without raw QNAME labels.
+- [x] Cancel delayed effects on query cancellation, shutdown, reset, or emergency disable where applicable.
+- [x] Emit metrics and audit/explanation data without raw QNAME labels.
 
 ## Required tests
 
-- [ ] Per-exact-record fixed delay timing test.
-- [ ] Per-wildcard-record uniform delay bounds test.
-- [ ] Cancellation releases timer and budget.
-- [ ] Maximum concurrent delayed requests cannot be exceeded.
-- [ ] RCODE/NODATA packet correctness tests.
-- [ ] EDE packet tests.
-- [ ] TTL boundaries and no-overflow tests.
-- [ ] Alternate-address allowlist and CNAME-loop tests.
-- [ ] Partial-answer immutability tests.
-- [ ] UDP drop and truncation end-to-end tests.
-- [ ] Client retries over TCP after forced truncation.
-- [ ] TCP close/reset/no-response leak tests.
-- [ ] Cache and upstream effect tests with fake upstreams.
-- [ ] Emergency disable under high delayed load.
-- [ ] Race and soak tests.
-- [ ] Regression test for every effect defect.
+- [x] Per-exact-record fixed delay timing test.
+- [x] Per-wildcard-record uniform delay bounds test.
+- [x] Cancellation releases timer and budget.
+- [x] Maximum concurrent delayed requests cannot be exceeded.
+- [x] RCODE/NODATA packet correctness tests.
+- [x] EDE packet tests.
+- [x] TTL boundaries and no-overflow tests.
+- [x] Alternate-address allowlist and CNAME-loop tests.
+- [x] Partial-answer immutability tests.
+- [x] UDP drop and truncation end-to-end tests.
+- [x] Client retries over TCP after forced truncation.
+- [x] TCP close/reset/no-response leak tests.
+- [x] Cache and upstream effect tests with fake upstreams.
+- [x] Emergency disable under high delayed load.
+- [x] Race and soak tests.
+- [x] Regression test for every effect defect.
 
 ## Documentation updates
 
-- [ ] Update exact effect schema, defaults, limits, and examples.
-- [ ] Update operations runbook for runaway chaos.
-- [ ] Update observability metrics and error codes.
-- [ ] Add release-note entries for each shipped effect.
+- [x] Update exact effect schema, defaults, limits, and examples.
+- [x] Update operations runbook for runaway chaos.
+- [x] Update observability metrics and error codes.
+- [x] Add release-note entries for each shipped effect.
 
 ## Acceptance criteria
 

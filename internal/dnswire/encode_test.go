@@ -178,6 +178,37 @@ func TestEncodeBadVersIncludesOPT(t *testing.T) {
 	}
 }
 
+func TestEncodeEDEOption(t *testing.T) {
+	raw, err := PackQuery(9, model.Query{Name: "e.lab.", Type: model.TypeA}, &EDNS{UDPSize: 1232})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := Parse(raw, model.TransportUDP, loopback)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := Encode(req, model.Result{
+		RCode: model.RCodeServFail,
+		EDE:   &model.EDE{Code: 0, Text: "lab-injected-failure"},
+	}, EncodeOpts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsEDEText(out, "lab-injected-failure") {
+		t.Fatal("encoded response missing EDE text")
+	}
+}
+
+func containsEDEText(raw []byte, text string) bool {
+	need := []byte(text)
+	for i := 0; i+len(need) <= len(raw); i++ {
+		if string(raw[i:i+len(need)]) == text {
+			return true
+		}
+	}
+	return false
+}
+
 func TestEncodeFORMERROmitsUnparsedQuestion(t *testing.T) {
 	req := &Request{HeaderOK: true, ID: 0xABAB, QDCount: 1}
 	out, err := EncodeError(req, model.RCodeFormErr, EncodeOpts{})

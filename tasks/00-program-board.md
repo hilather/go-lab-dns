@@ -14,7 +14,7 @@ Last reviewed: 2026-08-15
 | 5 | Forwarding and cache | FWD-001 | CFG-001, DNS-001, RES-001 interfaces | Upstream pools and cache | not-started |
 | 6 | Snapshot state and mutations | STA-001 | CFG-001, resolver compile interfaces | Atomic state, plan/apply/reset/export | in-progress (app.Service mutations; REST/MCP later) |
 | 7 | Chaos core | CHA-001 | CFG-001, RES-001, STA-001 | Policy compiler, selectors, budgets | done |
-| 8 | Chaos effects | CHA-002 | CHA-001, FWD-001 | Delay, faults, TTL, answers, transport | not-started |
+| 8 | Chaos effects | CHA-002 | CHA-001, FWD-001 | Delay, faults, TTL, answers, transport | done |
 | 9 | REST control plane | API-001 | STA-001, capability registry contract | REST v1 and OpenAPI | not-started |
 | 10 | MCP control plane | MCP-001 | STA-001, capability registry contract | MCP tools/resources and parity | not-started |
 | 11 | Auth, security, and audit | SEC-001 | API-001/MCP-001 interfaces, DNS admission interfaces | RBAC, limits, audit | not-started |

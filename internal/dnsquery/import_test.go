@@ -14,14 +14,15 @@ func TestNoMiekgAndImportDAG(t *testing.T) {
 		t.Fatal(err)
 	}
 	allowedProd := map[string]bool{
-		"github.com/hilather/go-lab-dns/internal/chaos":     true,
-		"github.com/hilather/go-lab-dns/internal/model":     true,
-		"github.com/hilather/go-lab-dns/internal/snapshot":  true,
-		"github.com/hilather/go-lab-dns/internal/resolver":  true,
-		"github.com/hilather/go-lab-dns/internal/forwarder": true,
-		"github.com/hilather/go-lab-dns/internal/cache":     true,
-		"github.com/hilather/go-lab-dns/internal/dnsserver": true,
-		"github.com/hilather/go-lab-dns/internal/testutil":  true,
+		"github.com/hilather/go-lab-dns/internal/chaos":         true,
+		"github.com/hilather/go-lab-dns/internal/chaos/effects": true,
+		"github.com/hilather/go-lab-dns/internal/model":         true,
+		"github.com/hilather/go-lab-dns/internal/snapshot":      true,
+		"github.com/hilather/go-lab-dns/internal/resolver":      true,
+		"github.com/hilather/go-lab-dns/internal/forwarder":     true,
+		"github.com/hilather/go-lab-dns/internal/cache":         true,
+		"github.com/hilather/go-lab-dns/internal/dnsserver":     true,
+		"github.com/hilather/go-lab-dns/internal/testutil":      true,
 	}
 	for _, pkg := range pkgs {
 		for filename, f := range pkg.Files {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/hilather/go-lab-dns/internal/model"
@@ -14,9 +15,29 @@ import (
 // Engine evaluates compiled policies. Clock/Rand are injected. Budgets are
 // process-scoped and are never touched by Simulate.
 type Engine struct {
-	clock  testutil.Clock
-	rng    testutil.Rand
-	budget *Budgets
+	clock    testutil.Clock
+	rng      testutil.Rand
+	budget   *Budgets
+	pressure *Pressure
+	metrics  *Metrics
+}
+
+// Metrics is process-local effect counters. Labels never include QNAME.
+type Metrics struct {
+	Delayed        atomic.Int64
+	DelayCanceled  atomic.Int64
+	BudgetSkipped  atomic.Int64
+	Drops          atomic.Int64
+	Truncations    atomic.Int64
+	TCPCloses      atomic.Int64
+	TCPResets      atomic.Int64
+	Holds          atomic.Int64
+	RCodes         atomic.Int64
+	TTL            atomic.Int64
+	Alternates     atomic.Int64
+	CacheHooks     atomic.Int64
+	UpstreamHooks  atomic.Int64
+	PressureReject atomic.Int64
 }
 
 // NewEngine returns an engine. Nil clock/rng become the system sources.
@@ -27,7 +48,15 @@ func NewEngine(clk testutil.Clock, rng testutil.Rand) *Engine {
 	if rng == nil {
 		rng = testutil.SystemRand{}
 	}
-	return &Engine{clock: clk, rng: rng, budget: NewBudgets()}
+	return &Engine{clock: clk, rng: rng, budget: NewBudgets(), pressure: NewPressure(), metrics: &Metrics{}}
+}
+
+// Clock is the injected time source used by delay execution.
+func (e *Engine) Clock() testutil.Clock {
+	if e == nil {
+		return testutil.SystemClock{}
+	}
+	return e.clock
 }
 
 // Budgets returns the process reservation table (CHA-002 delay path).
@@ -36,6 +65,22 @@ func (e *Engine) Budgets() *Budgets {
 		return nil
 	}
 	return e.budget
+}
+
+// PressureTracker returns the process-scoped QPS/concurrency table.
+func (e *Engine) PressureTracker() *Pressure {
+	if e == nil {
+		return nil
+	}
+	return e.pressure
+}
+
+// Stats returns process-local effect counters.
+func (e *Engine) Stats() *Metrics {
+	if e == nil {
+		return nil
+	}
+	return e.metrics
 }
 
 // CancelDelays cancels outstanding reserved delays (emergency disable).
@@ -237,6 +282,7 @@ func (e *Engine) decide(snap *snapshot.Snapshot, in DecisionIn, filter []model.P
 			break
 		}
 	}
+	fillPlanSummary(&plan)
 	return plan, nil
 }
 
@@ -291,6 +337,18 @@ func (e *Engine) planActions(p model.ChaosPolicy, out model.ChaosOutcome, in Dec
 			Phase:        phase,
 			Distribution: a.Distribution,
 			Value:        a.Value,
+			TTL:          a.TTL,
+			Min:          a.Min,
+			Max:          a.Max,
+			Limit:        a.Limit,
+			UpstreamID:   a.UpstreamID,
+			Hold:         a.Hold,
+			Seed:         h.U1,
+			Values:       append([]string(nil), a.Values...),
+		}
+		if a.EDE != nil {
+			e := *a.EDE
+			pa.EDE = &e
 		}
 		switch a.Type {
 		case model.ActionDelay:
@@ -317,6 +375,7 @@ func (e *Engine) planActions(p model.ChaosPolicy, out model.ChaosOutcome, in Dec
 					u1 = e.rng.Uint64()
 				}
 				d = UniformDelay(a.Min, a.Max, u1)
+				pa.Seed = u1
 			}
 			clamped, did := clampDelay(d, globalMax, policyMax)
 			pa.Delay = clamped
@@ -330,27 +389,12 @@ func (e *Engine) planActions(p model.ChaosPolicy, out model.ChaosOutcome, in Dec
 			if clamped > delay {
 				delay = clamped
 			}
-			if !simulate && clamped > 0 {
-				maxG := snap.Safety.MaxConcurrentDelayed
-				maxP := 0
-				if p.Budget != nil {
-					maxP = p.Budget.MaxConcurrency
-				}
-				tok, err := e.budget.ReserveDelay(p.ID, maxG, maxP)
-				if err != nil {
-					pa.Clamped = true
-					clamps = append(clamps, ClampRecord{
-						PolicyID: p.ID, Action: model.ActionDelay, Reason: "budget_exceeded",
-					})
-					// Keep the action in the explanation; callers skip execution.
-				} else {
-					tok.Release() // CHA-002 will hold the token across the sleep
-				}
-			}
+			// Reservation is taken at execution so unused Decide calls
+			// (tests, unused plans) cannot leak in-flight counts.
 		case model.ActionRCode:
 			pa.RCode = a.Value
 			if in.Phase == PhasePreResolution || in.Phase == "" {
-				early = model.RCode(a.Value)
+				early = injectedRCode(a.Value)
 				skipRes = true
 			}
 		case model.ActionDrop:
@@ -378,10 +422,153 @@ func (e *Engine) planActions(p model.ChaosPolicy, out model.ChaosOutcome, in Dec
 				continue
 			}
 			hint = "tcp-reset"
+		case model.ActionUpstream:
+			if normalizeActionValue(a.Value) == UpstreamValueDelay {
+				d := a.Duration
+				if d == 0 {
+					d = a.TTL
+				}
+				clamped, did := clampDelay(d, globalMax, policyMax)
+				pa.Delay = clamped
+				if did {
+					pa.Clamped = true
+					clamps = append(clamps, ClampRecord{
+						PolicyID: p.ID, Action: model.ActionUpstream, Reason: "max_delay",
+						From: d.String(), To: clamped.String(),
+					})
+				}
+			}
+		case model.ActionPressure:
+			if p.Budget != nil {
+				pa.Rate = p.Budget.MaxRate
+				pa.Concurrency = p.Budget.MaxConcurrency
+			}
 		}
 		acts = append(acts, pa)
 	}
 	return acts, clamps, delay, early, hint, skipRes, transportConflict
+}
+
+func fillPlanSummary(plan *ActionPlan) {
+	if plan == nil {
+		return
+	}
+	for _, a := range plan.Actions {
+		switch a.Type {
+		case model.ActionCache:
+			switch normalizeActionValue(a.Value) {
+			case CacheValueBypass:
+				plan.Cache.Bypass = true
+			case CacheValueForceMiss, "miss":
+				plan.Cache.ForceMiss = true
+			case CacheValueExpire:
+				plan.Cache.Expire = true
+			case CacheValueStale:
+				plan.Cache.ServeStale = true
+			}
+		case model.ActionUpstream:
+			switch normalizeActionValue(a.Value) {
+			case UpstreamValueDelay:
+				if a.Delay > plan.Upstream.Delay {
+					plan.Upstream.Delay = a.Delay
+				}
+				if a.TTL > plan.Upstream.Delay {
+					// duration lives on Delay after planning; Duration field is Delay
+					plan.Upstream.Delay = a.TTL
+				}
+				if a.Min > 0 && plan.Upstream.Delay == 0 {
+					plan.Upstream.Delay = a.Min
+				}
+			case UpstreamValueUnavailable:
+				if a.UpstreamID != "" {
+					plan.Upstream.Unavailable = append(plan.Upstream.Unavailable, a.UpstreamID)
+				}
+			case UpstreamValueForce, "select":
+				if a.UpstreamID != "" {
+					plan.Upstream.Force = a.UpstreamID
+				}
+			case UpstreamValueTimeout:
+				plan.Upstream.Timeout = true
+			case UpstreamValueTransportError:
+				plan.Upstream.TransportError = true
+			case UpstreamValueFailover:
+				plan.Upstream.Failover = true
+			default:
+				if rc := injectedRCode(a.Value); rc != "" && a.Value != "" && !isCacheOrTTLValue(a.Value) {
+					if isRCodeValue(a.Value) {
+						plan.Upstream.SyntheticRCode = rc
+					}
+				}
+			}
+		case model.ActionPressure:
+			if plan.Pressure.PolicyID == "" {
+				plan.Pressure.PolicyID = a.PolicyID
+				plan.Pressure.MaxRate = a.Rate
+				plan.Pressure.MaxConc = a.Concurrency
+				plan.Pressure.OnExceed = a.Value
+				if plan.Pressure.OnExceed == "" {
+					plan.Pressure.OnExceed = PressureValueServFail
+				}
+			}
+		case model.ActionRCode:
+			if a.EDE != nil && plan.EDE == nil {
+				e := *a.EDE
+				plan.EDE = &e
+			}
+		}
+		if a.Hold > plan.Hold {
+			plan.Hold = a.Hold
+		}
+		if a.Type == model.ActionDelay && a.Phase == model.PhaseBeforeUpstream && a.Delay > plan.Upstream.Delay {
+			plan.Upstream.Delay = a.Delay
+		}
+	}
+}
+
+func injectedRCode(v string) model.RCode {
+	switch strings.ToUpper(strings.TrimSpace(v)) {
+	case "NODATA":
+		return model.RCodeNoError
+	case string(model.RCodeServFail):
+		return model.RCodeServFail
+	case string(model.RCodeRefused):
+		return model.RCodeRefused
+	case string(model.RCodeNXDomain):
+		return model.RCodeNXDomain
+	case string(model.RCodeNoError):
+		return model.RCodeNoError
+	case string(model.RCodeFormErr):
+		return model.RCodeFormErr
+	case string(model.RCodeNotImp):
+		return model.RCodeNotImp
+	default:
+		return model.RCode(strings.ToUpper(strings.TrimSpace(v)))
+	}
+}
+
+func isRCodeValue(v string) bool {
+	switch strings.ToUpper(strings.TrimSpace(v)) {
+	case "NODATA", "NOERROR", "SERVFAIL", "REFUSED", "NXDOMAIN", "FORMERR", "NOTIMP":
+		return true
+	default:
+		return false
+	}
+}
+
+func isCacheOrTTLValue(v string) bool {
+	switch normalizeActionValue(v) {
+	case CacheValueBypass, CacheValueForceMiss, "miss", CacheValueExpire, CacheValueStale,
+		TTLValueSet, TTLValueClamp, TTLValueZero, TTLValueJitter,
+		UpstreamValueDelay, UpstreamValueUnavailable, UpstreamValueForce, "select",
+		UpstreamValueTimeout, UpstreamValueTransportError, UpstreamValueFailover:
+		return true
+	default:
+		return false
+	}
+}
+
+func normalizeActionValue(v string) string {
+	return strings.ToLower(strings.TrimSpace(v))
 }
 
 func unit(u uint64) float64 { return float64(u) / two64 }

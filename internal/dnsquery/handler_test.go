@@ -545,6 +545,14 @@ func compileSnap(t *testing.T, st *model.State) *snapshot.Snapshot {
 			MaximumNegativeTTL: st.Spec.Cache.MaximumNegativeTTL,
 			StaleServing:       st.Spec.Cache.StaleServing,
 		},
+		Safety: snapshot.SafetyPolicy{
+			ProtectedNames:        append([]model.Name(nil), st.Spec.Chaos.Safety.ProtectedNames...),
+			ProtectedClientGroups: append([]model.ClientGroupID(nil), st.Spec.Chaos.Safety.ProtectedClientGroups...),
+			AllowedAddressCIDRs:   append([]string(nil), st.Spec.Chaos.Safety.AllowedAddressCIDRs...),
+			MaxDelay:              st.Spec.Chaos.Safety.MaxDelay,
+			MaxConcurrentDelayed:  st.Spec.Chaos.Safety.MaxConcurrentDelayed,
+			MaxDropProbability:    st.Spec.Chaos.Safety.MaxDropProbability,
+		},
 	}
 }
 

@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: Operations
-Last reviewed: 2026-08-15 (CHA-001 SIGUSR1 emergency)
+Last reviewed: 2026-08-15 (CHA-002 delay cancel + emergency under load)
 
 ## Routine checks
 
@@ -39,12 +39,12 @@ Operators should monitor:
 
 ## Runbook: chaos runaway
 
-1. Invoke emergency disable through the privileged path (`app.Service.EmergencyDisableChaos`, or `SIGUSR1` to the process).
+1. Invoke emergency disable through the privileged path (`app.Service.EmergencyDisableChaos`, or `SIGUSR1` to the process). This sets the inhibit bit, stamps the active snapshot, and cancels outstanding context-aware delays (`Budgets.CancelAll`).
 2. If unavailable, restart with `labdns serve --chaos-disable` or `LABDNS_CHAOS_DISABLE=1`.
-3. Confirm no new policy actions are selected and delayed-request count drains.
-4. Preserve audit and telemetry evidence.
-5. Identify missing cap, cancellation, scope, or expiry control.
-6. Add regression tests and harden CI before re-enabling.
+3. Confirm no new policy actions are selected (`Decide` reason `emergency_disabled`) and delayed-request count drains to zero. In-flight sleeps return promptly; new queries are not delayed.
+4. Preserve audit and telemetry evidence (delay/drop/truncate/reset/RCODE counters — never raw QNAME labels).
+5. Identify missing cap (`maxDelay`, `maxConcurrentDelayed`), cancellation, scope, or expiry control. Conflicting terminal transport actions are rejected at validate time.
+6. Add regression tests (emergency under delayed load, cancel-releases-budget) and harden CI before re-enabling.
 7. Update design and runbook documentation if behavior changed.
 
 ## Runbook: upstream outage

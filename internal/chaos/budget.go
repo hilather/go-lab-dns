@@ -14,7 +14,13 @@ type Budgets struct {
 	mu        sync.Mutex
 	global    int
 	perPolicy map[model.PolicyID]int
-	cancels   []func()
+	cancels   []cancelReg
+	nextID    uint64
+}
+
+type cancelReg struct {
+	id uint64
+	fn func()
 }
 
 // NewBudgets returns an empty reservation table.
@@ -91,12 +97,34 @@ func (b *Budgets) PolicyInFlight(id model.PolicyID) int {
 
 // RegisterCancel records a function invoked by CancelAll (emergency).
 func (b *Budgets) RegisterCancel(fn func()) {
+	_ = b.WatchCancel(fn)
+}
+
+// WatchCancel records a cancel func and returns an unregister that is
+// safe to call more than once. Used so finished delays do not leak.
+func (b *Budgets) WatchCancel(fn func()) (unregister func()) {
 	if b == nil || fn == nil {
-		return
+		return func() {}
 	}
 	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.cancels = append(b.cancels, fn)
+	b.nextID++
+	id := b.nextID
+	b.cancels = append(b.cancels, cancelReg{id: id, fn: fn})
+	b.mu.Unlock()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			b.mu.Lock()
+			defer b.mu.Unlock()
+			kept := b.cancels[:0]
+			for _, c := range b.cancels {
+				if c.id != id {
+					kept = append(kept, c)
+				}
+			}
+			b.cancels = kept
+		})
+	}
 }
 
 // CancelAll runs registered cancel funcs (outstanding delays) and leaves
@@ -106,7 +134,12 @@ func (b *Budgets) CancelAll() {
 		return
 	}
 	b.mu.Lock()
-	fns := append([]func(){}, b.cancels...)
+	fns := make([]func(), 0, len(b.cancels))
+	for _, c := range b.cancels {
+		if c.fn != nil {
+			fns = append(fns, c.fn)
+		}
+	}
 	b.cancels = nil
 	b.mu.Unlock()
 	for _, fn := range fns {

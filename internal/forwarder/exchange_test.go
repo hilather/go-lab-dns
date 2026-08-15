@@ -168,6 +168,38 @@ func TestUnknownPolicyAndNilSnapshot(t *testing.T) {
 	}
 }
 
+func TestChaosExchangeHooks(t *testing.T) {
+	up := startFake(t)
+	up.setAnswers(model.RR{Name: "a.example.", Type: model.TypeA, Class: model.ClassIN, TTL: time.Second, Data: "192.0.2.9"})
+	snap := snapOne(t, up.UDPAddr(), model.TransportUDP, model.FailoverSpec{OnTimeout: true, OnTransportError: true})
+	rt := NewRuntime(nil, nil, nil, nil)
+	res, err := rt.ExchangeOpts(t.Context(), snap, query("a.example."), "pol", ExchangeOpts{SyntheticRCode: model.RCodeRefused})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.RCode != model.RCodeRefused {
+		t.Fatalf("synthetic %s", res.RCode)
+	}
+	before := up.Packets.Load()
+	res, err = rt.ExchangeOpts(t.Context(), snap, query("a.example."), "pol", ExchangeOpts{ForceTimeout: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.RCode != model.RCodeServFail {
+		t.Fatalf("timeout rcode=%s", res.RCode)
+	}
+	if up.Packets.Load() != before {
+		t.Fatal("forced timeout must not dial")
+	}
+	res, err = rt.ExchangeOpts(t.Context(), snap, query("a.example."), "pol", ExchangeOpts{Unavailable: map[model.UpstreamID]bool{"u1": true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.RCode != model.RCodeServFail {
+		t.Fatalf("unavailable rcode=%s", res.RCode)
+	}
+}
+
 func query(name string) model.Query {
 	return model.Query{Name: model.Name(name), Type: model.TypeA, Class: model.ClassIN, RD: true}
 }

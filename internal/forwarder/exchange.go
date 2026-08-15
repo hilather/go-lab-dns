@@ -37,8 +37,12 @@ const DefaultConnectTimeout = 250 * time.Millisecond
 
 // ExchangeOpts are chaos/request-path hooks. Zero value is a normal exchange.
 type ExchangeOpts struct {
-	ForceUpstream model.UpstreamID
-	Unavailable   map[model.UpstreamID]bool
+	ForceUpstream       model.UpstreamID
+	Unavailable         map[model.UpstreamID]bool
+	ForceTimeout        bool
+	ForceTransportError bool
+	ForceFailover       bool
+	SyntheticRCode      model.RCode
 }
 
 // DialFunc opens a connected socket to a configured endpoint.
@@ -127,6 +131,18 @@ func (rt *Runtime) ExchangeOpts(ctx context.Context, snap *snapshot.Snapshot, q 
 	if opts.ForceUpstream != "" {
 		order = forceFirst(order, opts.ForceUpstream)
 	}
+	if opts.ForceFailover && len(order) > 1 {
+		order = order[1:]
+	}
+	if opts.SyntheticRCode != "" {
+		res := model.Result{
+			RCode:        opts.SyntheticRCode,
+			Source:       model.SourceUpstream,
+			ForwardingID: policyID,
+		}
+		annotate(snap, q, &res, policyID, pool.ID, "")
+		return res, nil
+	}
 	fo := pol.Failover
 	attemptTO := fo.Timeout
 	if attemptTO <= 0 {
@@ -143,6 +159,24 @@ func (rt *Runtime) ExchangeOpts(ctx context.Context, snap *snapshot.Snapshot, q 
 			if !fo.OnTransportError {
 				break
 			}
+			continue
+		}
+		if opts.ForceTimeout {
+			rt.Health.RecordFailure(up.ID)
+			last = servfail(snap, q, policyID, up.ID)
+			if !fo.OnTimeout {
+				return last, nil
+			}
+			opts.ForceTimeout = false
+			continue
+		}
+		if opts.ForceTransportError {
+			rt.Health.RecordFailure(up.ID)
+			last = servfail(snap, q, policyID, up.ID)
+			if !fo.OnTransportError {
+				return last, nil
+			}
+			opts.ForceTransportError = false
 			continue
 		}
 		res, ferr, retryTCP := rt.attempt(ctx, q, up, attemptTO, fo.UDPTruncateRetryTCP)

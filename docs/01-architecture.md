@@ -187,7 +187,7 @@ The chaos engine receives a structured resolution context and cannot access mana
 
 `internal/dnsserver` binds UDP and TCP, applies admission, calls `Handler.ServeDNS`, and applies the returned `TransportHint`. It does not import snapshot, resolver, forwarder, or chaos.
 
-`internal/dnsquery` implements that handler: one `Store.Load` per query, client-group classification from the compiled `AccessIndex` (an uncompiled zero index still walks spec CIDRs), zone + forwarding selection, pre-resolution `chaos.Decide`, `resolver.Resolve`, then `forwarder.Exchange` only when the client may forward, then response-phase `chaos.Decide`. Both `Decide` calls consume the already-classified IDs. Packet effects (delay/drop/RCODE) are structured no-ops until CHA-002.
+`internal/dnsquery` implements that handler: one `Store.Load` per query, client-group classification from the compiled `AccessIndex` (an uncompiled zero index still walks spec CIDRs), zone + forwarding selection, pre-resolution `chaos.Decide`, `resolver.Resolve`, then `forwarder.Exchange` only when the client may forward, then response-phase `chaos.Decide`. Both `Decide` calls consume the already-classified IDs. CHA-002 executes the plan in `internal/chaos/effects` (delay, RCODE/TTL/answer/EDE, transport hints, cache/upstream/pressure). Malformed-wire effects stay out (ADR 0007).
 
 `labdns serve --config PATH` loads bootstrap YAML, runs `compiler.Compile`, installs the snapshot on `snapshot.Store` (`SetBootstrap` + `Swap`), and binds UDP/TCP. Invalid bootstrap does not bind DNS. Management HTTP is not started in this slice.
 

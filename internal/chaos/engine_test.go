@@ -345,6 +345,41 @@ func TestBudgetExhausted(t *testing.T) {
 	}
 }
 
+func TestPlanSummaryCacheUpstreamPressure(t *testing.T) {
+	st := sampleState(t)
+	for i := range st.Spec.Zones[0].Records {
+		st.Spec.Zones[0].Records[i].ChaosPolicyRefs = nil
+	}
+	st.Spec.Chaos.Policies = []model.ChaosPolicy{{
+		ID: "hooks", Owner: "o", Reason: "r", Enabled: true, SafetyClass: model.SafetyClassLow,
+		Budget:   &model.ChaosBudget{MaxRate: 5, MaxConcurrency: 2},
+		Selector: model.ChaosSelector{Mode: model.SelectorDeterministic, Seed: "h", Probability: 1},
+		Outcomes: []model.ChaosOutcome{{ID: "o", Weight: 1, Actions: []model.ChaosAction{
+			{Type: model.ActionPressure, Value: "drop"},
+			{Type: model.ActionCache, Value: CacheValueBypass},
+			{Type: model.ActionUpstream, Value: UpstreamValueForce, UpstreamID: "u1"},
+		}}},
+	}}
+	snap := compileSnap(t, st)
+	eng := NewEngine(testutil.NewFakeClock(time.Date(2026, 8, 15, 20, 0, 0, 0, time.UTC)), nil)
+	plan, err := eng.Decide(context.Background(), snap, DecisionIn{
+		Query: model.Query{Name: "x.example.", Type: model.TypeA, Transport: model.TransportUDP},
+		Phase: PhasePreResolution,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !plan.Cache.Bypass {
+		t.Fatalf("cache %+v", plan.Cache)
+	}
+	if plan.Upstream.Force != "u1" {
+		t.Fatalf("upstream %+v", plan.Upstream)
+	}
+	if plan.Pressure.PolicyID != "hooks" || plan.Pressure.OnExceed != "drop" || plan.Pressure.MaxConc != 2 {
+		t.Fatalf("pressure %+v", plan.Pressure)
+	}
+}
+
 func hasSkip(plan ActionPlan, id model.PolicyID, reason string) bool {
 	for _, d := range plan.Decisions {
 		if d.PolicyID == id && d.SkipReason == reason {

@@ -5,6 +5,6 @@
 // clamps follow configured bounds; zero MinimumTTL/MaximumTTL means no
 // clamp on that side. Get advertises min(storedTTL−elapsed, ExpireAt−now)
 // (floor 0) so a MaximumTTL clamp cannot be served past. Chaos hooks
-// (bypass, force-miss, serve-stale, skip-put) change the request path
-// or the returned copy.
+// (bypass, force-miss, serve-stale, treat-expired, skip-put) change the
+// request path or the returned copy.
 package cache
