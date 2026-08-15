@@ -159,6 +159,22 @@ func TestRemainingTTLOnGet(t *testing.T) {
 	if got.Result.Answers[0].TTL != 3*time.Second {
 		t.Fatalf("remaining TTL=%s, want 3s", got.Result.Answers[0].TTL)
 	}
+
+	clk2 := testutil.NewFakeClock(time.Date(2026, 8, 15, 13, 0, 0, 0, time.UTC))
+	clamped := New(Policy{Enabled: true, MaxEntries: 4, MaximumTTL: 5 * time.Second}, clk2)
+	cKey := Key{Revision: "r", Name: "b.example.", Type: model.TypeA, Class: model.ClassIN, Local: true}
+	clamped.Put(cKey, Entry{Result: model.Result{
+		RCode:   model.RCodeNoError,
+		Answers: []model.RR{{Name: "b.example.", Type: model.TypeA, Class: model.ClassIN, TTL: time.Hour, Data: "192.0.2.2"}},
+	}}, PutOpts{})
+	clk2.Advance(2 * time.Second)
+	got, ok = clamped.Get(cKey, GetOpts{})
+	if !ok {
+		t.Fatal("clamped miss")
+	}
+	if got.Result.Answers[0].TTL != 3*time.Second {
+		t.Fatalf("clamped remaining TTL=%s, want 3s (not 1h-2s)", got.Result.Answers[0].TTL)
+	}
 }
 
 func TestDisabledAndZeroTTL(t *testing.T) {

@@ -133,7 +133,7 @@ func (c *Cache) Get(key Key, opts GetOpts) (Entry, bool) {
 		out.Stale = true
 		out.Result = copyResult(out.Result)
 		out.Result.Source = model.SourceCache
-		decayTTLs(&out.Result, now.Sub(n.ent.StoredAt))
+		decayTTLs(&out.Result, now.Sub(n.ent.StoredAt), remainingTTL(n.ent, now))
 		return out, true
 	}
 	if opts.ForceMiss {
@@ -145,7 +145,7 @@ func (c *Cache) Get(key Key, opts GetOpts) (Entry, bool) {
 	out := copyEntry(n.ent)
 	out.Result = copyResult(out.Result)
 	out.Result.Source = model.SourceCache
-	decayTTLs(&out.Result, now.Sub(n.ent.StoredAt))
+	decayTTLs(&out.Result, now.Sub(n.ent.StoredAt), remainingTTL(n.ent, now))
 	return out, true
 }
 
@@ -313,20 +313,40 @@ func (c *Cache) unlinkLocked(n *node) {
 	n.next = nil
 }
 
-func decayTTLs(r *model.Result, elapsed time.Duration) {
+func remainingTTL(ent Entry, now time.Time) time.Duration {
+	if ent.ExpireAt.IsZero() {
+		return 0
+	}
+	d := ent.ExpireAt.Sub(now)
+	if d < 0 {
+		return 0
+	}
+	return d
+}
+
+func decayTTLs(r *model.Result, elapsed, remaining time.Duration) {
 	if r == nil {
 		return
 	}
 	if elapsed < 0 {
 		elapsed = 0
 	}
+	if remaining < 0 {
+		remaining = 0
+	}
 	decay := func(rrs []model.RR) {
 		for i := range rrs {
-			if rrs[i].TTL > elapsed {
-				rrs[i].TTL -= elapsed
+			ttl := rrs[i].TTL
+			if ttl > elapsed {
+				ttl -= elapsed
 			} else {
-				rrs[i].TTL = 0
+				ttl = 0
 			}
+			// ExpireAt is the clamped lifetime; never advertise past it.
+			if ttl > remaining {
+				ttl = remaining
+			}
+			rrs[i].TTL = ttl
 		}
 	}
 	decay(r.Answers)
