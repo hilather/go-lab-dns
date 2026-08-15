@@ -154,6 +154,11 @@ func (s *Server) ListenAndServe() error {
 // Serve serves on ln until Shutdown. ln is closed by Shutdown or on return.
 func (s *Server) Serve(ln net.Listener) error {
 	s.mu.Lock()
+	if s.closed.Load() {
+		s.mu.Unlock()
+		_ = ln.Close()
+		return nil
+	}
 	if s.http != nil {
 		s.mu.Unlock()
 		_ = ln.Close()
@@ -180,7 +185,12 @@ func (s *Server) Serve(ln net.Listener) error {
 	}
 	s.http = hs
 	s.ln = ln
+	alreadyClosed := s.closed.Load()
 	s.mu.Unlock()
+	if alreadyClosed {
+		_ = ln.Close()
+		return nil
+	}
 	err := hs.Serve(ln)
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
@@ -189,15 +199,21 @@ func (s *Server) Serve(ln net.Listener) error {
 }
 
 // Shutdown closes the listener and waits for in-flight requests.
+// If Serve has not stored http.Server yet, the listener is closed so a
+// later Serve cannot accept.
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.closed.Store(true)
 	s.mu.Lock()
 	hs := s.http
+	ln := s.ln
 	s.mu.Unlock()
-	if hs == nil {
-		return nil
+	if hs != nil {
+		return hs.Shutdown(ctx)
 	}
-	return hs.Shutdown(ctx)
+	if ln != nil {
+		return ln.Close()
+	}
+	return nil
 }
 
 // Addr returns the bound address after Serve, or the configured listen address.

@@ -71,6 +71,7 @@ make test-race
 make verify-generated
 make test-docs
 make test-fuzz-smoke
+make test-container
 make security-scan
 ```
 
@@ -79,6 +80,8 @@ make security-scan
 
 `make test-config-compat` runs the v1alpha1 positive and negative configuration fixtures under `testdata/config`.
 
+`make test-container` builds `ghcr.io/hilather/labdns` and checks the non-root / read-only / no-caps contract (requires Docker).
+
 Targets that are not yet implemented fail closed (non-zero exit with an explicit `unimplemented` message) rather than succeeding as no-ops:
 
 ```text
@@ -86,7 +89,6 @@ make test-integration    # later DNS/control-plane PRs
 make test-parity         # REST/MCP capability parity and MCP goldens
 make test-container      # PR-16 / DEP-001
 make test-parity         # API-001 / MCP-001
-make test-container      # docker build + non-root/read-only/no-caps contract
 ```
 
 See [AGENTS.md](https://github.com/hilather/go-lab-dns/blob/main/AGENTS.md) for the full required target list.

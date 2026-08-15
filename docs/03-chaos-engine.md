@@ -422,7 +422,7 @@ Provide three independent controls:
 
 Disabling chaos swaps to a snapshot with chaos execution off and cancels outstanding context-aware delays where possible.
 
-First-GA third control is **`SIGUSR1`** (Unix-socket management is out of first GA). `labdns serve --chaos-disable` and `LABDNS_CHAOS_DISABLE=1` are the startup override. `SIGUSR2` is reserved and ignored.
+First-GA third control is **`SIGUSR1`** (Unix-socket management is out of first GA). `labdns serve --chaos-disable` and `LABDNS_CHAOS_DISABLE=1/true/yes` are the startup override; they are independent of the runtime emergency bit, so reset and emergency-enable cannot relax them. `SIGUSR2` is reserved and ignored.
 
 ## Failure modes
 

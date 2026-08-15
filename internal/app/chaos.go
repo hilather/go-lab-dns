@@ -226,8 +226,9 @@ func (s *App) EmergencyDisableChaos(ctx context.Context, actor Actor, in Emergen
 	return s.setEmergency(ctx, actor, in, true, "dns_chaos_emergency_disable")
 }
 
-// EmergencyEnableChaos clears the store-level inhibit. It cannot relax a
-// YAML spec.chaos.emergencyDisabled=true value already on Canonical.
+// EmergencyEnableChaos clears the runtime inhibit bit. It cannot relax a
+// YAML spec.chaos.emergencyDisabled=true value already on Canonical, and it
+// cannot clear a startup --chaos-disable / LABDNS_CHAOS_DISABLE lock.
 func (s *App) EmergencyEnableChaos(ctx context.Context, actor Actor, in EmergencyIn) (*ApplyResult, error) {
 	return s.setEmergency(ctx, actor, in, false, "dns_chaos_emergency_enable")
 }

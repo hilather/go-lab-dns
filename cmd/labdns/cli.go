@@ -151,12 +151,19 @@ func queryCmd(args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintln(stderr, "labdns query: --name is required")
 		return 2
 	}
+	tr := model.Transport(strings.ToLower(*transport))
+	switch tr {
+	case model.TransportUDP, model.TransportTCP:
+	default:
+		_, _ = fmt.Fprintln(stderr, "labdns query: --transport must be udp or tcp")
+		return 2
+	}
 	q := model.Query{
 		Name:      model.Name(*name),
 		Type:      model.RRType(strings.ToUpper(*typ)),
 		Class:     model.ClassIN,
 		RD:        true,
-		Transport: model.Transport(strings.ToLower(*transport)),
+		Transport: tr,
 	}
 	raw, err := dnswire.PackQuery(1, q, nil)
 	if err != nil {

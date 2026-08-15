@@ -235,6 +235,39 @@ func TestStoreSwapStampsEmergencyAndApplyCannotClear(t *testing.T) {
 	}
 }
 
+func TestStoreStartupChaosOffSurvivesEnableAndResetSwap(t *testing.T) {
+	s := NewStore()
+	boot := &Snapshot{Generation: 0, Revision: "sha256:boot", Canonical: &model.State{Kind: model.KindLabDNS}}
+	s.InstallBootstrap(boot)
+	s.SetStartupChaosOff()
+	if !s.StartupChaosOff() || !s.EmergencyChaosOff() {
+		t.Fatal("startup lock not reported")
+	}
+	stamped := s.StampEmergency()
+	if !stamped.EmergencyChaosOff {
+		t.Fatal("startup lock must stamp EmergencyChaosOff")
+	}
+
+	s.SetEmergencyChaosOff(false)
+	if !s.StartupChaosOff() {
+		t.Fatal("SetEmergencyChaosOff(false) cleared the startup lock")
+	}
+	afterEnable := s.StampEmergency()
+	if !afterEnable.EmergencyChaosOff {
+		t.Fatal("emergency-enable must not relax startup inhibit")
+	}
+
+	reset := &Snapshot{Generation: 3, Revision: "sha256:reset", Canonical: &model.State{Kind: model.KindLabDNS}}
+	s.Swap(reset)
+	live := s.Load()
+	if live.Revision != "sha256:reset" {
+		t.Fatal("reset swap lost Canonical")
+	}
+	if !live.EmergencyChaosOff {
+		t.Fatal("reset/apply Swap must keep startup inhibit")
+	}
+}
+
 func TestStoreStampEmergencyDoesNotRepublishStaleCanonical(t *testing.T) {
 	s := NewStore()
 	old := &Snapshot{Generation: 1, Revision: "sha256:old", Canonical: &model.State{Kind: model.KindLabDNS, Metadata: model.Metadata{Name: "old"}}}

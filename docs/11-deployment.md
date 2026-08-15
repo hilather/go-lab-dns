@@ -44,7 +44,7 @@ labdns version
 | Interface | Meaning |
 |---|---|
 | `--config` | Bootstrap YAML/JSON path. Required for serve/validate/canonicalize/verify. The process never writes this file. |
-| `--chaos-disable` | Startup inhibit. Same bit as `LABDNS_CHAOS_DISABLE=1/true/yes`. YAML and ordinary API cannot relax it. |
+| `--chaos-disable` | Startup inhibit, same switch as `LABDNS_CHAOS_DISABLE=1/true/yes` (case-insensitive). Distinct from the runtime emergency bit: `Reset` and `emergency-enable` cannot relax it. Restart without the flag/env is the only off switch. |
 | `--dns-listen` | Override YAML DNS address. Empty uses YAML (`:5353`). |
 | `--management-listen` | Override YAML management address. `off` / `none` / `-` leaves HTTP unbound. |
 | `--shutdown-timeout` | Graceful deadline (default 5s). Cancels chaos delays, then DNS and management. |

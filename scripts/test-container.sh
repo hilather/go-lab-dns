@@ -65,7 +65,8 @@ if [ "${capeff}" != "0000000000000000" ]; then
 fi
 
 mgmt_port="$(docker port "${NAME}" 8080/tcp | head -n1 | awk -F: '{print $NF}')"
-dns_port="$(docker port "${NAME}" 5353/udp | head -n1 | awk -F: '{print $NF}')"
+udp_port="$(docker port "${NAME}" 5353/udp | head -n1 | awk -F: '{print $NF}')"
+tcp_port="$(docker port "${NAME}" 5353/tcp | head -n1 | awk -F: '{print $NF}')"
 
 ok=0
 for _ in $(seq 1 40); do
@@ -87,6 +88,22 @@ if ! docker exec "${NAME}" /labdns version >/dev/null; then
 	exit 1
 fi
 
-( cd "${ROOT}" && go run ./cmd/labdns query --name ns1.lab.example.net. --type A --server "127.0.0.1:${dns_port}" )
+query_ok() {
+	local transport="$1"
+	local port="$2"
+	local out
+	out="$(cd "${ROOT}" && go run ./cmd/labdns query --name ns1.lab.example.net. --type A --transport "${transport}" --server "127.0.0.1:${port}")"
+	printf '%s\n' "${out}"
+	if ! printf '%s\n' "${out}" | grep -q 'rcode=NOERROR'; then
+		echo "${transport} query missing rcode=NOERROR" >&2
+		exit 1
+	fi
+	if ! printf '%s\n' "${out}" | grep -q '10.42.0.53'; then
+		echo "${transport} query missing 10.42.0.53" >&2
+		exit 1
+	fi
+}
+query_ok udp "${udp_port}"
+query_ok tcp "${tcp_port}"
 
 echo "container contract ok image=${IMAGE}"

@@ -39,7 +39,8 @@ func (s *App) Reset(ctx context.Context, actor Actor, in ResetIn) (*ApplyResult,
 	}
 	impact := impactOf(canonicalOf(prev), next.Canonical, diff)
 
-	// Runtime-only emergency bit does not survive reset.
+	// Runtime emergency-disable does not survive reset. A startup
+	// --chaos-disable lock is a different bit and stays set.
 	s.store.SetEmergencyChaosOff(false)
 	displaced := s.store.Swap(next)
 	// Bootstrap pointer tracks the last successfully compiled mount so a

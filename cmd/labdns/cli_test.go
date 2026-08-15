@@ -195,6 +195,17 @@ func TestQueryRequiresName(t *testing.T) {
 	}
 }
 
+func TestQueryRejectsUnknownTransport(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := runContext(context.Background(), []string{"labdns", "query", "--name", "ns1.lab.example.net.", "--transport", "dot"}, &stdout, &stderr)
+	if code != 2 {
+		t.Fatalf("exit %d stderr=%q", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "--transport") {
+		t.Fatalf("stderr=%q", stderr.String())
+	}
+}
+
 func TestHealthcheckUnknownFlag(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := runContext(context.Background(), []string{"labdns", "healthcheck", "--nope"}, &stdout, &stderr)

@@ -9,10 +9,15 @@ type Store struct {
 	active    atomic.Pointer[Snapshot]
 	previous  atomic.Pointer[Snapshot]
 	bootstrap atomic.Pointer[Snapshot]
-	// emergency is the process inhibit bit. Swap stamps it onto every
-	// installed snapshot. Apply/Reset cannot clear it; only
-	// SetEmergencyChaosOff(false) can.
+	// emergency is the runtime inhibit bit (SIGUSR1 / REST emergency-disable).
+	// Swap stamps it onto every installed snapshot. Apply cannot clear it;
+	// SetEmergencyChaosOff(false) can (Reset and emergency-enable).
 	emergency atomic.Bool
+	// startup is the --chaos-disable / LABDNS_CHAOS_DISABLE lock. It also
+	// forces EmergencyChaosOff on every Swap/Stamp. Reset and
+	// EmergencyEnableChaos cannot clear it; only a restart without the
+	// flag/env can.
+	startup atomic.Bool
 }
 
 // NewStore returns an empty Store. Load, Previous, and Bootstrap are nil.
@@ -40,8 +45,9 @@ func (s *Store) Swap(next *Snapshot) *Snapshot {
 	return prev
 }
 
-// SetEmergencyChaosOff sets the process inhibit bit. It does not publish a
+// SetEmergencyChaosOff sets the runtime inhibit bit. It does not publish a
 // snapshot; call StampEmergency to copy the bit onto the current active.
+// Clearing this bit does not clear a startup lock.
 func (s *Store) SetEmergencyChaosOff(off bool) {
 	if s == nil {
 		return
@@ -49,9 +55,25 @@ func (s *Store) SetEmergencyChaosOff(off bool) {
 	s.emergency.Store(off)
 }
 
-// EmergencyChaosOff reports the process inhibit bit.
+// SetStartupChaosOff arms the process-lifetime startup inhibit. There is no
+// clear: restart without --chaos-disable / LABDNS_CHAOS_DISABLE is the only off
+// switch.
+func (s *Store) SetStartupChaosOff() {
+	if s == nil {
+		return
+	}
+	s.startup.Store(true)
+}
+
+// StartupChaosOff reports the startup inhibit lock.
+func (s *Store) StartupChaosOff() bool {
+	return s != nil && s.startup.Load()
+}
+
+// EmergencyChaosOff reports whether chaos execution is inhibited by the
+// runtime bit or the startup lock.
 func (s *Store) EmergencyChaosOff() bool {
-	return s != nil && s.emergency.Load()
+	return s != nil && (s.emergency.Load() || s.startup.Load())
 }
 
 // StampEmergency CAS-installs a copy of the current active snapshot with
@@ -83,7 +105,7 @@ func (s *Store) stampEmergency(next *Snapshot) *Snapshot {
 	if s == nil || next == nil {
 		return next
 	}
-	want := s.emergency.Load()
+	want := s.emergency.Load() || s.startup.Load()
 	if next.Canonical != nil && next.Canonical.Spec.Chaos.EmergencyDisabled {
 		want = true
 	}

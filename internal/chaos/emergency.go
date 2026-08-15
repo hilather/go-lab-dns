@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/hilather/go-lab-dns/internal/snapshot"
@@ -44,16 +45,19 @@ func ServeSignals(ctx context.Context, sigs <-chan os.Signal, store *snapshot.St
 	}
 }
 
-// NotifyUSR1 arms process signal notification for SIGUSR1 and SIGUSR2.
-// The returned stop func unregisters the channel.
+// NotifyUSR1 arms process signal notification for SIGUSR1. SIGUSR2 is
+// ignored at the process level so a reserved signal cannot fill the
+// notify buffer and drop an emergency USR1.
 func NotifyUSR1() (<-chan os.Signal, func()) {
+	signal.Ignore(syscall.SIGUSR2)
 	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGUSR1, syscall.SIGUSR2)
+	signal.Notify(ch, syscall.SIGUSR1)
 	return ch, func() { signal.Stop(ch) }
 }
 
-// EnvChaosDisable reports LABDNS_CHAOS_DISABLE=1/true (startup inhibit).
+// EnvChaosDisable reports LABDNS_CHAOS_DISABLE=1/true/yes (startup inhibit).
+// Comparison is case-insensitive after TrimSpace.
 func EnvChaosDisable() bool {
-	v := os.Getenv("LABDNS_CHAOS_DISABLE")
-	return v == "1" || v == "true" || v == "TRUE" || v == "yes"
+	v := strings.TrimSpace(strings.ToLower(os.Getenv("LABDNS_CHAOS_DISABLE")))
+	return v == "1" || v == "true" || v == "yes"
 }

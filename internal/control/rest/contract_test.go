@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hilather/go-lab-dns/internal/capabilities"
 	"github.com/hilather/go-lab-dns/internal/model"
@@ -281,6 +282,33 @@ func TestServeLoopbackHealth(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status=%d", resp.StatusCode)
 	}
+}
+
+func TestShutdownBeforeServeClosesListener(t *testing.T) {
+	s, _ := newTestServer(t)
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := ln.Addr().String()
+	if err := s.Shutdown(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	errCh := make(chan error, 1)
+	go func() { errCh <- s.Serve(ln) }()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Fatalf("Serve after Shutdown: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Serve did not return after pre-start Shutdown")
+	}
+	ln2, err := net.Listen("tcp", addr)
+	if err != nil {
+		t.Fatalf("listener still bound after Shutdown: %v", err)
+	}
+	_ = ln2.Close()
 }
 
 func TestPaginationInvalidCursor(t *testing.T) {

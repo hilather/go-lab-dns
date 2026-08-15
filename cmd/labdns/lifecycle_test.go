@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hilather/go-lab-dns/internal/app"
+	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/dnswire"
 	"github.com/hilather/go-lab-dns/internal/model"
 )
@@ -32,9 +34,46 @@ func TestStartupChaosDisableWinsOverYAML(t *testing.T) {
 	if live := rt.Store().Load(); live == nil || !live.EmergencyChaosOff {
 		t.Fatalf("override did not set EmergencyChaosOff: %+v", live)
 	}
+	if !rt.Store().StartupChaosOff() {
+		t.Fatal("startup lock not armed")
+	}
 	msg := queryA(t, rt, "ns1.lab.example.net.")
 	if msg.RCode != model.RCodeNoError {
 		t.Fatalf("override lost: rcode=%s (YAML would SERVFAIL)", msg.RCode)
+	}
+}
+
+func TestStartupChaosDisableSurvivesResetAndEnable(t *testing.T) {
+	path := writeChaosServfailConfig(t, "127.0.0.1:0", "127.0.0.1:0")
+	rt, err := serveFromConfig(context.Background(), serveFlags{Config: path, ChaosDisable: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = rt.Shutdown(context.Background()) })
+	actor := auth.Actor{ID: "lifecycle", Class: "startup"}
+	if _, err := rt.app.Reset(context.Background(), actor, app.ResetIn{Reason: "lifecycle"}); err != nil {
+		t.Fatal(err)
+	}
+	if !rt.Store().StartupChaosOff() {
+		t.Fatal("reset cleared startup lock")
+	}
+	if live := rt.Store().Load(); live == nil || !live.EmergencyChaosOff {
+		t.Fatal("reset relaxed startup inhibit on the snapshot")
+	}
+	if msg := queryA(t, rt, "ns1.lab.example.net."); msg.RCode != model.RCodeNoError {
+		t.Fatalf("after reset rcode=%s (startup override must still inhibit SERVFAIL)", msg.RCode)
+	}
+	if _, err := rt.app.EmergencyEnableChaos(context.Background(), actor, app.EmergencyIn{Reason: "resume"}); err != nil {
+		t.Fatal(err)
+	}
+	if !rt.Store().StartupChaosOff() || !rt.Store().EmergencyChaosOff() {
+		t.Fatal("emergency-enable relaxed startup inhibit")
+	}
+	if live := rt.Store().Load(); live == nil || !live.EmergencyChaosOff {
+		t.Fatal("emergency-enable cleared snapshot inhibit under startup lock")
+	}
+	if msg := queryA(t, rt, "ns1.lab.example.net."); msg.RCode != model.RCodeNoError {
+		t.Fatalf("after emergency-enable rcode=%s", msg.RCode)
 	}
 }
 
@@ -285,9 +324,6 @@ func waitCmd(t *testing.T, cmd *exec.Cmd, d time.Duration) {
 
 func parseListenField(t *testing.T, line, field string) string {
 	t.Helper()
-	for _, part := range strings.Fields(line) {
-		_ = part
-	}
 	// "labdns: listening udp A tcp B management C revision D"
 	fields := strings.Fields(line)
 	for i, f := range fields {

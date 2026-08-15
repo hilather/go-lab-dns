@@ -114,8 +114,9 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 	}
 	store := snapshot.NewStore()
 	if flags.ChaosDisable {
-		// YAML and ordinary apply cannot clear this process bit.
-		store.SetEmergencyChaosOff(true)
+		// Distinct from the runtime emergency bit: Reset and
+		// EmergencyEnableChaos cannot clear a startup lock.
+		store.SetStartupChaosOff()
 	}
 	store.InstallBootstrap(snap)
 
@@ -218,8 +219,11 @@ func (r *serveRuntime) Shutdown(ctx context.Context) error {
 		if err := r.mgmt.Shutdown(ctx); err != nil && first == nil {
 			first = err
 		}
-	} else if r.mgmtLn != nil {
+	}
+	// Close even when rest.Shutdown raced Serve and never stored http.Server.
+	if r.mgmtLn != nil {
 		_ = r.mgmtLn.Close()
+		r.mgmtLn = nil
 	}
 	if r.dns != nil {
 		if err := r.dns.Shutdown(ctx); err != nil && first == nil {

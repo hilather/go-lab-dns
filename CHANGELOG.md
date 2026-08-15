@@ -62,8 +62,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Global and per-policy delay/concurrency budgets with reservation/release. Protected names, protected client groups, and `chaosExempt` skip execution.
 - `ActivateChaos` / `DeactivateChaos` / `SetChaosExpiry` compile to `OpUpdate` + `TargetChaosActivation` via `Apply`.
 - `SimulateChaos` returns explained `hash-v1` decisions.
-- `EmergencyDisableChaos` sets a store-level inhibit bit that `Store.Swap` stamps onto every snapshot (apply cannot clear it). The emergency path CAS-stamps the current snapshot and does not roll back a concurrent apply. YAML `emergencyDisabled` still forces the bit on.
-- `SIGUSR1` (and `labdns serve --chaos-disable` / `LABDNS_CHAOS_DISABLE=1`) set the same inhibit bit. `SIGUSR2` is ignored.
+- `EmergencyDisableChaos` sets a store-level runtime inhibit bit that `Store.Swap` stamps onto every snapshot (apply cannot clear it). The emergency path CAS-stamps the current snapshot and does not roll back a concurrent apply. YAML `emergencyDisabled` still forces the bit on.
+- `SIGUSR1` sets the runtime emergency bit. `labdns serve --chaos-disable` / `LABDNS_CHAOS_DISABLE=1/true/yes` set a separate startup lock that `Reset` and `EmergencyEnableChaos` cannot clear. `SIGUSR2` is ignored.
 - CHA-002 executes the first-GA catalog in `internal/chaos/effects`: context-aware `fixed`/`uniform` delay (all four phases, budgets, cancel), RCODE/NODATA/EDE, TTL set/clamp/zero/jitter, alternate/omit/limit/shuffle/rotate, UDP drop/TC, TCP close/reset/hold, cache bypass/force-miss/expire/stale, upstream delay/unavailable/force/timeout/transport-error/failover/synthetic RCODE, and policy-scoped pressure. ADR 0007 malformed-wire effects are not implemented. Support matrix: [api/chaos/effects.json](https://github.com/hilather/go-lab-dns/blob/main/api/chaos/effects.json).
 
 ### Observability
@@ -99,7 +99,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Deployment and operations
 
-- `labdns serve --config PATH` compiles bootstrap YAML, serves DNS on the configured listen address (default `:5353` UDP+TCP), and serves management HTTP on the configured address (default `:8080`). `--chaos-disable` / `LABDNS_CHAOS_DISABLE=1` set the process inhibit bit. `SIGTERM` is graceful (cancel delays, then listeners). `SIGUSR1` and `labdns chaos emergency-disable --pid-file` are the local emergency path.
+- `labdns serve --config PATH` compiles bootstrap YAML, serves DNS on the configured listen address (default `:5353` UDP+TCP), and serves management HTTP on the configured address (default `:8080`). `--chaos-disable` / `LABDNS_CHAOS_DISABLE` arm a startup lock that YAML, reset, and emergency-enable cannot relax. `SIGTERM` is graceful (cancel delays, then listeners). `SIGUSR1` and `labdns chaos emergency-disable --pid-file` are the local runtime emergency path.
 - Runtime plan/apply/reset are process-local via `app.Service`. `expectedRevision` is required except privileged reset. Idempotency keys use a bounded in-memory LRU (default 256; `<=0` is not unlimited). Reset rereads the bootstrap mount and never writes it. Export is canonical YAML/JSON with no comments, plus bootstrap-to-runtime operations. Container recreation discards runtime drift.
 
 ### Observability

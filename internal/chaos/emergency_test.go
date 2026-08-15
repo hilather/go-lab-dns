@@ -55,12 +55,16 @@ func TestServeSignalsUSR1(t *testing.T) {
 }
 
 func TestEnvChaosDisable(t *testing.T) {
-	t.Setenv("LABDNS_CHAOS_DISABLE", "1")
-	if !EnvChaosDisable() {
-		t.Fatal("expected true")
+	for _, v := range []string{"1", "true", "TRUE", "Yes", " yes "} {
+		t.Setenv("LABDNS_CHAOS_DISABLE", v)
+		if !EnvChaosDisable() {
+			t.Fatalf("expected true for %q", v)
+		}
 	}
-	t.Setenv("LABDNS_CHAOS_DISABLE", "0")
-	if EnvChaosDisable() {
-		t.Fatal("expected false")
+	for _, v := range []string{"0", "false", "", "no"} {
+		t.Setenv("LABDNS_CHAOS_DISABLE", v)
+		if EnvChaosDisable() {
+			t.Fatalf("expected false for %q", v)
+		}
 	}
 }
