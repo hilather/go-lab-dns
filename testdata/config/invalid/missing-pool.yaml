@@ -1,0 +1,10 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: missing-pool
+spec:
+  forwarding:
+    policies:
+      - id: p
+        suffix: .
+        upstreamPool: no-such-pool

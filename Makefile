@@ -26,7 +26,7 @@ help:
 		'  security-scan       govulncheck' \
 		'  test-integration    unimplemented until later DNS/control-plane PRs' \
 		'  test-parity         unimplemented until API-001 / MCP-001' \
-		'  test-config-compat  unimplemented until CFG-001' \
+		'  test-config-compat  positive+negative v1alpha1 config fixtures' \
 		'  test-container      unimplemented until PR-16 / DEP-001'
 
 format:
@@ -66,8 +66,7 @@ test-parity:
 	@exit 1
 
 test-config-compat:
-	@echo 'unimplemented until CFG-001: configuration compatibility tests' >&2
-	@exit 1
+	$(GO) test ./internal/config -run TestConfigCompat -count=1
 
 test-container:
 	@echo 'unimplemented until PR-16 (DEP-001): container image and contract tests' >&2

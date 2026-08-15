@@ -1,0 +1,20 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: self-forward
+spec:
+  listeners:
+    dns:
+      address: ":5353"
+  forwarding:
+    policies:
+      - id: p
+        suffix: .
+        upstreamPool: loop
+    pools:
+      - id: loop
+        strategy: ordered
+        upstreams:
+          - id: self
+            endpoint: 127.0.0.1:5353
+            transport: udp

@@ -1,0 +1,16 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: wildcard-dname
+spec:
+  zones:
+    - id: z
+      name: lab.example.net.
+      mode: overlay
+      records:
+        - id: wd
+          owner: "*"
+          type: TYPE39
+          genericRdata:
+            typeCode: 39
+            presentation: "target.example."

@@ -108,7 +108,7 @@ configured time bucket
 optional caller-supplied simulation nonce
 ```
 
-The implementation must document the hash and mapping algorithm and lock it with golden tests. Changing that algorithm is a compatibility change for deterministic experiments.
+The implementation must document the hash and mapping algorithm and lock it with golden tests. Changing that algorithm is a compatibility change for deterministic experiments. CFG validation rejects `selector.timeBucket` values below `1s` so the `hash-v1` second-precision encoding cannot collapse windows.
 
 ### Random
 

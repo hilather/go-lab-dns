@@ -30,7 +30,6 @@ var requiredTargets = []string{
 var unimplementedTargets = []string{
 	"test-integration",
 	"test-parity",
-	"test-config-compat",
 	"test-container",
 }
 

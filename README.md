@@ -76,12 +76,13 @@ make security-scan
 
 `make generate` writes `testdata/generated/fixture.txt` from `testdata/generated/source.txt` and `go.mod`. `make verify-generated` fails when that fixture is stale.
 
+`make test-config-compat` runs the v1alpha1 positive and negative configuration fixtures under `testdata/config`.
+
 Targets that are not yet implemented fail closed (non-zero exit with an explicit `unimplemented` message) rather than succeeding as no-ops:
 
 ```text
 make test-integration    # later DNS/control-plane PRs
 make test-parity         # API-001 / MCP-001
-make test-config-compat  # CFG-001
 make test-container      # PR-16 / DEP-001
 ```
 

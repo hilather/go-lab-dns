@@ -1,0 +1,18 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: cname-loop
+spec:
+  zones:
+    - id: z
+      name: lab.example.net.
+      mode: overlay
+      records:
+        - id: a
+          owner: a
+          type: CNAME
+          values: [b.lab.example.net.]
+        - id: b
+          owner: b
+          type: CNAME
+          values: [a.lab.example.net.]

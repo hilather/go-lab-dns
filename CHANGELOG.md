@@ -46,7 +46,10 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Configuration and schema
 
-- v1alpha1 Go types are frozen for `labdns.dev/v1alpha1` (`kind: LabDNS`). User-supplied IDs only. `access.unknownClient` is `refuse-forward`. CNAME depth default is 8. YAML decode, default materialization, and JSON Schema remain later work.
+- Strict v1alpha1 YAML/JSON decode in `internal/config` with unknown-field rejection, refuse-forward default-deny, materialized listen/TTL/CNAME defaults, canonical JSON/YAML export, and `sha256:` revision hashing.
+- Published JSON Schema at [api/jsonschema/labdns.dev.v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/jsonschema/labdns.dev.v1alpha1.json).
+- `selector.timeBucket` must be `>= 1s`. Empty `clientGroups` is valid (local answers, no forwarding). Non-ASCII names, wildcard NS/DNAME, CNAME coexistence/loops, and self-forwarding are rejected.
+- Config migration interface stub (`Migrator`); only `labdns.dev/v1alpha1` exists.
 
 ### Deployment and operations
 
@@ -62,5 +65,5 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Known limitations
 
-- YAML configuration decode, JSON Schema, snapshot compilation, DNS wire, resolver, forwarder, and control-plane work have not started.
-- `make test-integration`, `make test-parity`, `make test-config-compat`, and `make test-container` fail closed until later PRs.
+- Snapshot compilation, DNS wire, resolver, forwarder, and control-plane work have not started.
+- `make test-integration`, `make test-parity`, and `make test-container` fail closed until later PRs.

@@ -1,0 +1,14 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: wildcard-ns
+spec:
+  zones:
+    - id: z
+      name: lab.example.net.
+      mode: overlay
+      records:
+        - id: wns
+          owner: "*"
+          type: NS
+          values: [ns1.lab.example.net.]

@@ -1,0 +1,18 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: cname-coexist
+spec:
+  zones:
+    - id: z
+      name: lab.example.net.
+      mode: overlay
+      records:
+        - id: c
+          owner: www
+          type: CNAME
+          values: [other.lab.example.net.]
+        - id: a
+          owner: www
+          type: A
+          values: [10.0.0.1]

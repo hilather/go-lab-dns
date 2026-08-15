@@ -1,0 +1,392 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://labdns.dev/schema/v1alpha1",
+  "title": "LabDNS v1alpha1",
+  "description": "Normative field list for apiVersion labdns.dev/v1alpha1, kind LabDNS. Unknown fields are rejected. Durations use Go time.ParseDuration syntax (30s, 1h, 100ms).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": { "const": "labdns.dev/v1alpha1" },
+    "kind": { "const": "LabDNS" },
+    "metadata": { "$ref": "#/$defs/metadata" },
+    "spec": { "$ref": "#/$defs/spec" }
+  },
+  "$defs": {
+    "duration": {
+      "type": "string",
+      "description": "Go time.ParseDuration syntax, exported in a single-unit canonical form (30s, 5m, 1h)."
+    },
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "description": "ASCII DNS name; normalized to lower-case FQDN with trailing dot." },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "labels": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "listeners": { "$ref": "#/$defs/listeners" },
+        "access": { "$ref": "#/$defs/access" },
+        "defaults": { "$ref": "#/$defs/defaults" },
+        "zones": { "type": "array", "items": { "$ref": "#/$defs/zone" } },
+        "forwarding": { "$ref": "#/$defs/forwarding" },
+        "cache": { "$ref": "#/$defs/cache" },
+        "chaos": { "$ref": "#/$defs/chaos" },
+        "observability": { "$ref": "#/$defs/observability" },
+        "management": { "$ref": "#/$defs/management" }
+      }
+    },
+    "listeners": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dns": { "$ref": "#/$defs/dnsListener" },
+        "management": { "$ref": "#/$defs/mgmtListener" }
+      }
+    },
+    "dnsListener": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "address": { "type": "string", "description": "host:port; default :5353" },
+        "protocols": {
+          "type": "array",
+          "items": { "enum": ["udp", "tcp"] },
+          "description": "default [udp, tcp]; DoT is not a v1alpha1 value"
+        }
+      }
+    },
+    "mgmtListener": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "address": { "type": "string", "description": "host:port; default :8080" },
+        "restPath": { "type": "string", "description": "default /v1" },
+        "mcpPath": { "type": "string", "description": "default /mcp" }
+      }
+    },
+    "access": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "unknownClient": {
+          "const": "refuse-forward",
+          "description": "Only v1alpha1 value. Local answers still serve; forwarding is denied."
+        },
+        "clientGroups": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/clientGroup" },
+          "description": "Empty list is valid: local zones answer; nothing is forwarded."
+        }
+      }
+    },
+    "clientGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "cidrs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "cidrs": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "chaosExempt": { "type": "boolean" },
+        "allowForward": {
+          "type": "boolean",
+          "description": "Materialized default true when a group exists. Go zero value is false until decode."
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ttl": { "$ref": "#/$defs/duration", "description": "default 30s" },
+        "negativeTTL": { "$ref": "#/$defs/duration", "description": "default 10s" },
+        "cnameDepth": { "type": "integer", "minimum": 1, "description": "default 8" }
+      }
+    },
+    "zone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "mode"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "$ref": "#/$defs/name" },
+        "mode": { "enum": ["authoritative", "overlay"] },
+        "soa": { "$ref": "#/$defs/soa" },
+        "nameservers": { "type": "array", "items": { "$ref": "#/$defs/name" } },
+        "records": { "type": "array", "items": { "$ref": "#/$defs/record" } }
+      }
+    },
+    "soa": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primary": { "$ref": "#/$defs/name" },
+        "administrator": { "$ref": "#/$defs/name" },
+        "serial": { "type": "string" },
+        "refresh": { "$ref": "#/$defs/duration" },
+        "retry": { "$ref": "#/$defs/duration" },
+        "expire": { "$ref": "#/$defs/duration" },
+        "minimum": { "$ref": "#/$defs/duration" }
+      }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "owner", "type"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "owner": { "type": "string" },
+        "type": { "type": "string" },
+        "ttl": { "$ref": "#/$defs/duration" },
+        "values": { "type": "array", "items": { "type": "string" } },
+        "genericRdata": { "$ref": "#/$defs/genericRdata" },
+        "chaosPolicyRefs": { "type": "array", "items": { "$ref": "#/$defs/id" } }
+      }
+    },
+    "genericRdata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["typeCode", "presentation"],
+      "properties": {
+        "typeCode": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "presentation": { "type": "string" }
+      }
+    },
+    "forwarding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "policies": { "type": "array", "items": { "$ref": "#/$defs/forwardingPolicy" } },
+        "pools": { "type": "array", "items": { "$ref": "#/$defs/upstreamPool" } }
+      }
+    },
+    "forwardingPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "suffix", "upstreamPool"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "suffix": { "$ref": "#/$defs/name" },
+        "upstreamPool": { "$ref": "#/$defs/id" },
+        "failover": { "$ref": "#/$defs/failover" }
+      }
+    },
+    "failover": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timeout": { "$ref": "#/$defs/duration" },
+        "onTimeout": { "type": "boolean" },
+        "onTransportError": { "type": "boolean" },
+        "onSERVFAIL": { "type": "boolean" },
+        "onREFUSED": { "type": "boolean" },
+        "udpTruncateRetryTCP": { "type": "boolean" }
+      }
+    },
+    "upstreamPool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "strategy", "upstreams"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "strategy": { "enum": ["ordered", "round-robin", "random", "health-aware"] },
+        "upstreams": { "type": "array", "items": { "$ref": "#/$defs/upstream" }, "minItems": 1 }
+      }
+    },
+    "upstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "endpoint", "transport"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "endpoint": { "type": "string" },
+        "transport": { "enum": ["udp", "tcp"] }
+      }
+    },
+    "cache": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "maxEntries": { "type": "integer", "minimum": 0 },
+        "minimumTTL": { "$ref": "#/$defs/duration" },
+        "maximumTTL": { "$ref": "#/$defs/duration" },
+        "maximumNegativeTTL": { "$ref": "#/$defs/duration" },
+        "staleServing": { "type": "boolean" }
+      }
+    },
+    "chaos": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "description": "default false" },
+        "emergencyDisabled": { "type": "boolean" },
+        "safety": { "$ref": "#/$defs/safety" },
+        "policies": { "type": "array", "items": { "$ref": "#/$defs/chaosPolicy" } }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "protectedNames": { "type": "array", "items": { "$ref": "#/$defs/name" } },
+        "protectedClientGroups": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "allowedAddressCIDRs": { "type": "array", "items": { "type": "string" } },
+        "maxDelay": { "$ref": "#/$defs/duration" },
+        "maxConcurrentDelayed": { "type": "integer", "minimum": 0 },
+        "maxDropProbability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "maxActiveHighImpactPolicies": { "type": "integer", "minimum": 0 },
+        "requireExpiryForSafetyClasses": {
+          "type": "array",
+          "items": { "enum": ["low", "medium", "high", "unsafe-deferred"] }
+        },
+        "defaultMaxLifetime": { "$ref": "#/$defs/duration" }
+      }
+    },
+    "chaosPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "owner", "reason", "safetyClass"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "description": { "type": "string" },
+        "owner": { "type": "string" },
+        "labels": { "type": "object", "additionalProperties": { "type": "string" } },
+        "reason": { "type": "string" },
+        "ticket": { "type": "string" },
+        "enabled": { "type": "boolean" },
+        "startsAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "safetyClass": { "enum": ["low", "medium", "high", "unsafe-deferred"] },
+        "scope": { "$ref": "#/$defs/chaosScope" },
+        "selector": { "$ref": "#/$defs/chaosSelector" },
+        "outcomes": { "type": "array", "items": { "$ref": "#/$defs/chaosOutcome" } },
+        "composition": { "enum": ["compose", "terminal", "exclusive-group"] },
+        "exclusiveGroup": { "type": "string" },
+        "budget": { "$ref": "#/$defs/chaosBudget" }
+      }
+    },
+    "chaosScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "recordIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "owners": { "type": "array", "items": { "$ref": "#/$defs/name" } },
+        "wildcardSourceIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "zones": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "forwardingPolicyIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "upstreamPools": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "clientGroups": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "qtypes": { "type": "array", "items": { "type": "string" } },
+        "transports": { "type": "array", "items": { "enum": ["udp", "tcp"] } }
+      }
+    },
+    "chaosSelector": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "enum": ["deterministic", "random"] },
+        "seed": { "type": "string" },
+        "probability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "timeBucket": {
+          "$ref": "#/$defs/duration",
+          "description": "If set, must be >= 1s. Sub-second buckets are rejected so hash-v1 second encoding cannot collapse windows."
+        },
+        "revision": { "type": "string" },
+        "everyNth": { "type": "integer", "minimum": 0 },
+        "samplingKey": { "type": "string" },
+        "period": { "$ref": "#/$defs/duration" },
+        "unhealthy": { "$ref": "#/$defs/duration" },
+        "phaseOffset": { "$ref": "#/$defs/duration" }
+      }
+    },
+    "chaosOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "weight": { "type": "number", "minimum": 0 },
+        "actions": { "type": "array", "items": { "$ref": "#/$defs/chaosAction" } }
+      }
+    },
+    "chaosAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "enum": [
+            "delay", "rcode", "drop", "truncate", "tcp-close", "tcp-reset",
+            "ttl", "alternate", "omit", "limit", "shuffle", "rotate",
+            "cache", "upstream", "pressure"
+          ]
+        },
+        "phase": {
+          "enum": ["before-resolution", "before-upstream", "after-upstream", "before-response"]
+        },
+        "distribution": { "enum": ["fixed", "uniform"] },
+        "duration": { "$ref": "#/$defs/duration" },
+        "min": { "$ref": "#/$defs/duration" },
+        "max": { "$ref": "#/$defs/duration" },
+        "value": { "type": "string" },
+        "ede": { "$ref": "#/$defs/ede" },
+        "ttl": { "$ref": "#/$defs/duration" },
+        "values": { "type": "array", "items": { "type": "string" } },
+        "limit": { "type": "integer" },
+        "upstreamId": { "$ref": "#/$defs/id" },
+        "hold": { "$ref": "#/$defs/duration" }
+      }
+    },
+    "ede": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "code": { "type": "integer" },
+        "text": { "type": "string" }
+      }
+    },
+    "chaosBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxDelay": { "$ref": "#/$defs/duration" },
+        "maxConcurrency": { "type": "integer", "minimum": 0 },
+        "maxRate": { "type": "number", "minimum": 0 },
+        "maxFrequency": { "type": "number", "minimum": 0 }
+      }
+    },
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "logQNAME": { "type": "boolean" }
+      }
+    },
+    "management": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "auth": { "$ref": "#/$defs/auth" }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": { "enum": ["dev-loopback-unauth", "bearer"] },
+        "secretRef": { "type": "string" }
+      }
+    }
+  }
+}

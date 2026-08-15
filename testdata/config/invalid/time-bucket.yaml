@@ -1,0 +1,42 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: time-bucket
+spec:
+  access:
+    clientGroups:
+      - id: g
+        cidrs: [10.0.0.0/8]
+  zones:
+    - id: z
+      name: lab.example.net.
+      mode: authoritative
+      soa:
+        primary: ns1.lab.example.net.
+        administrator: hostmaster.lab.example.net.
+        serial: auto
+        refresh: 1h
+        retry: 5m
+        expire: 24h
+      records:
+        - id: a1
+          owner: ns1
+          type: A
+          values: [10.0.0.1]
+  chaos:
+    policies:
+      - id: p
+        owner: lab
+        reason: sub-second bucket is not hash-v1
+        enabled: false
+        safetyClass: low
+        selector:
+          mode: deterministic
+          probability: 1.0
+          timeBucket: 500ms
+        outcomes:
+          - id: d
+            weight: 1
+            actions:
+              - type: delay
+                duration: 1ms

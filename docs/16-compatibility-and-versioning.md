@@ -26,7 +26,7 @@ A DNS correctness fix may alter observable output. Release notes must describe i
 
 ## Configuration versions
 
-Use `apiVersion` and `kind`. Parsers support explicitly documented versions. Migration tools convert old canonical state to a newer version. Unknown fields fail rather than being silently discarded.
+Use `apiVersion` and `kind`. First GA ships **`labdns.dev/v1alpha1` only**. `internal/config.Migrator` is the extension point for a later version; `Migrations()` is empty until then. Unknown `apiVersion` values fail with `unsupported_protocol_version`. Unknown fields fail rather than being silently discarded.
 
 ## REST
 
@@ -64,7 +64,8 @@ Release CI classifies changes as additive, potentially breaking, or breaking. Hu
 - MCP protocol-version matrix.
 - Deterministic chaos golden vectors.
 - Metric and error catalog diffs.
+- `make test-config-compat` (positive and negative v1alpha1 fixtures).
 
 ## Open questions
 
-- Number of previous config and MCP protocol versions supported at GA.
+Resolved for first GA: only `labdns.dev/v1alpha1` is supported. A later `v1beta1`/`v1` must land as a `Migrator` plus old-fixture tests; do not reinterpret v1alpha1 fields in place.

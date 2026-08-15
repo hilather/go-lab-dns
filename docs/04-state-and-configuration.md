@@ -2,10 +2,10 @@
 
 Status: Proposed normative behavior
 Owners: Configuration, Application
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-15 (CFG-001 decode/schema)
 Related ADRs: 0003, 0005
 
-Canonical Go types live in `internal/model`. YAML decode, default materialization, and JSON Schema are a later configuration PR.
+Canonical Go types live in `internal/model`. YAML/JSON decode, default materialization, validation, canonical export, revision hashing, and the published schema live in `internal/config` and [api/jsonschema/labdns.dev.v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/jsonschema/labdns.dev.v1alpha1.json).
 
 ## Problem statement
 
@@ -289,15 +289,37 @@ Typed change sets use:
 
 ## Schema rules
 
-- Unknown fields fail validation.
+- Unknown fields fail validation at every nesting level.
 - Stable IDs are required for zones, records, forwarding policies, upstreams, client groups, and chaos policies.
 - IDs are user-supplied and immutable within an API version.
-- Names are canonicalized during normalization.
-- Durations use an explicit documented syntax.
-- Cross-references must resolve.
+- Names are canonicalized during normalization to lower-case ASCII FQDNs with a trailing dot. Non-ASCII names are rejected in v1alpha1.
+- Durations use [Go `time.ParseDuration`](https://pkg.go.dev/time#ParseDuration) syntax (`30s`, `5m`, `1h`, `100ms`). Canonical export uses a single whole unit (`30s`, not `30000ms` or `1h0m0s`).
+- Cross-references must resolve (forwarding pools, chaos policy refs, chaos scope IDs).
 - Duplicate semantic RRsets are merged only when explicitly allowed; otherwise reject ambiguity.
 - Defaults are materialized in canonical export.
 - Secrets are references, never inline plaintext fields intended for Git.
+- `selector.timeBucket`, if set, must be `>= 1s` (`hash-v1` encodes whole UTC seconds).
+- Empty `clientGroups` is valid YAML: local zones still answer; nothing is forwarded.
+- CNAME cannot coexist with other data at the same owner; statically detectable CNAME loops, wildcard NS, wildcard DNAME, and self-forwarding upstreams are rejected.
+
+Published JSON Schema: [api/jsonschema/labdns.dev.v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/jsonschema/labdns.dev.v1alpha1.json).
+
+### Materialized defaults
+
+| Field | Zero / omitted | After Decode/Normalize |
+|---|---|---|
+| `spec.access.unknownClient` | empty | `refuse-forward` |
+| `spec.access.clientGroups[].allowForward` | omitted in YAML/JSON | `true` (decode-time only; Go zero value stays `false` because it cannot be distinguished from an explicit `false`) |
+| `spec.defaults.ttl` | `0` | `30s` |
+| `spec.defaults.negativeTTL` | `0` | `10s` |
+| `spec.defaults.cnameDepth` | `0` | `8` |
+| `spec.listeners.dns.address` | empty | `:5353` |
+| `spec.listeners.dns.protocols` | empty | `[udp, tcp]` |
+| `spec.listeners.management.address` | empty | `:8080` |
+| `spec.listeners.management.restPath` | empty | `/v1` |
+| `spec.listeners.management.mcpPath` | empty | `/mcp` |
+
+Revision = `sha256:` + lowercase hex of SHA-256 of compact canonical JSON (materialized defaults, duration strings, no comments). Formatting-only YAML changes do not change the revision.
 
 ## Failure modes
 

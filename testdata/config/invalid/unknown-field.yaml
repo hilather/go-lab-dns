@@ -1,0 +1,8 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: unknown
+spec:
+  notAField: true
+  defaults:
+    ttl: 30s
