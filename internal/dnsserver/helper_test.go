@@ -140,3 +140,10 @@ func hasTC(msg []byte) bool {
 func hasQR(msg []byte) bool {
 	return len(msg) >= 3 && msg[2]&0x80 != 0
 }
+
+func qdcountOf(msg []byte) uint16 {
+	if len(msg) < 6 {
+		return 0
+	}
+	return uint16(msg[4])<<8 | uint16(msg[5])
+}

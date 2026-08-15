@@ -168,7 +168,6 @@ func (s *Server) releaseInflight() {
 
 func (s *Server) encodeOpts(req *dnswire.Request, forceTruncate, badVers bool, tcp bool) dnswire.EncodeOpts {
 	opts := dnswire.EncodeOpts{
-		MaxEDNSUDPSize:    s.cfg.MaxEDNSUDPSize,
 		AdvertisedUDPSize: s.cfg.AdvertisedEDNSUDP,
 		ForceTruncate:     forceTruncate,
 		BadVers:           badVers,
@@ -180,6 +179,11 @@ func (s *Server) encodeOpts(req *dnswire.Request, forceTruncate, badVers bool, t
 }
 
 func (s *Server) handleQuery(ctx context.Context, req *dnswire.Request, parseErr error, tcp bool) (payload []byte, hint TransportHint, rcode model.RCode, hold time.Duration) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			payload, hint, rcode, hold = s.servfailOrDrop(req, tcp)
+		}
+	}()
 	ad := admit(req, parseErr, s.cfg.MaxQuestions)
 	if ad.reason != "ok" {
 		s.cfg.Metrics.IncAdmission(ad.reason, string(ad.rcode))
@@ -202,17 +206,7 @@ func (s *Server) handleQuery(ctx context.Context, req *dnswire.Request, parseErr
 	ctx = withPeer(ctx, q.Client, q.Transport)
 	ctx = s.annotate(ctx, &q)
 
-	var resp *Response
-	var herr error
-	func() {
-		defer func() {
-			if rec := recover(); rec != nil {
-				herr = fmt.Errorf("handler panic: %v", rec)
-				resp = nil
-			}
-		}()
-		resp, hint, herr = s.cfg.Handler.ServeDNS(ctx, &q)
-	}()
+	resp, hint, herr := s.cfg.Handler.ServeDNS(ctx, &q)
 	hint = resolveHint(hint, resp)
 	hold = s.cfg.MaxHold
 	if resp != nil {
@@ -269,6 +263,16 @@ func (s *Server) handleQuery(ctx context.Context, req *dnswire.Request, parseErr
 		}
 		return out, HintSend, res.RCode, 0
 	}
+}
+
+func (s *Server) servfailOrDrop(req *dnswire.Request, tcp bool) ([]byte, TransportHint, model.RCode, time.Duration) {
+	if req != nil && req.HeaderOK {
+		out, err := dnswire.EncodeError(req, model.RCodeServFail, s.encodeOpts(req, false, false, tcp))
+		if err == nil {
+			return out, HintSend, model.RCodeServFail, 0
+		}
+	}
+	return nil, HintDrop, model.RCodeServFail, 0
 }
 
 func peerFromAddr(addr net.Addr) netip.Addr {

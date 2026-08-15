@@ -139,11 +139,14 @@ func TestTCPPerIPCap(t *testing.T) {
 
 func TestTCPClientDisconnect(t *testing.T) {
 	started := make(chan struct{})
+	elapsed := make(chan time.Duration, 1)
+	begin := time.Now()
 	s := startServer(t, Config{
 		QueryTimeout: time.Second,
 		Handler: HandlerFunc(func(ctx context.Context, q *model.Query) (*Response, TransportHint, error) {
 			close(started)
 			<-ctx.Done()
+			elapsed <- time.Since(begin)
 			return nil, HintDrop, ctx.Err()
 		}),
 	})
@@ -158,11 +161,39 @@ func TestTCPClientDisconnect(t *testing.T) {
 		t.Fatal("handler did not start")
 	}
 	_ = c.Close()
-	// Handler must observe cancel without waiting QueryTimeout.
-	deadline := time.Now().Add(400 * time.Millisecond)
-	for time.Now().Before(deadline) {
-		// If the server is still holding the conn in serveTCPConn, that's ok;
-		// we only require no panic and eventual close via cleanup.
-		time.Sleep(10 * time.Millisecond)
+	select {
+	case d := <-elapsed:
+		if d > 400*time.Millisecond {
+			t.Fatalf("peer close canceled after %s; near QueryTimeout", d)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("handler did not observe ctx cancel")
+	}
+}
+
+func TestTCPMaxAgeCancelsInFlight(t *testing.T) {
+	elapsed := make(chan time.Duration, 1)
+	begin := time.Now()
+	s := startServer(t, Config{
+		QueryTimeout:   2 * time.Second,
+		TCPMaxAge:      80 * time.Millisecond,
+		TCPIdleTimeout: time.Second,
+		TCPReadTimeout: time.Second,
+		Handler: HandlerFunc(func(ctx context.Context, q *model.Query) (*Response, TransportHint, error) {
+			<-ctx.Done()
+			elapsed <- time.Since(begin)
+			return nil, HintDrop, ctx.Err()
+		}),
+	})
+	go func() {
+		_, _ = exchangeTCP(t, s.TCPAddr(), packA(t, "age.lab.", 1, nil), 3*time.Second)
+	}()
+	select {
+	case d := <-elapsed:
+		if d > 500*time.Millisecond {
+			t.Fatalf("max-age canceled after %s; near QueryTimeout", d)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("handler was not canceled by TCPMaxAge")
 	}
 }

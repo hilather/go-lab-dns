@@ -69,9 +69,10 @@ func Parse(msg []byte, transport model.Transport, client netip.Addr) (*Request, 
 	if opt := m.IsEdns0(); opt != nil {
 		req.HasEDNS = true
 		req.EDNS = EDNS{
-			Version: opt.Version(),
-			UDPSize: opt.UDPSize(),
-			DO:      opt.Do(),
+			Version:       opt.Version(),
+			UDPSize:       opt.UDPSize(),
+			DO:            opt.Do(),
+			ExtendedRcode: uint16(opt.ExtendedRcode()),
 		}
 	}
 

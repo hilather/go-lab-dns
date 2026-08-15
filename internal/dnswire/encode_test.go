@@ -122,8 +122,7 @@ func TestEncodeRespectsUDPSize(t *testing.T) {
 		})
 	}
 	out, err := Encode(req, model.Result{RCode: model.RCodeNoError, Answers: answers}, EncodeOpts{
-		MaxUDPSize:     EffectiveUDPSize(req, 4096),
-		MaxEDNSUDPSize: 4096,
+		MaxUDPSize: EffectiveUDPSize(req, 4096),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -170,6 +169,27 @@ func TestEncodeBadVersIncludesOPT(t *testing.T) {
 	}
 	if got.HasEDNS && got.EDNS.Version != 0 {
 		t.Fatalf("OPT version %d, want 0", got.EDNS.Version)
+	}
+	if out[3]&0x0F != 0 {
+		t.Fatalf("BADVERS header rcode=%d, want 0", out[3]&0x0F)
+	}
+	if got.EDNS.ExtendedRcode != 16 {
+		t.Fatalf("EXTENDED-RCODE=%d, want 16", got.EDNS.ExtendedRcode)
+	}
+}
+
+func TestEncodeFORMERROmitsUnparsedQuestion(t *testing.T) {
+	req := &Request{HeaderOK: true, ID: 0xABAB, QDCount: 1}
+	out, err := EncodeError(req, model.RCodeFormErr, EncodeOpts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out) < HeaderLen {
+		t.Fatal("short")
+	}
+	qd := uint16(out[4])<<8 | uint16(out[5])
+	if qd != 0 {
+		t.Fatalf("fabricated QDCOUNT=%d (must not echo . IN A)", qd)
 	}
 }
 

@@ -40,7 +40,7 @@
 //	QDCOUNT = 0 or > MaxQuestions (default 1)   → FORMERR
 //	QCLASS ≠ IN                                 → NOTIMP
 //	AXFR / IXFR                                 → NOTIMP
-//	EDNS version ≠ 0                            → BADVERS (FORMERR + OPT)
+//	EDNS version ≠ 0                            → BADVERS (header RCODE 0 + OPT EXTENDED-RCODE 16)
 //	UDP length > MaxUDPSize                     → drop
 //	TCP length prefix > MaxTCPSize              → close
 //

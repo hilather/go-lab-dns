@@ -155,12 +155,12 @@ Implemented in `internal/dnsserver` using `internal/dnswire`. Malformed input ne
 | QDCOUNT = 0 or QDCOUNT > `MaxQuestions` (default 1) | FORMERR |
 | QCLASS other than IN | NOTIMP |
 | QTYPE AXFR or IXFR | NOTIMP |
-| EDNS version other than 0 | BADVERS (header FORMERR + OPT version 0) |
+| EDNS version other than 0 | BADVERS (header RCODE 0 + OPT EXTENDED-RCODE 16, OPT VERSION 0) |
 | No EDNS on UDP | Responses capped at 512 octets; TC set if truncated |
 | EDNS UDP size < 512 | Treated as 512 (RFC 6891) |
 | EDNS UDP size > `MaxEDNSUDPSize` (default 4096) | Clamped |
 
-Handler failures, panics, and a nil `Response` with `HintSend` are fail-closed to SERVFAIL. Context cancel (shutdown, query timeout, TCP peer close) produces no answer.
+Handler failures, panics (including hook panics), and a nil `Response` with `HintSend` are fail-closed to SERVFAIL. Context cancel (shutdown, query timeout, TCP max-age, TCP peer close) produces no answer.
 
 ## Explainability
 

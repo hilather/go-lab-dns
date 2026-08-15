@@ -36,10 +36,9 @@ func FuzzParse(f *testing.F) {
 		if req != nil && req.HeaderOK {
 			_, _ = EncodeError(req, model.RCodeFormErr, EncodeOpts{})
 			_, _ = Encode(req, model.Result{RCode: model.RCodeNXDomain}, EncodeOpts{
-				MaxUDPSize:     EffectiveUDPSize(req, 4096),
-				ForceTruncate:  len(data)%5 == 0,
-				BadVers:        req.HasEDNS && req.EDNS.Version != 0,
-				MaxEDNSUDPSize: 4096,
+				MaxUDPSize:    EffectiveUDPSize(req, 4096),
+				ForceTruncate: len(data)%5 == 0,
+				BadVers:       req.HasEDNS && req.EDNS.Version != 0,
 			})
 		}
 	})

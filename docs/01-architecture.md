@@ -204,7 +204,7 @@ Default admission and transport limits:
 | Max in-flight queries | 1024 |
 | Max hold-then-close | 1s |
 
-Parse/admission RCODEs: empty or short datagram → drop; malformed with a 12-byte header → FORMERR; QR=1 → drop; opcode ≠ QUERY → NOTIMP; QCLASS ≠ IN or AXFR/IXFR → NOTIMP; EDNS version ≠ 0 → BADVERS (FORMERR + OPT version 0).
+Parse/admission RCODEs: empty or short datagram → drop; malformed with a 12-byte header → FORMERR (question echoed only if unpacked; never a fabricated `. IN A`); QR=1 → drop; opcode ≠ QUERY → NOTIMP; QCLASS ≠ IN or AXFR/IXFR → NOTIMP; EDNS version ≠ 0 → BADVERS (header RCODE 0 + OPT EXTENDED-RCODE 16, OPT VERSION 0).
 
 Transport hints: TCP-only actions on UDP are **drop** (no successful answer). `HintTruncate` on TCP is **send** of the full response (TC is a UDP signal). Unknown hints are **drop**. After `ServeDNS` returns the server owns the `Response`; later `SetHint` fails.
 

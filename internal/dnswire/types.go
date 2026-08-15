@@ -43,9 +43,10 @@ func (o Opcode) String() string {
 
 // EDNS is the subset of EDNS(0) the transport needs. No library types.
 type EDNS struct {
-	Version uint8
-	UDPSize uint16
-	DO      bool
+	Version       uint8
+	UDPSize       uint16
+	DO            bool
+	ExtendedRcode uint16 // OPT EXTENDED-RCODE (RFC 6891); BADVERS is 16
 }
 
 // Request is a parsed query plus wire metadata needed to echo a response.
@@ -74,9 +75,9 @@ type Request struct {
 }
 
 // EncodeOpts control response packing and truncation.
+// Callers that need an EDNS UDP clamp must pass MaxUDPSize:
+// EffectiveUDPSize(req, maxEDNS). This type does not re-clamp.
 type EncodeOpts struct {
-	// MaxEDNSUDPSize clamps the client's advertised UDP size and our OPT.
-	MaxEDNSUDPSize uint16
 	// AdvertisedUDPSize is the UDP payload we put in our OPT (0 → 1232).
 	AdvertisedUDPSize uint16
 	// ForceTruncate sets TC and strips answer/authority/additional
@@ -86,8 +87,8 @@ type EncodeOpts struct {
 	// (TCP). When the packed message exceeds it, TC is set and the
 	// message is truncated.
 	MaxUDPSize int
-	// BadVers writes RCODE BADVERS (extended FORMERR) for EDNS version
-	// rejection. OPT is included with version 0.
+	// BadVers writes RCODE BADVERS (RFC 6891): header RCODE 0, OPT
+	// EXTENDED-RCODE 16, OPT VERSION 0.
 	BadVers bool
 }
 

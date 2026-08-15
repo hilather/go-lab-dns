@@ -64,6 +64,9 @@ func TestMalformedDropAndFORMERR(t *testing.T) {
 	if binary.BigEndian.Uint16(out[0:2]) != 0xABAB {
 		t.Fatal("id not echoed")
 	}
+	if qdcountOf(out) != 0 {
+		t.Fatalf("unparsed question must not be fabricated, QDCOUNT=%d", qdcountOf(out))
+	}
 }
 
 func TestQRQueryIsDropped(t *testing.T) {
@@ -146,11 +149,9 @@ func TestEDNSVersionBADVERS(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := mustExchangeUDP(t, s.UDPAddr(), raw)
-	// BADVERS is extended RCODE 16: header rcode nibble is 0, OPT carries high bits.
-	// miekg may put 16 into the packed rcode; accept FORMERR (1) or 0 with OPT.
-	got := rcodeOf(t, out)
-	if got != 1 && got != 0 {
-		t.Fatalf("BADVERS header rcode=%d", got)
+	// RFC 6891 BADVERS: header RCODE 0 + OPT EXTENDED-RCODE 16, OPT VERSION 0.
+	if rcodeOf(t, out) != 0 {
+		t.Fatalf("BADVERS header rcode=%d, want 0", rcodeOf(t, out))
 	}
 	req, err := dnswire.Parse(out, model.TransportUDP, loopback)
 	if err != nil {
@@ -158,6 +159,12 @@ func TestEDNSVersionBADVERS(t *testing.T) {
 	}
 	if !req.HasEDNS {
 		t.Fatal("BADVERS must include OPT")
+	}
+	if req.EDNS.Version != 0 {
+		t.Fatalf("OPT version %d, want 0", req.EDNS.Version)
+	}
+	if req.EDNS.ExtendedRcode != 16 {
+		t.Fatalf("EXTENDED-RCODE=%d, want 16", req.EDNS.ExtendedRcode)
 	}
 }
 
@@ -219,6 +226,27 @@ func TestNilResponseAndHandlerErrorAreSERVFAIL(t *testing.T) {
 	out = mustExchangeUDP(t, s2.UDPAddr(), packA(t, "e.lab.", 20, nil))
 	if rcodeOf(t, out) != 2 {
 		t.Fatalf("handler error rcode=%d", rcodeOf(t, out))
+	}
+}
+
+func TestClassifySourcePanicIsSERVFAILAndFreesInflight(t *testing.T) {
+	s := startServer(t, Config{
+		MaxInflight: 1,
+		ClassifySource: func(ctx context.Context, q *model.Query) context.Context {
+			panic("classify")
+		},
+	})
+	out := mustExchangeUDP(t, s.UDPAddr(), packA(t, "p1.lab.", 30, nil))
+	if rcodeOf(t, out) != 2 {
+		t.Fatalf("panic hook rcode=%d", rcodeOf(t, out))
+	}
+	// Inflight must be released; a leaked slot would drop this query.
+	out = exchangeUDP(t, s.UDPAddr(), packA(t, "p2.lab.", 31, nil), 400*time.Millisecond)
+	if out == nil {
+		t.Fatal("inflight leaked; second query dropped")
+	}
+	if rcodeOf(t, out) != 2 {
+		t.Fatalf("second panic hook rcode=%d", rcodeOf(t, out))
 	}
 }
 

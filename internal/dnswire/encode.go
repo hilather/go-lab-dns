@@ -72,13 +72,11 @@ func buildMsg(req *Request, result model.Result, opts EncodeOpts) (*dns.Msg, err
 		m.Rcode = dns.RcodeBadVers
 	}
 
-	if req.Query.Name != "" || req.QDCount > 0 {
-		name := string(req.Query.Name)
-		if name == "" {
-			name = "."
-		}
+	// Echo a question only when one was actually unpacked. A header-only
+	// FORMERR (QDCOUNT>0 but no parsed owner) must not invent ". IN A".
+	if req.Query.Name != "" {
 		m.Question = []dns.Question{{
-			Name:   dns.Fqdn(name),
+			Name:   dns.Fqdn(string(req.Query.Name)),
 			Qtype:  wireType(req.Query.Type),
 			Qclass: wireClass(req.Query.Class),
 		}}

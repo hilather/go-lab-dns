@@ -107,21 +107,14 @@ func (s *Server) serveTCPConn(raw net.Conn, ip netip.Addr) {
 			return
 		}
 
-		if !s.acquireInflight() {
-			s.cfg.Metrics.IncAdmission("inflight", "")
+		remainingAge := s.cfg.TCPMaxAge - s.now().Sub(start)
+		if remainingAge <= 0 {
 			return
 		}
-
-		qctx, cancel := context.WithTimeout(s.ctx, s.cfg.QueryTimeout)
-		// Cancel the query if the peer FINs while the handler runs.
-		// Extra bytes are unread so the next query is not lost.
-		stopWatch := s.watchTCPClose(qctx, cancel, conn)
-		req, perr := dnswire.Parse(body, model.TransportTCP, ip)
-		s.cfg.Metrics.IncParse(parseReason(perr))
-		payload, hint, rcode, hold := s.handleQuery(qctx, req, perr, true)
-		stopWatch()
-		cancel()
-		s.releaseInflight()
+		payload, hint, rcode, hold, ok := s.serveOneTCPQuery(conn, ip, body, remainingAge)
+		if !ok {
+			return
+		}
 		s.cfg.Metrics.IncResponse(string(model.TransportTCP), string(rcode), hint.String())
 
 		switch hint {
@@ -129,7 +122,7 @@ func (s *Server) serveTCPConn(raw net.Conn, ip netip.Addr) {
 			// No message; keep the connection until idle/total expiry.
 			continue
 		case HintTCPReset:
-			tcpReset(conn)
+			tcpReset(raw)
 			s.cfg.Metrics.IncTCP("reset")
 			return
 		case HintTCPClose:
@@ -156,6 +149,30 @@ func (s *Server) serveTCPConn(raw net.Conn, ip netip.Addr) {
 			}
 		}
 	}
+}
+
+func (s *Server) serveOneTCPQuery(conn *leftoverConn, ip netip.Addr, body []byte, remainingAge time.Duration) (payload []byte, hint TransportHint, rcode model.RCode, hold time.Duration, ok bool) {
+	if !s.acquireInflight() {
+		s.cfg.Metrics.IncAdmission("inflight", "")
+		return nil, HintDrop, "", 0, false
+	}
+	defer s.releaseInflight()
+
+	qTimeout := s.cfg.QueryTimeout
+	if remainingAge < qTimeout {
+		qTimeout = remainingAge
+	}
+	qctx, cancel := context.WithTimeout(s.ctx, qTimeout)
+	defer cancel()
+	// Cancel the query if the peer FINs while the handler runs.
+	// Extra bytes are unread so the next query is not lost.
+	stopWatch := s.watchTCPClose(qctx, cancel, conn)
+	defer stopWatch()
+
+	req, perr := dnswire.Parse(body, model.TransportTCP, ip)
+	s.cfg.Metrics.IncParse(parseReason(perr))
+	payload, hint, rcode, hold = s.handleQuery(qctx, req, perr, true)
+	return payload, hint, rcode, hold, true
 }
 
 func (s *Server) holdThenClose(ctx context.Context, d time.Duration) {
@@ -221,6 +238,8 @@ type leftoverConn struct {
 	prefix []byte
 }
 
+func (c *leftoverConn) Unwrap() net.Conn { return c.Conn }
+
 func (c *leftoverConn) unread(b []byte) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -240,8 +259,30 @@ func (c *leftoverConn) Read(p []byte) (int, error) {
 }
 
 func tcpReset(conn net.Conn) {
-	if tc, ok := conn.(*net.TCPConn); ok {
+	if tc := tcpConnOf(conn); tc != nil {
 		_ = tc.SetLinger(0)
+		_ = tc.Close()
+		return
 	}
-	_ = conn.Close()
+	if conn != nil {
+		_ = conn.Close()
+	}
+}
+
+func tcpConnOf(conn net.Conn) *net.TCPConn {
+	for conn != nil {
+		if tc, ok := conn.(*net.TCPConn); ok {
+			return tc
+		}
+		u, ok := conn.(interface{ Unwrap() net.Conn })
+		if !ok {
+			return nil
+		}
+		next := u.Unwrap()
+		if next == nil || next == conn {
+			return nil
+		}
+		conn = next
+	}
+	return nil
 }

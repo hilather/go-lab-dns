@@ -2,8 +2,10 @@ package dnsserver
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
+	"syscall"
 	"testing"
 	"time"
 
@@ -60,14 +62,30 @@ func TestTCPCloseNoResponse(t *testing.T) {
 	}
 }
 
-func TestTCPResetNoCrash(t *testing.T) {
+func TestTCPResetSendsRST(t *testing.T) {
 	s := startServer(t, Config{
 		Handler: &Stub{RCode: model.RCodeNoError, Hint: HintTCPReset},
 	})
-	_, err := exchangeTCP(t, s.TCPAddr(), packA(t, "rst.lab.", 5, nil), 400*time.Millisecond)
-	if err == nil {
-		t.Fatal("TCP reset should not return a DNS message")
+	c, err := net.Dial("tcp", s.TCPAddr().String())
+	if err != nil {
+		t.Fatal(err)
 	}
+	defer func() { _ = c.Close() }()
+	writeTCP(t, c, packA(t, "rst.lab.", 5, nil))
+	_ = c.SetReadDeadline(time.Now().Add(time.Second))
+	var buf [2]byte
+	_, err = io.ReadFull(c, buf[:])
+	if !isConnReset(err) {
+		t.Fatalf("want ECONNRESET, got %v", err)
+	}
+}
+
+func isConnReset(err error) bool {
+	if err == nil {
+		return false
+	}
+	var errno syscall.Errno
+	return errors.As(err, &errno) && errno == syscall.ECONNRESET
 }
 
 func TestTCPHoldThenCloseBounded(t *testing.T) {
