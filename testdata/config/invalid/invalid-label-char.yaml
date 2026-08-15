@@ -1,0 +1,14 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: bad-label
+spec:
+  zones:
+    - id: z
+      name: foo$.example.
+      mode: overlay
+      records:
+        - id: a1
+          owner: ns1
+          type: A
+          values: [10.0.0.1]

@@ -1,0 +1,22 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: duplicate-zone-name
+spec:
+  zones:
+    - id: z1
+      name: lab.example.net.
+      mode: overlay
+      records:
+        - id: a1
+          owner: a
+          type: A
+          values: [10.0.0.1]
+    - id: z2
+      name: Lab.Example.NET.
+      mode: overlay
+      records:
+        - id: a2
+          owner: b
+          type: A
+          values: [10.0.0.2]

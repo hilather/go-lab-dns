@@ -1,0 +1,7 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: unitless-ttl
+spec:
+  defaults:
+    ttl: 30

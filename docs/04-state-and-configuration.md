@@ -292,15 +292,18 @@ Typed change sets use:
 - Unknown fields fail validation at every nesting level.
 - Stable IDs are required for zones, records, forwarding policies, upstreams, client groups, and chaos policies.
 - IDs are user-supplied and immutable within an API version.
-- Names are canonicalized during normalization to lower-case ASCII FQDNs with a trailing dot. Non-ASCII names are rejected in v1alpha1.
-- Durations use [Go `time.ParseDuration`](https://pkg.go.dev/time#ParseDuration) syntax (`30s`, `5m`, `1h`, `100ms`). Canonical export uses a single whole unit (`30s`, not `30000ms` or `1h0m0s`).
+- Names are canonicalized during normalization to lower-case ASCII FQDNs with a trailing dot. Labels may include `_` (SRV / RFC 8552 underscore-labels). Non-ASCII names are rejected in v1alpha1.
+- Durations use [Go `time.ParseDuration`](https://pkg.go.dev/time#ParseDuration) syntax (`30s`, `5m`, `1h`, `100ms`). Bare numbers (`ttl: 30`) are rejected; they are not nanoseconds. Canonical export uses a single whole unit (`30s`, not `30000ms` or `1h0m0s`).
 - Cross-references must resolve (forwarding pools, chaos policy refs, chaos scope IDs).
 - Duplicate semantic RRsets are merged only when explicitly allowed; otherwise reject ambiguity.
 - Defaults are materialized in canonical export.
 - Secrets are references, never inline plaintext fields intended for Git.
 - `selector.timeBucket`, if set, must be `>= 1s` (`hash-v1` encodes whole UTC seconds).
 - Empty `clientGroups` is valid YAML: local zones still answer; nothing is forwarded.
-- CNAME cannot coexist with other data at the same owner; statically detectable CNAME loops, wildcard NS, wildcard DNAME, and self-forwarding upstreams are rejected.
+- CNAME cannot coexist with other data at the same owner; statically detectable CNAME loops, wildcard NS, wildcard DNAME, duplicate zone names, and self-forwarding upstreams are rejected.
+- Record types are uppercased during normalization (`cname` → `CNAME`). Closed enums (`udp`/`tcp`, `refuse-forward`) stay case-sensitive and reject other spellings.
+- MX exchange, SRV target, and SVCB/HTTPS name tokens are canonicalized against the zone origin.
+- Chaos policies may not explicitly target a protected name via `owners`, `recordIds`, `wildcardSourceIds`, zone scope, or `chaosPolicyRefs`.
 
 Published JSON Schema: [api/jsonschema/labdns.dev.v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/jsonschema/labdns.dev.v1alpha1.json).
 
@@ -318,6 +321,7 @@ Published JSON Schema: [api/jsonschema/labdns.dev.v1alpha1.json](https://github.
 | `spec.listeners.management.address` | empty | `:8080` |
 | `spec.listeners.management.restPath` | empty | `/v1` |
 | `spec.listeners.management.mcpPath` | empty | `/mcp` |
+| `spec.management.auth.profile` | empty | `dev-loopback-unauth` |
 
 Revision = `sha256:` + lowercase hex of SHA-256 of compact canonical JSON (materialized defaults, duration strings, no comments). Formatting-only YAML changes do not change the revision.
 

@@ -66,6 +66,9 @@ func TestNormalizeMaterializesListenerAndCNAMEDefaults(t *testing.T) {
 	if got.Spec.Access.ClientGroups == nil {
 		t.Fatal("clientGroups is nil; want empty slice")
 	}
+	if got.Spec.Management.Auth.Profile != model.AuthProfileDevLoopbackUnauth {
+		t.Fatalf("auth.profile=%q", got.Spec.Management.Auth.Profile)
+	}
 }
 
 func TestNormalizeDoesNotFlipExplicitAllowForwardFalse(t *testing.T) {
@@ -150,6 +153,40 @@ func TestNormalizeRejectsNonASCII(t *testing.T) {
 	}
 	_, err := Normalize(in)
 	requireValidation(t, err, violationNonASCII)
+}
+
+func TestNormalizeExpandsMXSRVAndUnderscoreOwners(t *testing.T) {
+	in := &model.State{
+		APIVersion: model.APIVersionV1Alpha1,
+		Kind:       model.KindLabDNS,
+		Metadata:   model.Metadata{Name: "x"},
+		Spec: model.Spec{
+			Zones: []model.Zone{{
+				ID:   "z",
+				Name: "lab.example.net.",
+				Mode: model.ZoneModeOverlay,
+				Records: []model.Record{
+					{ID: "mx", Owner: "lab", Type: "mx", Values: []string{"10 mail"}},
+					{ID: "srv", Owner: "_sip._tcp", Type: "srv", Values: []string{"0 1 5060 sip"}},
+					{ID: "acme", Owner: "_acme-challenge", Type: model.TypeTXT, Values: []string{"ok"}},
+				},
+			}},
+		},
+	}
+	got, err := Normalize(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := got.Spec.Zones[0].Records
+	if r[0].Type != model.TypeMX || r[0].Values[0] != "10 mail.lab.example.net." {
+		t.Fatalf("mx=%q %q", r[0].Type, r[0].Values[0])
+	}
+	if r[1].Owner != "_sip._tcp.lab.example.net." || r[1].Values[0] != "0 1 5060 sip.lab.example.net." {
+		t.Fatalf("srv owner=%q value=%q", r[1].Owner, r[1].Values[0])
+	}
+	if r[2].Owner != "_acme-challenge.lab.example.net." {
+		t.Fatalf("acme owner=%q", r[2].Owner)
+	}
 }
 
 func TestZeroValueAllowForwardRemainsFalse(t *testing.T) {

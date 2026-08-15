@@ -1,0 +1,20 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: underscore-owners
+spec:
+  access:
+    clientGroups: []
+  zones:
+    - id: lab-zone
+      name: lab.example.net.
+      mode: overlay
+      records:
+        - id: sip-srv
+          owner: _sip._tcp
+          type: SRV
+          values: ["0 1 5060 sip"]
+        - id: acme-txt
+          owner: _acme-challenge
+          type: TXT
+          values: ["ok"]

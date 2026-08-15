@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strconv"
 	"time"
+
+	"github.com/hilather/go-lab-dns/internal/domainerr"
 )
 
 // durationFields are JSON/YAML keys whose values use Go time.ParseDuration
@@ -31,24 +33,63 @@ var durationFields = map[string]bool{
 	"hold":               true,
 }
 
-func convertDurationStrings(v any) {
+// convertDurations rewrites ParseDuration strings to nanoseconds for
+// encoding/json → time.Duration. Non-string numbers (except literal 0) are
+// rejected: YAML `ttl: 30` must not silently become 30ns.
+func convertDurations(v any, path string) []domainerr.FieldViolation {
 	switch x := v.(type) {
 	case map[string]any:
+		var vs []domainerr.FieldViolation
 		for k, child := range x {
+			p := joinPath(path, k)
 			if durationFields[k] {
-				if s, ok := child.(string); ok {
-					d, err := time.ParseDuration(s)
-					if err == nil {
-						x[k] = int64(d)
-					}
+				if viol, ok := coerceDurationField(x, k, child, p); !ok {
+					vs = append(vs, viol)
 				}
+				continue
 			}
-			convertDurationStrings(child)
+			vs = append(vs, convertDurations(child, p)...)
 		}
+		return vs
 	case []any:
-		for _, child := range x {
-			convertDurationStrings(child)
+		var vs []domainerr.FieldViolation
+		for i, child := range x {
+			vs = append(vs, convertDurations(child, indexPath(path, i))...)
 		}
+		return vs
+	default:
+		return nil
+	}
+}
+
+func coerceDurationField(obj map[string]any, key string, child any, path string) (domainerr.FieldViolation, bool) {
+	if child == nil {
+		return domainerr.FieldViolation{}, true
+	}
+	switch n := child.(type) {
+	case string:
+		d, err := time.ParseDuration(n)
+		if err != nil {
+			return domainerr.FieldViolation{
+				Path:    path,
+				Code:    violationInvalidValue,
+				Message: "duration must use Go time.ParseDuration syntax (for example 30s)",
+			}, false
+		}
+		obj[key] = int64(d)
+		return domainerr.FieldViolation{}, true
+	default:
+		if d, ok := jsonNumberDuration(n); ok {
+			if d == 0 {
+				obj[key] = int64(0)
+				return domainerr.FieldViolation{}, true
+			}
+		}
+		return domainerr.FieldViolation{
+			Path:    path,
+			Code:    violationInvalidValue,
+			Message: "duration must be a string such as 30s, not a bare number",
+		}, false
 	}
 }
 

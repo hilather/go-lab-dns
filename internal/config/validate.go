@@ -25,6 +25,10 @@ type catalog struct {
 	cnames        map[string]string // owner FQDN -> target FQDN
 	ownerTypes    map[string]map[model.RRType]string
 	suffixes      idSet
+	zoneCuts      idSet // canonical zone name -> path
+	zoneNames     map[string]model.Name
+	recordOwners  map[string]string // record ID -> owner FQDN
+	recordZone    map[string]string // record ID -> zone ID
 }
 
 // Validate checks a (preferably normalized) state. It does not mutate st.
@@ -45,6 +49,10 @@ func Validate(st *model.State) error {
 		cnames:        map[string]string{},
 		ownerTypes:    map[string]map[model.RRType]string{},
 		suffixes:      idSet{},
+		zoneCuts:      idSet{},
+		zoneNames:     map[string]model.Name{},
+		recordOwners:  map[string]string{},
+		recordZone:    map[string]string{},
 	}
 	validateDocument(st, &vs)
 	validateListeners(&st.Spec.Listeners, &vs)
@@ -189,6 +197,13 @@ func validateZones(zones []model.Zone, cat *catalog, vs *[]domainerr.FieldViolat
 		requireID(string(z.ID), path+".id", cat.zones, vs)
 		if z.Name == "" {
 			*vs = append(*vs, domainerr.FieldViolation{Path: path + ".name", Code: violationRequired, Message: "zone name is required"})
+		} else if prev, ok := cat.zoneCuts[string(z.Name)]; ok {
+			*vs = append(*vs, domainerr.FieldViolation{Path: path + ".name", Code: violationDuplicateID, Message: "duplicate zone name (first at " + prev + ")"})
+		} else {
+			cat.zoneCuts[string(z.Name)] = path + ".name"
+		}
+		if string(z.ID) != "" {
+			cat.zoneNames[string(z.ID)] = z.Name
 		}
 		if !validZoneMode(z.Mode) {
 			*vs = append(*vs, domainerr.FieldViolation{
@@ -229,6 +244,10 @@ func validateSOA(soa *model.SOA, path string, vs *[]domainerr.FieldViolation) {
 
 func validateRecord(z model.Zone, r model.Record, path string, cat *catalog, vs *[]domainerr.FieldViolation) {
 	requireID(string(r.ID), path+".id", cat.records, vs)
+	if string(r.ID) != "" {
+		cat.recordOwners[string(r.ID)] = r.Owner
+		cat.recordZone[string(r.ID)] = string(z.ID)
+	}
 	if r.Owner == "" {
 		*vs = append(*vs, domainerr.FieldViolation{Path: path + ".owner", Code: violationRequired, Message: "owner is required"})
 	}
@@ -508,16 +527,22 @@ func validateChaosScope(s model.ChaosScope, path string, cat *catalog, protected
 	for i, id := range s.RecordIDs {
 		if _, ok := cat.records[string(id)]; !ok {
 			*vs = append(*vs, domainerr.FieldViolation{Path: indexPath(path+".recordIds", i), Code: violationUnresolved, Message: "record " + string(id) + " does not exist"})
+		} else if owner := cat.recordOwners[string(id)]; owner != "" && protectedNames[model.Name(owner)] {
+			*vs = append(*vs, domainerr.FieldViolation{Path: indexPath(path+".recordIds", i), Code: violationProtected, Message: "cannot target protected name " + owner})
 		}
 	}
 	for i, id := range s.WildcardSourceIDs {
 		if _, ok := cat.records[string(id)]; !ok {
 			*vs = append(*vs, domainerr.FieldViolation{Path: indexPath(path+".wildcardSourceIds", i), Code: violationUnresolved, Message: "record " + string(id) + " does not exist"})
+		} else if owner := cat.recordOwners[string(id)]; owner != "" && protectedNames[model.Name(owner)] {
+			*vs = append(*vs, domainerr.FieldViolation{Path: indexPath(path+".wildcardSourceIds", i), Code: violationProtected, Message: "cannot target protected name " + owner})
 		}
 	}
 	for i, id := range s.Zones {
 		if _, ok := cat.zones[string(id)]; !ok {
 			*vs = append(*vs, domainerr.FieldViolation{Path: indexPath(path+".zones", i), Code: violationUnresolved, Message: "zone " + string(id) + " does not exist"})
+		} else if zoneTargetsProtected(string(id), cat, protectedNames) {
+			*vs = append(*vs, domainerr.FieldViolation{Path: indexPath(path+".zones", i), Code: violationProtected, Message: "cannot target a zone that includes a protected name"})
 		}
 	}
 	for i, id := range s.ForwardingIDs {
@@ -535,12 +560,12 @@ func validateChaosScope(s model.ChaosScope, path string, cat *catalog, protected
 			*vs = append(*vs, domainerr.FieldViolation{Path: indexPath(path+".clientGroups", i), Code: violationUnresolved, Message: "client group " + string(id) + " does not exist"})
 		}
 		if protectedGroups[id] {
-			*vs = append(*vs, domainerr.FieldViolation{Path: indexPath(path+".clientGroups", i), Code: "protected_object", Message: "cannot scope chaos to a protected client group"})
+			*vs = append(*vs, domainerr.FieldViolation{Path: indexPath(path+".clientGroups", i), Code: violationProtected, Message: "cannot scope chaos to a protected client group"})
 		}
 	}
 	for i, n := range s.Owners {
 		if protectedNames[n] {
-			*vs = append(*vs, domainerr.FieldViolation{Path: indexPath(path+".owners", i), Code: "protected_object", Message: "cannot scope chaos to a protected name"})
+			*vs = append(*vs, domainerr.FieldViolation{Path: indexPath(path+".owners", i), Code: violationProtected, Message: "cannot scope chaos to a protected name"})
 		}
 	}
 	for i, t := range s.Transports {
@@ -548,6 +573,21 @@ func validateChaosScope(s model.ChaosScope, path string, cat *catalog, protected
 			*vs = append(*vs, domainerr.FieldViolation{Path: indexPath(path+".transports", i), Code: violationInvalidTransport, Message: "transport must be udp or tcp"})
 		}
 	}
+}
+
+func zoneTargetsProtected(zoneID string, cat *catalog, protectedNames map[model.Name]bool) bool {
+	if name, ok := cat.zoneNames[zoneID]; ok && protectedNames[name] {
+		return true
+	}
+	for recID, zid := range cat.recordZone {
+		if zid != zoneID {
+			continue
+		}
+		if owner := cat.recordOwners[recID]; owner != "" && protectedNames[model.Name(owner)] {
+			return true
+		}
+	}
+	return false
 }
 
 func validateChaosActions(actions []model.ChaosAction, path string, pol model.ChaosPolicy, safety *model.SafetySpec, vs *[]domainerr.FieldViolation) {
@@ -876,12 +916,24 @@ func transportsOnly(have []model.Transport, only model.Transport) bool {
 }
 
 func validateRecordChaosRefs(st *model.State, cat *catalog, vs *[]domainerr.FieldViolation) {
+	protected := map[model.Name]bool{}
+	for _, n := range st.Spec.Chaos.Safety.ProtectedNames {
+		protected[n] = true
+	}
 	for zi, z := range st.Spec.Zones {
 		for ri, r := range z.Records {
+			rp := indexPath(indexPath("spec.zones", zi)+".records", ri)
+			if len(r.ChaosPolicyRefs) > 0 && protected[model.Name(r.Owner)] {
+				*vs = append(*vs, domainerr.FieldViolation{
+					Path:    rp + ".chaosPolicyRefs",
+					Code:    violationProtected,
+					Message: "cannot attach chaos to protected name " + r.Owner,
+				})
+			}
 			for i, ref := range r.ChaosPolicyRefs {
 				if _, ok := cat.chaosPolicies[string(ref)]; !ok && string(ref) != "" {
 					*vs = append(*vs, domainerr.FieldViolation{
-						Path:    indexPath(indexPath(indexPath("spec.zones", zi)+".records", ri)+".chaosPolicyRefs", i),
+						Path:    indexPath(rp+".chaosPolicyRefs", i),
 						Code:    violationUnresolved,
 						Message: "chaos policy " + string(ref) + " does not exist",
 					})

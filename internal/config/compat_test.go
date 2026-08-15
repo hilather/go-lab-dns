@@ -27,6 +27,12 @@ var expectedInvalid = map[string]string{
 	"duplicate-id.yaml":         violationDuplicateID,
 	"empty-id.yaml":             violationEmptyID,
 	"unknown-client.yaml":       violationInvalidValue,
+	"ttl-unitless.yaml":         violationInvalidValue,
+	"invalid-label-char.yaml":   violationInvalidName,
+	"multi-doc.yaml":            violationInvalidValue,
+	"protected-record.yaml":     violationProtected,
+	"duplicate-zone-name.yaml":  violationDuplicateID,
+	"transport-udp.yaml":        violationInvalidTransport,
 }
 
 // TestConfigCompat is the positive+negative fixture matrix for make test-config-compat.
@@ -70,6 +76,7 @@ func TestConfigCompat(t *testing.T) {
 			if rev != rev2 {
 				t.Fatalf("round-trip revision %s != %s", rev, rev2)
 			}
+			assertCanonicalMatchesSchema(t, raw)
 		})
 	}
 	if validCount < 2 {

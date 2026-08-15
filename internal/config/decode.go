@@ -62,6 +62,11 @@ func decodeYAML(data []byte) (*model.State, error) {
 		return nil, domainerr.ValidationFailed("YAML decode failed",
 			domainerr.FieldViolation{Path: "", Code: violationInvalidValue, Message: err.Error()})
 	}
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		return nil, domainerr.ValidationFailed("trailing YAML document",
+			domainerr.FieldViolation{Path: "", Code: violationInvalidValue, Message: "document contains more than one YAML value"})
+	}
 	raw = stringifyKeys(raw)
 	return decodeRaw(raw)
 }
@@ -74,12 +79,18 @@ func decodeJSON(data []byte) (*model.State, error) {
 		return nil, domainerr.ValidationFailed("JSON decode failed",
 			domainerr.FieldViolation{Path: "", Code: violationInvalidValue, Message: err.Error()})
 	}
+	if dec.More() {
+		return nil, domainerr.ValidationFailed("trailing JSON value",
+			domainerr.FieldViolation{Path: "", Code: violationInvalidValue, Message: "document contains more than one JSON value"})
+	}
 	return decodeRaw(raw)
 }
 
 func decodeRaw(raw any) (*model.State, error) {
 	applyDecodeDefaults(raw)
-	convertDurationStrings(raw)
+	if vs := convertDurations(raw, ""); len(vs) > 0 {
+		return nil, domainerr.ValidationFailed("invalid durations", vs...)
+	}
 	if vs := unknownFields(raw, reflect.TypeOf(model.State{}), ""); len(vs) > 0 {
 		return nil, domainerr.ValidationFailed("unknown fields", vs...)
 	}

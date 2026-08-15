@@ -1,0 +1,34 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: protected-record
+spec:
+  chaos:
+    safety:
+      protectedNames: [dns.lab.example.net.]
+    policies:
+      - id: p
+        owner: lab
+        reason: must not target a protected owner
+        enabled: false
+        safetyClass: low
+        scope:
+          recordIds: [dns-a]
+        selector:
+          mode: deterministic
+          probability: 1.0
+        outcomes:
+          - id: o
+            weight: 1
+            actions:
+              - type: delay
+                duration: 1ms
+  zones:
+    - id: z
+      name: lab.example.net.
+      mode: overlay
+      records:
+        - id: dns-a
+          owner: dns
+          type: A
+          values: [10.0.0.1]

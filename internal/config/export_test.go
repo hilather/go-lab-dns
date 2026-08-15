@@ -103,6 +103,7 @@ func TestCanonicalExportMaterializesDefaults(t *testing.T) {
 		`"/mcp"`,
 		`"30s"`,
 		`"10s"`,
+		`"dev-loopback-unauth"`,
 	} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("canonical JSON missing %s\n%s", want, s)
@@ -114,6 +115,42 @@ func TestCanonicalExportMaterializesDefaults(t *testing.T) {
 	}
 	if strings.Contains(string(y), "#") {
 		t.Fatalf("YAML export contains comment:\n%s", y)
+	}
+}
+
+func TestRevisionStableAcrossTypeCase(t *testing.T) {
+	upper := `
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: x
+spec:
+  zones:
+    - id: z
+      name: lab.example.net.
+      mode: overlay
+      records:
+        - id: r
+          owner: a
+          type: A
+          values: [10.0.0.1]
+`
+	lower := strings.ReplaceAll(upper, "type: A", "type: a")
+	sa, err := Load([]byte(upper))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb, err := Load([]byte(lower))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sa.Spec.Zones[0].Records[0].Type != model.TypeA {
+		t.Fatalf("type=%q", sa.Spec.Zones[0].Records[0].Type)
+	}
+	ra, _ := Revision(sa)
+	rb, _ := Revision(sb)
+	if ra != rb {
+		t.Fatalf("type case changed revision %s %s", ra, rb)
 	}
 }
 

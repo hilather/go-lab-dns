@@ -2,6 +2,8 @@ package config
 
 import (
 	"encoding/json"
+	"strconv"
+	"strings"
 
 	"github.com/hilather/go-lab-dns/internal/domainerr"
 	"github.com/hilather/go-lab-dns/internal/model"
@@ -82,6 +84,9 @@ func materializeDefaults(sp *model.Spec) {
 	if sp.Chaos.Policies == nil {
 		sp.Chaos.Policies = []model.ChaosPolicy{}
 	}
+	if sp.Management.Auth.Profile == "" {
+		sp.Management.Auth.Profile = model.AuthProfileDevLoopbackUnauth
+	}
 	for zi := range sp.Zones {
 		z := &sp.Zones[zi]
 		if z.Records == nil {
@@ -141,6 +146,7 @@ func canonicalizeNames(sp *model.Spec, vs *[]domainerr.FieldViolation) {
 		for ri := range z.Records {
 			r := &z.Records[ri]
 			rp := indexPath(path+".records", ri)
+			r.Type = canonicalizeRRType(r.Type)
 			if owner, viol := CanonicalName(r.Owner, z.Name); viol != nil {
 				viol.Path = rp + ".owner"
 				*vs = append(*vs, *viol)
@@ -148,14 +154,13 @@ func canonicalizeNames(sp *model.Spec, vs *[]domainerr.FieldViolation) {
 				r.Owner = string(owner)
 			}
 			for vi := range r.Values {
-				if needsNameValue(r.Type) {
-					if nv, viol := CanonicalName(r.Values[vi], z.Name); viol != nil {
-						viol.Path = indexPath(rp+".values", vi)
-						*vs = append(*vs, *viol)
-					} else {
-						r.Values[vi] = string(nv)
-					}
+				nv, viol := canonicalizeRecordValue(r.Type, r.Values[vi], z.Name)
+				if viol != nil {
+					viol.Path = indexPath(rp+".values", vi)
+					*vs = append(*vs, *viol)
+					continue
 				}
+				r.Values[vi] = nv
 			}
 		}
 	}
@@ -194,11 +199,57 @@ func canonicalizeNames(sp *model.Spec, vs *[]domainerr.FieldViolation) {
 	}
 }
 
-func needsNameValue(t model.RRType) bool {
+func canonicalizeRRType(t model.RRType) model.RRType {
+	if t == "" {
+		return t
+	}
+	return model.RRType(strings.ToUpper(string(t)))
+}
+
+func canonicalizeRecordValue(t model.RRType, v string, origin model.Name) (string, *domainerr.FieldViolation) {
 	switch t {
 	case model.TypeCNAME, model.TypeNS, model.TypePTR:
-		return true
+		n, viol := CanonicalName(v, origin)
+		if viol != nil {
+			return "", viol
+		}
+		return string(n), nil
+	case model.TypeMX:
+		pref, name, ok := strings.Cut(strings.TrimSpace(v), " ")
+		if !ok {
+			return v, nil
+		}
+		n, viol := CanonicalName(name, origin)
+		if viol != nil {
+			return "", viol
+		}
+		return pref + " " + string(n), nil
+	case model.TypeSRV:
+		parts := strings.Fields(v)
+		if len(parts) != 4 {
+			return v, nil
+		}
+		n, viol := CanonicalName(parts[3], origin)
+		if viol != nil {
+			return "", viol
+		}
+		parts[3] = string(n)
+		return strings.Join(parts, " "), nil
+	case model.TypeSVCB, model.TypeHTTPS:
+		parts := strings.Fields(v)
+		if len(parts) < 2 || parts[1] == "." {
+			return v, nil
+		}
+		if _, err := strconv.Atoi(parts[0]); err != nil {
+			return v, nil
+		}
+		n, viol := CanonicalName(parts[1], origin)
+		if viol != nil {
+			return "", viol
+		}
+		parts[1] = string(n)
+		return strings.Join(parts, " "), nil
 	default:
-		return false
+		return v, nil
 	}
 }

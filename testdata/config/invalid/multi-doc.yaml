@@ -1,0 +1,11 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: first
+spec: {}
+---
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: second
+spec: {}

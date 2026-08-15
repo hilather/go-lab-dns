@@ -51,6 +51,45 @@ func TestValidateTimeBucket(t *testing.T) {
 	}
 }
 
+func TestValidateCNAMELoopMixedCaseType(t *testing.T) {
+	doc := `
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: loop
+spec:
+  zones:
+    - id: z
+      name: lab.example.net.
+      mode: overlay
+      records:
+        - id: a
+          owner: a
+          type: cname
+          values: [b]
+        - id: b
+          owner: b
+          type: CNAME
+          values: [a]
+`
+	_, err := Load([]byte(doc))
+	requireValidation(t, err, violationCNAMELoop)
+}
+
+func TestValidateRejectsUppercaseTransport(t *testing.T) {
+	st := minimalState(t)
+	st.Spec.Forwarding.Pools = []model.UpstreamPool{{
+		ID:       "p",
+		Strategy: model.StrategyOrdered,
+		Upstreams: []model.Upstream{{
+			ID:        "u",
+			Endpoint:  "10.0.0.1:53",
+			Transport: "UDP",
+		}},
+	}}
+	requireValidation(t, Validate(st), violationInvalidTransport)
+}
+
 func TestValidateUnknownClientClosed(t *testing.T) {
 	st := minimalState(t)
 	st.Spec.Access.UnknownClient = "allow-forward"

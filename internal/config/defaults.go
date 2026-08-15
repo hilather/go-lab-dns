@@ -42,4 +42,5 @@ const (
 	violationInvalidTransport   = "invalid_transport"
 	violationDupRRset           = "duplicate_rrset"
 	violationUnsupportedVersion = "unsupported_version"
+	violationProtected          = "protected_object"
 )
