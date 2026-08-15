@@ -2,9 +2,19 @@ package model
 
 import "time"
 
-// UnknownClientRefuseForward is the only v1alpha1 value of AccessSpec.UnknownClient.
-// It refuses recursion/forwarding for unmatched clients; local answers still serve.
-const UnknownClientRefuseForward = "refuse-forward"
+// UnknownClientMode is the unmatched-client policy. v1alpha1 allows only refuse-forward.
+type UnknownClientMode string
+
+// UnknownClientRefuseForward refuses recursion/forwarding for unmatched clients;
+// local answers still serve. It is the only v1alpha1 value.
+const UnknownClientRefuseForward UnknownClientMode = "refuse-forward"
+
+// AllUnknownClientModes is the closed v1alpha1 unknown-client set.
+var AllUnknownClientModes = []UnknownClientMode{UnknownClientRefuseForward}
+
+// DefaultAllowForward is the materialized default for ClientGroup.AllowForward
+// when a group exists. The Go zero value remains false until config materializes.
+const DefaultAllowForward = true
 
 // DefaultCNAMEDepth is the safe default CNAME chain cap, including overlay
 // CNAME chains that terminate in a forwarded name.
@@ -36,8 +46,8 @@ type MgmtListenerSpec struct {
 
 // AccessSpec classifies clients and gates forwarding.
 type AccessSpec struct {
-	UnknownClient string        `json:"unknownClient"`
-	ClientGroups  []ClientGroup `json:"clientGroups"`
+	UnknownClient UnknownClientMode `json:"unknownClient"`
+	ClientGroups  []ClientGroup     `json:"clientGroups"`
 }
 
 // ClientGroup is a CIDR-keyed client class.
@@ -45,7 +55,7 @@ type ClientGroup struct {
 	ID           ClientGroupID `json:"id"`
 	CIDRs        []string      `json:"cidrs"`
 	ChaosExempt  bool          `json:"chaosExempt"`
-	AllowForward bool          `json:"allowForward"`
+	AllowForward bool          `json:"allowForward"` // default true when a group exists; false → local only, RA=0
 }
 
 // DefaultsSpec holds materialized query defaults.

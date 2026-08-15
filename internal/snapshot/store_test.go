@@ -75,7 +75,14 @@ func TestStoreSwapNilActive(t *testing.T) {
 		t.Fatal("active should be nil")
 	}
 	if s.Previous() != a {
-		t.Fatal("previous should retain last active")
+		t.Fatal("Previous keeps last non-nil displaced snapshot after Swap(nil)")
+	}
+	c := &Snapshot{Generation: 3}
+	if prev := s.Swap(c); prev != nil {
+		t.Fatalf("Swap(C) after nil active returned %p, want nil", prev)
+	}
+	if s.Load() != c || s.Previous() != a {
+		t.Fatal("Previous must stay A after Swap(nil) then Swap(C)")
 	}
 }
 

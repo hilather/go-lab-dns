@@ -12,6 +12,11 @@ const (
 	StrategyHealthAware PoolStrategy = "health-aware"
 )
 
+// AllPoolStrategies is the closed first-GA upstream-pool strategy set.
+var AllPoolStrategies = []PoolStrategy{
+	StrategyOrdered, StrategyRoundRobin, StrategyRandom, StrategyHealthAware,
+}
+
 // ForwardingSpec holds suffix policies and upstream pools.
 type ForwardingSpec struct {
 	Policies []ForwardingPolicy `json:"policies"`

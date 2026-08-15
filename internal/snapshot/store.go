@@ -37,7 +37,7 @@ func (s *Store) Bootstrap() *Snapshot {
 	return s.bootstrap.Load()
 }
 
-// Previous returns the immediately previous active snapshot, or nil.
+// Previous returns the last non-nil snapshot displaced by Swap, or nil.
 func (s *Store) Previous() *Snapshot {
 	return s.previous.Load()
 }

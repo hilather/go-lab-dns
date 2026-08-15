@@ -53,28 +53,46 @@ func New(code Code, message string) *Error {
 	}
 }
 
-// WithRemediation sets a safe operator/agent hint.
+func (e *Error) clone() *Error {
+	if e == nil {
+		return nil
+	}
+	c := *e
+	if e.FieldViolations != nil {
+		c.FieldViolations = append([]FieldViolation(nil), e.FieldViolations...)
+	}
+	return &c
+}
+
+// WithRemediation returns a copy with a safe operator/agent hint.
 func (e *Error) WithRemediation(s string) *Error {
-	if e != nil {
-		e.Remediation = s
+	c := e.clone()
+	if c != nil {
+		c.Remediation = s
 	}
-	return e
+	return c
 }
 
-// WithRevision records the current content revision for conflict responses.
+// WithRevision returns a copy that records the current content revision.
 func (e *Error) WithRevision(rev string) *Error {
-	if e != nil {
-		e.CurrentRevision = rev
+	c := e.clone()
+	if c != nil {
+		c.CurrentRevision = rev
 	}
-	return e
+	return c
 }
 
-// WithViolations appends field violations.
+// WithViolations returns a copy with additional field violations.
 func (e *Error) WithViolations(v ...FieldViolation) *Error {
-	if e != nil && len(v) > 0 {
-		e.FieldViolations = append(e.FieldViolations, v...)
+	if e == nil {
+		return nil
 	}
-	return e
+	if len(v) == 0 {
+		return e
+	}
+	c := e.clone()
+	c.FieldViolations = append(c.FieldViolations, v...)
+	return c
 }
 
 func ValidationFailed(message string, violations ...FieldViolation) *Error {

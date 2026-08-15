@@ -29,62 +29,47 @@ func TestFirstGARRTypesLocked(t *testing.T) {
 }
 
 func TestTargetKindsLocked(t *testing.T) {
-	want := []TargetKind{
+	assertClosedStringEnum(t, "TargetKind", AllTargetKinds, []TargetKind{
 		"zone", "record", "forwardingPolicy", "upstreamPool", "upstream",
 		"clientGroup", "chaosPolicy", "chaosSafety", "cache", "defaults",
 		"listeners", "access", "observability", "management", "chaosActivation",
-	}
-	if len(AllTargetKinds) != len(want) {
-		t.Fatalf("AllTargetKinds len=%d, want %d", len(AllTargetKinds), len(want))
-	}
-	consts := stringConstsOfType(t, ".", "TargetKind")
-	if len(consts) != len(AllTargetKinds) {
-		t.Fatalf("TargetKind constants=%v AllTargetKinds=%v (catalog drift)", consts, AllTargetKinds)
-	}
-	seen := map[TargetKind]bool{}
-	for i, got := range AllTargetKinds {
-		if got != want[i] {
-			t.Fatalf("AllTargetKinds[%d]=%q, want %q", i, got, want[i])
-		}
-		if !consts[string(got)] {
-			t.Fatalf("AllTargetKinds contains %q with no matching const", got)
-		}
-		if seen[got] {
-			t.Fatalf("duplicate target %q", got)
-		}
-		seen[got] = true
-	}
+	})
 }
 
 func TestOpKindsLocked(t *testing.T) {
-	want := []OpKind{"add", "update", "remove"}
-	if len(AllOpKinds) != len(want) {
-		t.Fatalf("AllOpKinds=%v, want %v", AllOpKinds, want)
-	}
-	for i, k := range want {
-		if AllOpKinds[i] != k {
-			t.Fatalf("AllOpKinds[%d]=%q, want %q", i, AllOpKinds[i], k)
-		}
-	}
-	consts := stringConstsOfType(t, ".", "OpKind")
-	if len(consts) != len(want) {
-		t.Fatalf("OpKind constants=%v want %v", consts, want)
-	}
+	assertClosedStringEnum(t, "OpKind", AllOpKinds, []OpKind{"add", "update", "remove"})
 }
 
 func TestTransportsLockedNoDoT(t *testing.T) {
-	if len(AllTransports) != 2 || AllTransports[0] != TransportUDP || AllTransports[1] != TransportTCP {
-		t.Fatalf("AllTransports=%v, want [udp tcp]", AllTransports)
-	}
-	consts := stringConstsOfType(t, ".", "Transport")
-	if len(consts) != 2 || !consts["udp"] || !consts["tcp"] {
-		t.Fatalf("Transport constants=%v; DoT or extra transport leaked", consts)
-	}
-	for name := range consts {
+	assertClosedStringEnum(t, "Transport", AllTransports, []Transport{TransportUDP, TransportTCP})
+	for name := range stringConstsOfType(t, ".", "Transport") {
 		if name == "dot" || name == "tls" || name == "DoT" {
 			t.Fatalf("forbidden transport constant %q", name)
 		}
 	}
+}
+
+func TestZoneModesLocked(t *testing.T) {
+	assertClosedStringEnum(t, "ZoneMode", AllZoneModes, []ZoneMode{
+		ZoneModeAuthoritative, ZoneModeOverlay,
+	})
+	for name := range stringConstsOfType(t, ".", "ZoneMode") {
+		if name == "recursive" || name == "forwarding" {
+			t.Fatalf("forbidden zone mode %q", name)
+		}
+	}
+}
+
+func TestPoolStrategiesLocked(t *testing.T) {
+	assertClosedStringEnum(t, "PoolStrategy", AllPoolStrategies, []PoolStrategy{
+		StrategyOrdered, StrategyRoundRobin, StrategyRandom, StrategyHealthAware,
+	})
+}
+
+func TestUnknownClientModesLocked(t *testing.T) {
+	assertClosedStringEnum(t, "UnknownClientMode", AllUnknownClientModes, []UnknownClientMode{
+		UnknownClientRefuseForward,
+	})
 }
 
 func TestUnknownClientAndCNAMEDepthDefaults(t *testing.T) {
@@ -96,6 +81,40 @@ func TestUnknownClientAndCNAMEDepthDefaults(t *testing.T) {
 	}
 	if APIVersionV1Alpha1 != "labdns.dev/v1alpha1" || KindLabDNS != "LabDNS" {
 		t.Fatalf("api %q kind %q", APIVersionV1Alpha1, KindLabDNS)
+	}
+}
+
+func TestAllowForwardMaterializedDefault(t *testing.T) {
+	if DefaultAllowForward != true {
+		t.Fatalf("DefaultAllowForward=%v, want true (materialized default when a group exists)", DefaultAllowForward)
+	}
+	var zero ClientGroup
+	if zero.AllowForward {
+		t.Fatal("unmaterialized ClientGroup.AllowForward zero value is true; want false")
+	}
+}
+
+func assertClosedStringEnum[T ~string](t *testing.T, typeName string, all, want []T) {
+	t.Helper()
+	if len(all) != len(want) {
+		t.Fatalf("%s All len=%d, want %d (half-migration?)\n All=%v\n want=%v", typeName, len(all), len(want), all, want)
+	}
+	consts := stringConstsOfType(t, ".", typeName)
+	if len(consts) != len(all) {
+		t.Fatalf("%s typed constants=%v All=%v (extra typed constant?)", typeName, consts, all)
+	}
+	seen := map[T]bool{}
+	for i, got := range all {
+		if got != want[i] {
+			t.Fatalf("%s[%d]=%q, want %q", typeName, i, got, want[i])
+		}
+		if !consts[string(got)] {
+			t.Fatalf("%s All contains %q with no matching const", typeName, got)
+		}
+		if seen[got] {
+			t.Fatalf("duplicate %s %q", typeName, got)
+		}
+		seen[got] = true
 	}
 }
 

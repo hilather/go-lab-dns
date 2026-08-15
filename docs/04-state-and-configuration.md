@@ -261,7 +261,7 @@ JSON object names match the YAML keys in the sample above. Additional frozen fie
 | Area | Fields / values |
 |---|---|
 | Document | `apiVersion: labdns.dev/v1alpha1`, `kind: LabDNS`, `metadata.name`, `metadata.labels` |
-| Access | `unknownClient` only `refuse-forward`; `clientGroups[].id`, `cidrs`, `chaosExempt`, `allowForward` |
+| Access | `unknownClient` only `refuse-forward`; `clientGroups[].id`, `cidrs`, `chaosExempt`, `allowForward` (materialized default **true** when a group exists; Go zero value is false → local only, RA=0) |
 | Defaults | `ttl`, `negativeTTL`, `cnameDepth` (safe default **8**) |
 | Zone | `id`, `name`, `mode` (`authoritative` \| `overlay`), `soa`, `nameservers`, `records` |
 | Record | `id`, `owner`, `type`, `ttl`, `values`, `genericRdata`, `chaosPolicyRefs` |

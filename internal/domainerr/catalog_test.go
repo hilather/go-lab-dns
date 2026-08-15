@@ -8,6 +8,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -116,6 +117,11 @@ func TestEveryCodeHasConstructorAndRetryableDefault(t *testing.T) {
 }
 
 func TestErrorJSONShapeAndNoStack(t *testing.T) {
+	wantKeys := []string{"code", "message", "retryable", "fieldViolations", "currentRevision", "remediation"}
+	wantViolationKeys := []string{"path", "code", "message"}
+	assertJSONFieldNames(t, Error{}, wantKeys)
+	assertJSONFieldNames(t, FieldViolation{}, wantViolationKeys)
+
 	err := ValidationFailed("Candidate state is invalid.", FieldViolation{
 		Path:    "spec.chaos.policies[0].outcomes[0]",
 		Code:    "conflicting_transport_actions",
@@ -130,24 +136,52 @@ func TestErrorJSONShapeAndNoStack(t *testing.T) {
 	if jerr := json.Unmarshal(raw, &obj); jerr != nil {
 		t.Fatalf("unmarshal: %v", jerr)
 	}
-	for _, k := range []string{"code", "message", "retryable", "fieldViolations", "currentRevision", "remediation"} {
-		if _, ok := obj[k]; !ok {
-			t.Fatalf("missing JSON key %q in %s", k, raw)
-		}
-	}
+	assertExactKeys(t, obj, wantKeys, raw)
 	if obj["code"] != string(CodeValidationFailed) {
 		t.Fatalf("code=%v", obj["code"])
 	}
 	if obj["retryable"] != false {
 		t.Fatalf("retryable=%v", obj["retryable"])
 	}
+	viols, ok := obj["fieldViolations"].([]any)
+	if !ok || len(viols) != 1 {
+		t.Fatalf("fieldViolations=%v", obj["fieldViolations"])
+	}
+	v0, ok := viols[0].(map[string]any)
+	if !ok {
+		t.Fatalf("violation[0]=%T", viols[0])
+	}
+	assertExactKeys(t, v0, wantViolationKeys, raw)
 
 	s := err.Error()
 	if strings.Contains(s, "goroutine") || strings.Contains(s, ".go:") || strings.Contains(s, "\n") {
 		t.Fatalf("Error() looks like a stack trace: %q", s)
 	}
-	if strings.Contains(s, "SECRET") {
-		t.Fatalf("Error() leaked unexpected text: %q", s)
+}
+
+func TestWithMethodsCopyOnWrite(t *testing.T) {
+	base := NotFound("zone")
+	a := base.WithRevision("sha256:a").WithRemediation("re-read")
+	b := base.WithRevision("sha256:b")
+	if base.CurrentRevision != "" || base.Remediation != "" {
+		t.Fatalf("base mutated: %+v", base)
+	}
+	if a.CurrentRevision != "sha256:a" || a.Remediation != "re-read" {
+		t.Fatalf("a=%+v", a)
+	}
+	if b.CurrentRevision != "sha256:b" || b.Remediation != "" {
+		t.Fatalf("b=%+v", b)
+	}
+
+	first := FieldViolation{Path: "spec.zones[0]", Code: "dup", Message: "duplicate"}
+	extra := FieldViolation{Path: "spec.zones[1]", Code: "dup", Message: "duplicate"}
+	x := ValidationFailed("invalid", first)
+	y := x.WithViolations(extra)
+	if len(x.FieldViolations) != 1 || x.FieldViolations[0].Path != first.Path {
+		t.Fatalf("shared violation slice: %+v", x.FieldViolations)
+	}
+	if len(y.FieldViolations) != 2 {
+		t.Fatalf("y violations=%+v", y.FieldViolations)
 	}
 }
 
@@ -280,6 +314,57 @@ func repoRoot(t *testing.T) string {
 			t.Fatal("go.mod not found")
 		}
 		dir = parent
+	}
+}
+
+func assertExactKeys(t *testing.T, obj map[string]any, want []string, raw []byte) {
+	t.Helper()
+	if len(obj) != len(want) {
+		t.Fatalf("JSON key count=%d want %d keys=%v raw=%s", len(obj), len(want), mapsKeys(obj), raw)
+	}
+	for _, k := range want {
+		if _, ok := obj[k]; !ok {
+			t.Fatalf("missing JSON key %q in %s", k, raw)
+		}
+	}
+}
+
+func mapsKeys(obj map[string]any) []string {
+	out := make([]string, 0, len(obj))
+	for k := range obj {
+		out = append(out, k)
+	}
+	return out
+}
+
+func assertJSONFieldNames(t *testing.T, sample any, want []string) {
+	t.Helper()
+	rt := reflect.TypeOf(sample)
+	got := make([]string, 0, rt.NumField())
+	allowed := map[string]bool{}
+	for _, k := range want {
+		allowed[k] = true
+	}
+	for i := 0; i < rt.NumField(); i++ {
+		f := rt.Field(i)
+		tag := f.Tag.Get("json")
+		name, _, _ := strings.Cut(tag, ",")
+		if name == "" || name == "-" {
+			t.Fatalf("field %s has no exported json name", f.Name)
+		}
+		got = append(got, name)
+		if !allowed[name] {
+			t.Fatalf("unexpected json field %q on %s (docs/17 shape drift)", name, rt.Name())
+		}
+		lower := strings.ToLower(f.Name + " " + name)
+		for _, bad := range []string{"stack", "secret", "cause", "details", "trace"} {
+			if strings.Contains(lower, bad) {
+				t.Fatalf("forbidden %s field %s json=%q", rt.Name(), f.Name, name)
+			}
+		}
+	}
+	if len(got) != len(want) {
+		t.Fatalf("%s json fields=%v want %v", rt.Name(), got, want)
 	}
 }
 

@@ -10,6 +10,9 @@ const (
 	ZoneModeOverlay       ZoneMode = "overlay"
 )
 
+// AllZoneModes is the closed first-GA zone-mode set. Recursive is not a value.
+var AllZoneModes = []ZoneMode{ZoneModeAuthoritative, ZoneModeOverlay}
+
 // RRType is a DNS type mnemonic or TYPE<n> form.
 type RRType string
 

@@ -18,13 +18,18 @@ func TestNoWireMCPOrInternalImports(t *testing.T) {
 		"github.com/modelcontextprotocol",
 		"github.com/coredns",
 		"github.com/hilather/go-lab-dns/internal/",
+		"net/http",
+		"net/http/pprof",
+		"runtime/debug",
+		"golang.org/x/net/dns",
 	}
 	for _, pkg := range pkgs {
 		for filename, f := range pkg.Files {
 			for _, imp := range f.Imports {
 				path := strings.Trim(imp.Path.Value, `"`)
 				for _, p := range forbiddenPref {
-					if path == strings.TrimSuffix(p, "/") || strings.HasPrefix(path, p) {
+					root := strings.TrimSuffix(p, "/")
+					if path == root || strings.HasPrefix(path, root+"/") {
 						t.Errorf("%s imports forbidden %q", filename, path)
 					}
 				}

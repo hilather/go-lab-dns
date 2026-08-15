@@ -22,6 +22,10 @@ func assertNoForbiddenImports(t *testing.T, dir string) {
 		"github.com/miekg/dns",
 		"github.com/modelcontextprotocol",
 		"github.com/coredns",
+		"net/http",
+		"net/http/pprof",
+		"runtime/debug",
+		"golang.org/x/net/dns",
 	}
 	for _, pkg := range pkgs {
 		for filename, f := range pkg.Files {
