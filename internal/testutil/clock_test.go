@@ -78,14 +78,14 @@ func TestFakeClockConcurrentAdvanceAndNow(t *testing.T) {
 }
 
 func TestCleanupContextCancels(t *testing.T) {
-	inner := func(t *testing.T) context.Context {
-		return Context(t)
-	}
-	ctx := inner(t)
-	// Context is still live for the remainder of this test.
-	select {
-	case <-ctx.Done():
-		t.Fatal("context canceled early")
-	default:
+	var ctx context.Context
+	t.Run("live", func(t *testing.T) {
+		ctx = Context(t)
+		if ctx.Err() != nil {
+			t.Fatal("context canceled during the owning test")
+		}
+	})
+	if ctx.Err() == nil {
+		t.Fatal("context was not canceled after the owning test ended")
 	}
 }

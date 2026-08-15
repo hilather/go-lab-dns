@@ -7,7 +7,8 @@ import (
 	"sync"
 )
 
-// Set via -ldflags at release builds. Dev builds fall back to module info.
+// Set via -ldflags at release builds. Commit and build time fall back to
+// runtime/debug VCS settings, then "unknown". Version stays "dev" unless ldflags set it.
 var (
 	version   = "dev"
 	commit    = ""
