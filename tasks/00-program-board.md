@@ -8,9 +8,9 @@ Last reviewed: 2026-08-15
 | Order | Task | ID | Depends on | Primary output | Status |
 |---:|---|---|---|---|---|
 | 1 | Repository foundation | FND-001 | None | Go module, CI skeleton, Make targets | done |
-| 2 | Domain and configuration model | CFG-001 | FND-001 | Canonical model, strict YAML, schema | not-started |
-| 3 | DNS wire server | DNS-001 | FND-001, core model interfaces from CFG-001 | UDP/TCP listeners and adapter | not-started |
-| 4 | Local resolver and wildcards | RES-001 | CFG-001, DNS-001 | Exact, wildcard, authoritative, overlay | not-started |
+| 2 | Domain and configuration model | CFG-001 | FND-001 | Canonical model, strict YAML, schema | done |
+| 3 | DNS wire server | DNS-001 | FND-001, core model interfaces from CFG-001 | UDP/TCP listeners and adapter | done |
+| 4 | Local resolver and wildcards | RES-001 | CFG-001, DNS-001 | Exact, wildcard, authoritative, overlay | done |
 | 5 | Forwarding and cache | FWD-001 | CFG-001, DNS-001, RES-001 interfaces | Upstream pools and cache | not-started |
 | 6 | Snapshot state and mutations | STA-001 | CFG-001, resolver compile interfaces | Atomic state, plan/apply/reset/export | not-started |
 | 7 | Chaos core | CHA-001 | CFG-001, RES-001, STA-001 | Policy compiler, selectors, budgets | not-started |

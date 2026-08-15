@@ -18,7 +18,7 @@ type Snapshot struct {
 	Listeners         ListenerView
 	Access            AccessIndex
 	Defaults          DefaultsView
-	Zones             ZoneIndex
+	Zones             ZoneIndex // defined in zone_index.go
 	Forwarding        ForwardingIndex
 	CachePolicy       CachePolicy
 	Chaos             ChaosIndex
@@ -27,9 +27,6 @@ type Snapshot struct {
 	Observability     ObservabilityView
 	EmergencyChaosOff bool
 }
-
-// ZoneIndex is the compiled zone lookup structure. Zero value is valid.
-type ZoneIndex struct{}
 
 // ForwardingIndex is the compiled suffix-forwarding structure. Zero value is valid.
 type ForwardingIndex struct{}
