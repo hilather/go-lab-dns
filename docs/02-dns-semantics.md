@@ -1,6 +1,6 @@
 # DNS Semantics
 
-Status: Implementation-confirmed for local resolution (RES-001)
+Status: Implementation-confirmed for local resolution (RES-001) and forwarding/cache/orchestrator (FWD-001)
 Owners: DNS
 Last reviewed: 2026-08-15
 Related ADRs: 0002, 0005
@@ -41,7 +41,7 @@ A matching authoritative zone owns its namespace. A missing owner returns NXDOMA
 
 A matching overlay zone returns a local answer when a local exact or wildcard rule **resolves the requested type** (or a CNAME that can be followed). If no local rule resolves it — including empty non-terminals, existing owners with a different type, and wildcard sources that do not have the requested type or CNAME — processing continues to forwarding (`Fallthrough=true`). Overlay responses are policy overrides, not claims that LabDNS is authoritative for the entire zone. Overlay never returns NXDOMAIN or NODATA.
 
-`resolver.Resolve` consumes a **pre-selected** zone ID. It does not rediscover the most-specific zone. Longest-suffix selection is `snapshot.ZoneIndex.Select` (used later by the DNS orchestrator). A name outside the selected zone's suffix is never NXDOMAIN; it is Fallthrough.
+`resolver.Resolve` consumes a **pre-selected** zone ID. It does not rediscover the most-specific zone. Longest-suffix selection is `snapshot.ZoneIndex.Select` (used by `dnsquery`). A name outside the selected zone's suffix is never NXDOMAIN; it is Fallthrough.
 
 ## Resolution order
 
@@ -118,34 +118,63 @@ Known exclusions in this release:
 
 ## Forwarding
 
-- Longest suffix wins among forwarding policies.
-- A default policy uses suffix `.`.
-- Upstream pools support ordered, round-robin, random, and health-aware strategies as separately documented.
-- UDP truncation from an upstream triggers TCP retry when policy permits.
-- NXDOMAIN does not normally trigger failover to another upstream.
-- Timeouts, transport errors, SERVFAIL, and REFUSED failover behavior are explicit policy fields.
-- Detect obvious self-forwarding and cyclic configurations during validation.
+Implemented in `internal/forwarder` + `internal/dnsquery`. `forwarder.Exchange` consumes a **pre-selected** policy ID. Longest-suffix selection is `snapshot.ForwardingIndex.Select`.
+
+- Longest suffix wins among forwarding policies. The root suffix `.` matches every name and ranks lowest.
+- There is **no host-resolver fallback**. Only configured `host:port` endpoints are dialed.
+- UDP truncation from an upstream triggers a TCP retry to the **same** endpoint when `failover.udpTruncateRetryTCP` is true. The Go zero value is false (no retry).
+- NXDOMAIN (and other successful RCODEs except SERVFAIL/REFUSED) do **not** fail over.
+- Timeouts, transport errors, SERVFAIL, and REFUSED failover are explicit `FailoverSpec` bools. They are **not** materialized: the Go zero value means do not fail over. A zero `timeout` is **not** unlimited; Exchange uses a 2s per-attempt budget.
+- Self-forwarding and cyclic configurations are rejected at `config.Validate` (they need the listen address).
+- Forwarded answers never set AA or AD. CD is passed through. RA is left false for the orchestrator.
+
+### Pool strategies
+
+| Strategy | First pick | Failover walk |
+|---|---|---|
+| `ordered` | configured index 0 | remaining configured order |
+| `round-robin` | process-local counter per pool | remaining from that start |
+| `random` | injected RNG (tests use a seed) | remaining from that start |
+| `health-aware` | first currently healthy (or cooldown-expired) member in configured order | remaining healthy first, then last-resort unhealthy |
+
+Health is **query-driven**: no extra probe packets. An upstream is marked down after **2** consecutive timeout or transport failures and becomes probe-eligible after a **30s** cooldown. SERVFAIL/REFUSED RCODEs do not change health.
+
+### Refuse-forward (unknown / local-only clients)
+
+`spec.access.unknownClient` is `refuse-forward` (refuse *recursion*, not all DNS). A source IP that matches no `clientGroups[].cidrs`:
+
+1. is classified `ClientGroupID = ""`;
+2. still receives local authoritative or overlay answers (including authoritative NXDOMAIN/NODATA) with **RA=0**;
+3. is **never forwarded** and does not fill cache from upstream;
+4. receives **REFUSED** (RA=0) only when there is no local path (no matching zone, or overlay fallthrough with no permitted policy).
+
+`ClientGroup.AllowForward=false` is the same gate for a known group. Empty `clientGroups` serves local zones to everyone and forwards to no one. `AccessIndex` fill is STA-001; until then `dnsquery` classifies from `snap.Canonical.Spec.Access` (longest-prefix CIDR).
+
+RD=1 does **not** grant forwarding to unknown or local-only clients. RD=0 does **not** suppress configured forwarding for a known `AllowForward` group.
 
 ## Cache behavior
 
-- Cache keys include all request attributes that materially affect the answer, including DNSSEC-related flags if supported.
-- Positive and negative TTLs are clamped to configured bounds.
-- Cache entries retain enough metadata to explain source, age, and upstream.
-- Local-state revisions invalidate or namespace local answer caches so a mutation cannot return an old local override.
-- Chaos can bypass, force-miss, or deliberately serve configured stale data only when enabled and bounded.
+Implemented in `internal/cache` (process-scoped; **not** a Snapshot field).
+
+- Keys include Revision, QNAME, QTYPE, QCLASS, a local/upstream bit, and (for upstream) CD + forwarding policy ID. Revision namespaces so a mutation cannot return a pre-swap local override. Unknown/local-only clients never look up or fill upstream entries.
+- Positive TTLs are clamped to `[minimumTTL, maximumTTL]` when those bounds are > 0. Negative TTLs are capped by `maximumNegativeTTL`. A zero bound means no clamp on that side. A clamped TTL of 0 is not stored.
+- Get returns a **copy**. Chaos hooks (`bypass`, `force-miss`, `serve-stale`, skip-put) change the request path or the returned copy; CHA-002 wires them.
+- SERVFAIL/REFUSED/FORMERR/NOTIMP are not cached. Overlay `Fallthrough` results are not cached until a forward completes.
 
 ## DNS flags
 
 - Echo the request ID and relevant question.
 - Set QR on responses.
 - Set AA only for authoritative local answers and authoritative negative answers. Overlay hits are not AA. Forwarded answers are not AA.
-- Set RA only when forwarding/recursive service is available to the requesting client. `resolver.Resolve` leaves RA cleared; the orchestrator sets it later.
+- Set RA only when forwarding is available to this client: a matching group, `AllowForward`, and a selected forwarding policy. `resolver.Resolve` and `forwarder.Exchange` leave RA cleared; `dnsquery` sets it.
 - Respect RD as a request signal but enforce local policy regardless. The transport echoes RD.
 - Do not set AD on synthesized or other local data. First GA never forges AD.
 - Clear CD on every local `Resolve` result. CD is passed through only on forwarded queries/responses (forwarder, not this package).
 - Set TC only when response truncation is real or an explicit safe chaos action requests it.
 
 Confirmed local matrix (RES-001): zone mode ∈ {authoritative, overlay} × RD ∈ {0,1} × CD ∈ {0,1}. AA follows the rules above; AD=0; CD=0; RA=0.
+
+Confirmed orchestrator matrix (FWD-001): zone mode ∈ {authoritative, overlay, none} × RD ∈ {0,1} × client ∈ {known-forward, known-local-only, unknown} × CD ∈ {0,1}. RA is 1 only for known-forward with a selected policy (including local answers to those clients). AD=0. CD is 0 on local answers and passed through on forwarded answers.
 
 ## Transport behavior
 

@@ -50,7 +50,7 @@ Operators should monitor:
 ## Runbook: upstream outage
 
 1. Check pool health and selected forwarding policy.
-2. Confirm whether failover conditions permit another upstream.
+2. Confirm whether failover conditions permit another upstream (`onTimeout` / `onTransportError` / `onSERVFAIL` / `onREFUSED`; omitted bools stay false). Zero `failover.timeout` is a 2s attempt budget, not unlimited.
 3. Query each upstream independently from the same network namespace.
 4. Avoid treating NXDOMAIN as an outage.
 5. Use a temporary bounded upstream fault simulation only in a test environment.

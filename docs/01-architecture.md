@@ -187,6 +187,8 @@ The chaos engine receives a structured resolution context and cannot access mana
 
 `internal/dnsserver` binds UDP and TCP, applies admission, calls `Handler.ServeDNS`, and applies the returned `TransportHint`. It does not import snapshot, resolver, forwarder, or chaos.
 
+`internal/dnsquery` implements that handler: one `Store.Load` per query, client-group classification (spec CIDRs until `AccessIndex` lands), zone + forwarding selection, `resolver.Resolve`, then `forwarder.Exchange` only when the client may forward. Chaos `Decide` is not called yet.
+
 Default listen address (first GA, configured later by CFG): `:5353` UDP+TCP.
 
 Default admission and transport limits:

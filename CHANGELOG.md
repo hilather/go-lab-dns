@@ -14,6 +14,9 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - DNS UDP/TCP listeners in `internal/dnsserver` with admission limits, TCP framing/deadlines, graceful shutdown, and chaos transport hints (`send`/`drop`/`truncate`/`tcp-close`/`tcp-reset`/`hold-then-close`).
 - `github.com/miekg/dns v1.1.72` pinned behind `internal/dnswire`; library types do not escape the adapter.
 - Compiled `snapshot.ZoneIndex` (existence tree, RRsets, wildcards, longest-suffix `Select`) filled by `resolver.Compile`. `Resolve` consumes a pre-selected zone ID.
+- Compiled `snapshot.ForwardingIndex` (longest-suffix policies, default `.`) filled by `forwarder.Compile`. `Exchange` consumes a pre-selected policy ID.
+- Process-scoped positive/negative `internal/cache` namespaced by snapshot revision, with TTL clamps, LRU eviction, and chaos lookup hooks.
+- `internal/dnsquery` orchestrator (`dnsserver.Handler`): classify → resolve → optional exchange. No chaos `Decide` yet.
 
 ### Changed
 
@@ -29,12 +32,14 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Security
 
-- None.
+- Data-plane refuse-forward: unmatched clients are not an open recursive resolver. Local answers still serve.
 
 ### DNS behavior
 
 - UDP and TCP listeners admit a single IN class QUERY, echo ID/question, set QR, and apply FORMERR/NOTIMP/BADVERS as documented in [docs/02-dns-semantics.md](https://github.com/hilather/go-lab-dns/blob/main/docs/02-dns-semantics.md).
 - Local resolver (`internal/resolver`): exact RRsets, RFC 4592 closest-encloser wildcards, empty non-terminals, bounded CNAME (default depth 8), authoritative NXDOMAIN/NODATA+SOA, overlay fallthrough. Overlay CNAME may terminate in a forwarded name (`Fallthrough=true`); the resolver does not forward. AA only on authoritative local/negative answers; AD never set; CD cleared locally. Zero `CNAMEDepth` falls back to 8, not unlimited.
+- Suffix forwarding (`internal/forwarder`): ordered / round-robin / random / health-aware pools; UDP exchange with optional TCP retry after TC; failover only when `FailoverSpec` bools are set. NXDOMAIN does not fail over. Zero `timeout` is a 2s per-attempt budget, not unlimited. No `/etc/resolv.conf` fallback. Forwarded answers: AA=0, AD=0, CD pass-through.
+- Refuse-forward: unknown or `AllowForward=false` clients get local answers with RA=0 and never hit upstreams. REFUSED only when there is no local path. Empty `clientGroups` serves local zones and forwards nothing. Pack-sample `ns1.lab.example.net` from 127.0.0.1 succeeds; a forward-only name from an unmatched IP is REFUSED with zero upstream packets.
 
 ### Chaos behavior
 
@@ -72,6 +77,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Snapshot compilation, DNS wire, resolver, forwarder, and control-plane work have not started.
 - Forwarder, cache, snapshot bootstrap serve, and control-plane work have not started.
 - DNS listeners require a `dnsserver.Handler`; the process does not yet serve from a compiled snapshot (no `dnsquery` orchestrator yet).
+- Snapshot bootstrap serve (`compiler.Compile`, `AccessIndex` fill, `cmd/labdns serve`) has not started; `dnsquery` is constructed in tests against a hand-built `snapshot.Store`.
+- Chaos `Decide` is not wired; cache/exchange hooks exist but are unused on the live path.
 - `make test-integration`, `make test-parity`, and `make test-container` fail closed until later PRs.
 - YAML configuration decode, JSON Schema, snapshot compilation, resolver, forwarder, and control-plane work have not started.
 - DNS listeners require a `dnsserver.Handler`; the process does not yet serve from a compiled snapshot.

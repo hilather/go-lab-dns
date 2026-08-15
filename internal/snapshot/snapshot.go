@@ -28,9 +28,6 @@ type Snapshot struct {
 	EmergencyChaosOff bool
 }
 
-// ForwardingIndex is the compiled suffix-forwarding structure. Zero value is valid.
-type ForwardingIndex struct{}
-
 // ChaosIndex is the compiled chaos policy structure. Zero value is valid.
 type ChaosIndex struct{}
 

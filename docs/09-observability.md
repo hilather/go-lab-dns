@@ -43,6 +43,7 @@ Do not log complete QNAMEs or client addresses by default. Optional debug modes 
 
 - Exchange count, latency, timeout, transport error, RCODE, health state, and failover.
 - Pool selection and circuit state if implemented.
+- `denied_forward` counts queries that needed a forward and were refused (unknown/local-only client or no permitted policy). Local answers to those clients are not counted. Metrics export of this counter is OBS-001; the orchestrator increments it now.
 
 ### Chaos
 
