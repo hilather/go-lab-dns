@@ -31,7 +31,7 @@ const typeANY model.RRType = "ANY"
 //     Overlay hits and fallthrough are never AA.
 //   - AD is never set on local or synthesized data.
 //   - CD is cleared on every local result (pass-through is a forwarder job).
-//   - RA is left false; the orchestrator sets it when forwarding is allowed.
+//   - RA is left false on every local result.
 //
 // Zero Defaults.CNAMEDepth is not unlimited: it falls back to
 // model.DefaultCNAMEDepth (8). Overlay CNAME chains that leave local data
@@ -268,11 +268,11 @@ func missExisting(
 	encl *model.Name,
 ) model.Result {
 	if len(answers) > 0 {
-		// QNAME existed as CNAME; do not rewrite to NXDOMAIN/NODATA RCODE.
 		if zd.Mode == model.ZoneModeOverlay {
 			return overlayFallthrough(snap, q, qname, zd, answers, source, wildID, encl)
 		}
-		return positive(snap, q, qname, zd, answers, source, wildID, encl)
+		// In-zone CNAME target exists without QTYPE: keep CNAME, NODATA + SOA.
+		return cnameNegative(snap, q, qname, zd, model.RCodeNoError, answers, source, wildID, encl)
 	}
 	if zd.Mode == model.ZoneModeOverlay {
 		return fallthroughResult(snap, q, qname, zd.ID, zd.Mode)
@@ -294,7 +294,8 @@ func missNonexistent(
 		if zd.Mode == model.ZoneModeOverlay {
 			return overlayFallthrough(snap, q, qname, zd, answers, source, wildID, encl)
 		}
-		return positive(snap, q, qname, zd, answers, source, wildID, encl)
+		// In-zone CNAME target does not exist: keep CNAME, NXDOMAIN + SOA.
+		return cnameNegative(snap, q, qname, zd, model.RCodeNXDomain, answers, source, wildID, encl)
 	}
 	if zd.Mode == model.ZoneModeOverlay {
 		return fallthroughResult(snap, q, qname, zd.ID, zd.Mode)
@@ -322,6 +323,26 @@ func positive(
 	res.Explanation.Source = source
 	res.Explanation.WildcardSource = wildID
 	res.Explanation.ClosestEncloser = encl
+	return res
+}
+
+// cnameNegative keeps the CNAME chain and applies the final in-zone name's
+// RCODE plus SOA. Out-of-zone CNAME stops earlier (positive, no Fallthrough).
+func cnameNegative(
+	snap *snapshot.Snapshot,
+	q model.Query,
+	qname model.Name,
+	zd *snapshot.ZoneData,
+	rcode model.RCode,
+	answers []model.RR,
+	source model.Source,
+	wildID *model.RecordID,
+	encl *model.Name,
+) model.Result {
+	res := negative(snap, q, qname, zd, rcode, wildID, encl)
+	res.Answers = answers
+	res.Source = source
+	res.Explanation.Source = source
 	return res
 }
 
@@ -399,7 +420,7 @@ func baseResult(snap *snapshot.Snapshot, q model.Query, qname model.Name, id mod
 		// Local answers never forge AD and always clear CD.
 		AD: false,
 		CD: false,
-		// RA is the orchestrator's job.
+		// RA is left false on every local result.
 		RA: false,
 		Explanation: &model.Explanation{
 			Query:    qq,

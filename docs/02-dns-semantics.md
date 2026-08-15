@@ -91,7 +91,8 @@ Queries:
 - An owner with CNAME cannot have other ordinary data at that owner, apart from DNSSEC metadata if later supported.
 - Configuration compilation rejects detectable CNAME loops. Runtime loops (for example via wildcard CNAME) return SERVFAIL.
 - Runtime CNAME traversal has a strict configurable depth cap. `spec.defaults.cnameDepth` materializes to **8**. A zero `Snapshot.Defaults.CNAMEDepth` is **not** unlimited — `Resolve` falls back to 8.
-- Overlay CNAME chains **may terminate in a forwarded name**. When the next target is outside the selected zone's local data, `Resolve` includes the CNAME chain, sets `Fallthrough=true`, and stops. It does not call the forwarder. Authoritative CNAME that leaves the zone is returned as a CNAME answer and does **not** fall through.
+- Overlay CNAME chains **may terminate in a forwarded name**. When the next target is outside the selected zone's local data, `Resolve` includes the CNAME chain, sets `Fallthrough=true`, and stops. It does not call the forwarder. Authoritative CNAME that leaves the zone is returned as a CNAME answer (NOERROR, no SOA) and does **not** fall through.
+- When the CNAME target is still inside the selected authoritative zone, the final name’s RCODE applies: in-zone NXDOMAIN is NXDOMAIN + CNAME + SOA; in-zone NODATA is NOERROR + CNAME + SOA. Overlay still Fallthroughs those cases instead of synthesizing a negative.
 - QTYPE CNAME returns the CNAME and does not follow. Other types follow in-zone CNAME targets, bounded by the depth cap.
 - Multiple values of the same owner, type, class, and TTL form one RRset.
 - An RRset uses one effective TTL after normalization.

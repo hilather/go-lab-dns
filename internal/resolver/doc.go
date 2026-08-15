@@ -4,6 +4,7 @@
 // Resolve consumes a pre-selected zone ID and does not rediscover the zone.
 //
 // Local flag rules: AA only for authoritative local/negative answers; AD is
-// never set; CD is cleared; RA is left unset. Overlay misses and overlay
-// CNAME targets that leave local data set Fallthrough and do not forward.
+// never set; CD is cleared; RA is left false on every local result. Overlay
+// misses and overlay CNAME targets that leave local data set Fallthrough and
+// do not forward.
 package resolver

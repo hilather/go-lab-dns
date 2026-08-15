@@ -57,6 +57,9 @@ func TestExactAllStructuredTypes(t *testing.T) {
 	res := resolve(t, snap, "lab.example.net.", model.TypeNS, authZoneID)
 	wantRCode(t, res, model.RCodeNoError)
 	wantData(t, res, model.TypeNS, "ns1.lab.example.net.")
+	if res.Answers[0].TTL != 30*time.Second {
+		t.Fatalf("apex NS TTL=%s, want 30s from defaults", res.Answers[0].TTL)
+	}
 
 	res = resolve(t, snap, "lab.example.net.", model.TypeSOA, authZoneID)
 	wantRCode(t, res, model.RCodeNoError)
@@ -213,8 +216,17 @@ func TestPackSampleFixture(t *testing.T) {
 
 	c := resolve(t, snap, "grafana.tools.lab.example.net.", model.TypeA, "lab-zone")
 	wantData(t, c, model.TypeCNAME, "gateway.lab.example.net.")
+	wantRCode(t, c, model.RCodeNXDomain)
 	if c.Fallthrough {
-		t.Fatal("auth CNAME out-of-local-data must not fall through")
+		t.Fatal("auth in-zone CNAME target miss must not fall through")
+	}
+	if len(c.Authority) != 1 || c.Authority[0].Type != model.TypeSOA {
+		t.Fatalf("in-zone CNAME NXDOMAIN needs SOA, got %+v", c.Authority)
+	}
+
+	ns := resolve(t, snap, "lab.example.net.", model.TypeNS, "lab-zone")
+	if len(ns.Answers) == 0 || ns.Answers[0].TTL != 30*time.Second {
+		t.Fatalf("pack-sample apex NS TTL=%v, want 30s", ns.Answers)
 	}
 
 	o := resolve(t, snap, "special-api.vendor.example.", model.TypeA, "vendor-overlay")

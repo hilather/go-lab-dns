@@ -20,7 +20,10 @@ const (
 
 func mustCompile(t *testing.T, zones []model.Zone) snapshot.ZoneIndex {
 	t.Helper()
-	idx, err := Compile(&model.State{Spec: model.Spec{Zones: zones}})
+	idx, err := Compile(&model.State{Spec: model.Spec{
+		Defaults: model.DefaultsSpec{TTL: 30 * time.Second},
+		Zones:    zones,
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}

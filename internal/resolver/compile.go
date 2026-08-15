@@ -3,6 +3,7 @@ package resolver
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hilather/go-lab-dns/internal/model"
 	"github.com/hilather/go-lab-dns/internal/snapshot"
@@ -40,7 +41,7 @@ func Compile(st *model.State) (snapshot.ZoneIndex, error) {
 			return snapshot.ZoneIndex{}, fmt.Errorf("%w: duplicate zone name %q (%s and %s)", ErrInvalidZone, origin, prev, z.ID)
 		}
 		seenName[origin] = z.ID
-		zd, err := compileZone(z, origin, cnames)
+		zd, err := compileZone(z, origin, st.Spec.Defaults.TTL, cnames)
 		if err != nil {
 			return snapshot.ZoneIndex{}, err
 		}
@@ -52,7 +53,7 @@ func Compile(st *model.State) (snapshot.ZoneIndex, error) {
 	return idx, nil
 }
 
-func compileZone(z model.Zone, origin model.Name, cnames map[string]string) (*snapshot.ZoneData, error) {
+func compileZone(z model.Zone, origin model.Name, defaultTTL time.Duration, cnames map[string]string) (*snapshot.ZoneData, error) {
 	zd := &snapshot.ZoneData{
 		ID:        z.ID,
 		Name:      origin,
@@ -79,7 +80,10 @@ func compileZone(z model.Zone, origin model.Name, cnames map[string]string) (*sn
 			Owner: origin,
 			Type:  model.TypeNS,
 			Class: model.ClassIN,
-			Data:  vals,
+			// Zone-level nameservers are not records; use materialized
+			// defaults.TTL when present, else leave 0.
+			TTL:  defaultTTL,
+			Data: vals,
 		}, false); err != nil {
 			return nil, err
 		}

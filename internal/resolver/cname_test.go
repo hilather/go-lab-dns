@@ -64,6 +64,74 @@ func TestAuthCNAMEOutsideZoneStops(t *testing.T) {
 	if len(res.Answers) != 1 {
 		t.Fatalf("answers=%+v", res.Answers)
 	}
+	if len(res.Authority) != 0 {
+		t.Fatalf("out-of-zone CNAME must not attach SOA, got %+v", res.Authority)
+	}
+}
+
+func TestAuthCNAMEInZoneFinalNameRCODE(t *testing.T) {
+	snap := snapOf(t, []model.Zone{authZone(
+		rec("to-missing", "to-missing", model.TypeCNAME, time.Second, "ghost.lab.example.net."),
+		rec("to-txt", "to-txt", model.TypeCNAME, time.Second, "only-txt.lab.example.net."),
+		rec("txt", "only-txt", model.TypeTXT, time.Second, `"x"`),
+		rec("to-out", "to-out", model.TypeCNAME, time.Second, "outside.example."),
+	)}, 0)
+
+	cases := []struct {
+		name   string
+		qname  string
+		rcode  model.RCode
+		soa    bool
+		source model.Source
+	}{
+		{name: "cname-to-inzone-nxdomain", qname: "to-missing.lab.example.net.", rcode: model.RCodeNXDomain, soa: true, source: model.SourceExact},
+		{name: "cname-to-inzone-nodata", qname: "to-txt.lab.example.net.", rcode: model.RCodeNoError, soa: true, source: model.SourceExact},
+		{name: "cname-to-outside", qname: "to-out.lab.example.net.", rcode: model.RCodeNoError, soa: false, source: model.SourceExact},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			res := resolve(t, snap, tc.qname, model.TypeA, authZoneID)
+			wantRCode(t, res, tc.rcode)
+			if res.Fallthrough {
+				t.Fatal("authoritative CNAME must not fall through")
+			}
+			if !res.AA {
+				t.Fatal("expected AA")
+			}
+			hasCNAME := false
+			for _, rr := range res.Answers {
+				if rr.Type == model.TypeCNAME && rr.Data != "" {
+					hasCNAME = true
+				}
+			}
+			if !hasCNAME {
+				t.Fatalf("missing CNAME in %+v", res.Answers)
+			}
+			if res.Source != tc.source {
+				t.Fatalf("source=%s", res.Source)
+			}
+			hasSOA := len(res.Authority) == 1 && res.Authority[0].Type == model.TypeSOA
+			if hasSOA != tc.soa {
+				t.Fatalf("soa=%v want %v authority=%+v", hasSOA, tc.soa, res.Authority)
+			}
+		})
+	}
+}
+
+func TestOverlayCNAMEInZoneMissFallthrough(t *testing.T) {
+	snap := snapOf(t, []model.Zone{overlayZone(
+		rec("c", "alias", model.TypeCNAME, time.Second, "ghost.vendor.example."),
+		rec("t", "only-txt", model.TypeTXT, time.Second, `"x"`),
+		rec("c2", "to-txt", model.TypeCNAME, time.Second, "only-txt.vendor.example."),
+	)}, 0)
+	nx := resolve(t, snap, "alias.vendor.example.", model.TypeA, overlayZoneID)
+	if !nx.Fallthrough || nx.RCode != model.RCodeNoError {
+		t.Fatalf("overlay CNAME to missing in-zone name must fall through: %+v", nx)
+	}
+	nodata := resolve(t, snap, "to-txt.vendor.example.", model.TypeA, overlayZoneID)
+	if !nodata.Fallthrough || nodata.RCode != model.RCodeNoError {
+		t.Fatalf("overlay CNAME to in-zone NODATA must fall through: %+v", nodata)
+	}
 }
 
 func TestOverlayCNAMEToOutsideFallthrough(t *testing.T) {

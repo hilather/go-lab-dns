@@ -18,7 +18,7 @@ type Snapshot struct {
 	Listeners         ListenerView
 	Access            AccessIndex
 	Defaults          DefaultsView
-	Zones             ZoneIndex // defined in zone_index.go
+	Zones             ZoneIndex
 	Forwarding        ForwardingIndex
 	CachePolicy       CachePolicy
 	Chaos             ChaosIndex

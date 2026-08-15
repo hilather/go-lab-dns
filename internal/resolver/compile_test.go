@@ -168,6 +168,31 @@ func TestSelectMostSpecific(t *testing.T) {
 	}
 }
 
+func TestCompileApexNSUsesDefaultsTTL(t *testing.T) {
+	withTTL, err := Compile(&model.State{Spec: model.Spec{
+		Defaults: model.DefaultsSpec{TTL: 30 * time.Second},
+		Zones:    []model.Zone{authZone()},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	zd, _ := withTTL.Lookup(authZoneID)
+	rr, ok := zd.RRset(origin, model.TypeNS)
+	if !ok || rr.TTL != 30*time.Second {
+		t.Fatalf("apex NS TTL=%v ok=%v, want 30s from defaults", rr.TTL, ok)
+	}
+
+	noTTL, err := Compile(&model.State{Spec: model.Spec{Zones: []model.Zone{authZone()}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	zd, _ = noTTL.Lookup(authZoneID)
+	rr, ok = zd.RRset(origin, model.TypeNS)
+	if !ok || rr.TTL != 0 {
+		t.Fatalf("unpopulated defaults must leave apex NS TTL 0, got %v ok=%v", rr.TTL, ok)
+	}
+}
+
 func TestZeroValueZoneIndex(t *testing.T) {
 	var idx snapshot.ZoneIndex
 	if _, ok := idx.Select("lab.example.net."); ok {
