@@ -30,16 +30,12 @@ var requiredTargets = []string{
 var unimplementedTargets = []string{
 	"test-integration",
 	"test-container",
+	"test-parity",
 }
 
 // unimplementedCIJobs locks fail-closed CI jobs to an invert+phrase contract.
 // Remove a job from this map in the same change that makes its Make target succeed.
-var unimplementedCIJobs = map[string]unimplementedCIJob{
-	"container-test": {
-		Target: "test-container",
-		Phrase: "unimplemented until PR-16",
-	},
-}
+var unimplementedCIJobs = map[string]unimplementedCIJob{}
 
 type unimplementedCIJob struct {
 	Target string

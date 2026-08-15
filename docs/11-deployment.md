@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: Deployment, Operations, Security
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-15 (DEP-001 CLI and hardened image)
 Related ADRs: 0003
 
 ## Goals
@@ -15,21 +15,50 @@ Related ADRs: 0003
 
 ## Container image
 
-Use a multi-stage build and a minimal runtime image. The runtime contains:
+Image: **`ghcr.io/hilather/labdns`** (pin by digest in GitOps). The root `Dockerfile` is a multi-stage build (`golang:1.26-alpine` → `scratch`) that ships:
 
-- One `labdns` binary.
-- CA certificates only if required for TLS upstreams or management auth.
-- License and build metadata.
-- No shell unless a documented operational requirement justifies it.
+- One static `labdns` binary at `/labdns`.
+- CA certificates for optional TLS upstreams.
+- `LICENSE` (Apache-2.0) and OCI labels (`org.opencontainers.image.licenses=Apache-2.0`).
+- No shell. `HEALTHCHECK` uses exec form `/labdns healthcheck`.
 
-Run as a numeric non-root UID. Listen on 5353 in the container and map host port 53.
+The image user is numeric **`65532:65532`**. Listen on 5353 in the container and map host port 53. Required runtime flags: `read_only: true`, `cap_drop: [ALL]`, `security_opt: [no-new-privileges:true]`, tmpfs `/tmp`.
+
+SBOM and provenance attachments are REL-001 hooks; the image already carries license and source labels.
+
+## CLI reference
+
+```text
+labdns serve --config=/etc/labdns/config.yaml [--chaos-disable]
+             [--dns-listen ADDR] [--management-listen ADDR|off]
+             [--shutdown-timeout 5s] [--pid-file /tmp/labdns.pid]
+labdns validate --config=...
+labdns canonicalize --config=... [--format yaml|json]
+labdns verify --config=... --probes=...
+labdns query --name=... --type=A [--server 127.0.0.1:5353] [--transport udp|tcp]
+labdns healthcheck --url=http://127.0.0.1:8080/v1/health/ready
+labdns chaos emergency-disable --pid-file=/tmp/labdns.pid
+labdns version
+```
+
+| Interface | Meaning |
+|---|---|
+| `--config` | Bootstrap YAML/JSON path. Required for serve/validate/canonicalize/verify. The process never writes this file. |
+| `--chaos-disable` | Startup inhibit. Same bit as `LABDNS_CHAOS_DISABLE=1/true/yes`. YAML and ordinary API cannot relax it. |
+| `--dns-listen` | Override YAML DNS address. Empty uses YAML (`:5353`). |
+| `--management-listen` | Override YAML management address. `off` / `none` / `-` leaves HTTP unbound. |
+| `--shutdown-timeout` | Graceful deadline (default 5s). Cancels chaos delays, then DNS and management. |
+| `--pid-file` | Written after both requested listeners bind. Removed on shutdown. |
+| `LABDNS_CHAOS_DISABLE` | Only documented safety-related environment variable. No env var raises chaos safety caps. |
+
+`labdns chaos emergency-disable --pid-file` sends **`SIGUSR1`** and does not call HTTP. `SIGTERM` / `SIGINT` are graceful shutdown. `SIGUSR2` is ignored.
 
 ## Compose example
 
 ```yaml
 services:
   labdns:
-    image: ghcr.io/example/labdns@sha256:REPLACE_WITH_DIGEST
+    image: ghcr.io/hilather/labdns@sha256:REPLACE_WITH_DIGEST
     command: ["serve", "--config=/etc/labdns/config.yaml"]
     ports:
       - "53:5353/udp"

@@ -3,6 +3,7 @@
 Status: Proposed
 Owners: Operations
 Last reviewed: 2026-08-15 (OBS-001 diagnostic queries)
+Last reviewed: 2026-08-15 (DEP-001 SIGUSR1 CLI + graceful shutdown)
 
 ## Routine checks
 
@@ -79,8 +80,8 @@ Alert recommendations for DEP/GIT:
 
 ## Runbook: chaos runaway
 
-1. Invoke emergency disable through the privileged path (`app.Service.EmergencyDisableChaos`, or `SIGUSR1` to the process). This sets the inhibit bit, stamps the active snapshot, and cancels outstanding context-aware delays (`Budgets.CancelAll`).
-2. If unavailable, restart with `labdns serve --chaos-disable` or `LABDNS_CHAOS_DISABLE=1`.
+1. Invoke emergency disable through the privileged path (`app.Service.EmergencyDisableChaos`, `POST /v1/chaos:emergency-disable`, `SIGUSR1`, or `labdns chaos emergency-disable --pid-file`). This sets the inhibit bit, stamps the active snapshot, and cancels outstanding context-aware delays (`Budgets.CancelAll`). The PID CLI sends `SIGUSR1` and does not call HTTP, so it works when management is unbound.
+2. If unavailable, restart with `labdns serve --chaos-disable` or `LABDNS_CHAOS_DISABLE=1`. YAML cannot relax that startup override.
 3. Confirm no new policy actions are selected (`Decide` reason `emergency_disabled`) and delayed-request count drains to zero. In-flight sleeps return promptly; new queries are not delayed.
 4. Preserve audit and telemetry evidence (delay/drop/truncate/reset/RCODE counters — never raw QNAME labels).
 5. Identify missing cap (`maxDelay`, `maxConcurrentDelayed`), cancellation, scope, or expiry control. Conflicting terminal transport actions are rejected at validate time.

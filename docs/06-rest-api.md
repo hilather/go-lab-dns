@@ -157,7 +157,7 @@ The adapter is `internal/control/rest`. Routes are compiled from `capabilities.A
 | Request ID | `X-Request-ID` is accepted or generated and echoed; problem `instance` is `urn:labdns:request:<id>`. |
 | Health | `GET /v1/health/live` is process liveness. `GET /v1/health/ready` is ready when `Status.Ready` is true (runtime revision present and required listeners bound). Upstream failure is `Status.Degraded`, not unready. Chaos must not affect either probe. |
 
-`labdns serve` does not bind the management listener in this slice (DEP-001 / PR-16). Construct `rest.Server` with `Config.Addr` (empty → `:8080`) and `app.Service`.
+`labdns serve --config PATH` constructs `rest.Server` with `Config.Addr` from YAML (empty → `:8080`) and the process `app.Service`. `--management-listen` overrides the bind address; `off` / `none` / `-` leaves management unbound. Health live/ready stay reachable without a bearer token.
 
 ## Security considerations
 

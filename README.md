@@ -85,6 +85,8 @@ Targets that are not yet implemented fail closed (non-zero exit with an explicit
 make test-integration    # later DNS/control-plane PRs
 make test-parity         # REST/MCP capability parity and MCP goldens
 make test-container      # PR-16 / DEP-001
+make test-parity         # API-001 / MCP-001
+make test-container      # docker build + non-root/read-only/no-caps contract
 ```
 
 See [AGENTS.md](https://github.com/hilather/go-lab-dns/blob/main/AGENTS.md) for the full required target list.
@@ -101,6 +103,6 @@ The following GitHub Actions jobs are required and have no bypass path:
 - `generated-file`
 - `documentation`
 - `security-scan`
-- `container-test` (asserts `make test-container` fails closed until PR-16)
+- `container-test` (builds `ghcr.io/hilather/labdns` and checks the hardened runtime contract)
 
 Local equivalents are the `make` targets above. Do not mark a required check optional to ship a change.

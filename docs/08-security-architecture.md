@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: Security, DNS, Control Plane
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-15 (DEP-001 non-root image)
 Related ADRs: 0003, 0004, 0005, 0007
 
 ## Goals
@@ -101,7 +101,7 @@ Audit delivery failure cannot block DNS but may block high-impact management wri
 - Scan source, dependencies, and images.
 - Use reproducible or provenance-attested builds where practical.
 - Sign release tags and container images where supported.
-- Run as a non-root UID in a minimal image.
+- Run as a non-root UID in a minimal image (`ghcr.io/hilather/labdns`, UID 65532, no shell).
 - Use read-only root filesystem, tmpfs for temporary files, dropped capabilities, and no-new-privileges.
 
 ## Chaos abuse prevention

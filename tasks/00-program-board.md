@@ -20,6 +20,8 @@ Last reviewed: 2026-08-15
 | 11 | Auth, security, and audit | SEC-001 | API-001/MCP-001 interfaces, DNS admission interfaces | RBAC, limits, audit | not-started |
 | 12 | Observability | OBS-001 | Stable component interfaces | Metrics, logs, health, tracing | complete |
 | 13 | CLI and container | DEP-001 | Runnable server | CLI, image, graceful lifecycle | not-started |
+| 12 | Observability | OBS-001 | Stable component interfaces | Metrics, logs, health, tracing | not-started |
+| 13 | CLI and container | DEP-001 | Runnable server | CLI, image, graceful lifecycle | done |
 | 14 | Deployment examples | GIT-001 | DEP-001, schemas, probes | Compose/Kubernetes/GitOps guidance | not-started |
 | 15 | CI, docs, and release automation | REL-001 | FND-001, stable generation targets | Required CI and release diffs | not-started |
 | 16 | Performance and interoperability | PERF-001 | Feature-complete candidate | Load, soak, external compatibility | not-started |

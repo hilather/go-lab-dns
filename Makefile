@@ -28,7 +28,7 @@ help:
 		'  test-integration    unimplemented until later DNS/control-plane PRs' \
 		'  test-parity         REST/MCP capability parity and MCP goldens' \
 		'  test-config-compat  positive+negative v1alpha1 config fixtures' \
-		'  test-container      unimplemented until PR-16 / DEP-001'
+		'  test-container      build ghcr.io/hilather/labdns and check non-root/read-only/no-caps'
 
 format:
 	$(GO) fmt ./...
@@ -70,5 +70,4 @@ test-config-compat:
 	$(GO) test ./internal/config -run TestConfigCompat -count=1
 
 test-container:
-	@echo 'unimplemented until PR-16 (DEP-001): container image and contract tests' >&2
-	@exit 1
+	bash scripts/test-container.sh

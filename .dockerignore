@@ -1,0 +1,12 @@
+.git
+.github
+**/*_test.go
+testdata
+docs
+tasks
+examples
+*.md
+!LICENSE
+.dockerignore
+.golangci.yml
+.gitignore

@@ -1,0 +1,25 @@
+# Minimal Compose smoke for the hardened image. Pin by digest in GitOps (GIT-001).
+services:
+  labdns:
+    image: ghcr.io/hilather/labdns:test
+    command: ["serve", "--config=/etc/labdns/config.yaml"]
+    ports:
+      - "53:5353/udp"
+      - "53:5353/tcp"
+      - "127.0.0.1:8080:8080/tcp"
+    volumes:
+      - "../testdata/container/config.yaml:/etc/labdns/config.yaml:ro"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    user: "65532:65532"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/labdns", "healthcheck", "--url=http://127.0.0.1:8080/v1/health/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 3

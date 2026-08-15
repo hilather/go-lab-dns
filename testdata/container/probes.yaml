@@ -1,0 +1,10 @@
+apiVersion: labdns.dev/probes/v1alpha1
+probes:
+  - id: ns1-a
+    query:
+      name: ns1.lab.example.net.
+      type: A
+    expect:
+      rcode: NOERROR
+      answers:
+        - 10.42.0.53

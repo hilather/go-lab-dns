@@ -27,6 +27,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - MCP Streamable HTTP adapter in `internal/control/mcp`: official Go SDK [`github.com/modelcontextprotocol/go-sdk v1.7.0`](https://github.com/modelcontextprotocol/go-sdk), protocol **2026-07-28 only**, tools and resources from the shared registry, four pack-07 prompts, structured JSON-RPC errors via `capabilities.JSONRPCFrom`, and generated manifest at [api/mcp/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/mcp/v1.json). Health live/ready are not tools. Stdio is a developer adapter only.
 - REST `/v1` adapter in `internal/control/rest`: routes registered from the capability registry, `application/problem+json`, loopback-only unauthenticated management (Q-AUTH), body/timeout/concurrency limits, and generated OpenAPI at [api/openapi/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/openapi/v1.json). MCP is not implemented.
 - Versioned metrics/events catalog (`labdns.dev/metrics/v1alpha1`) with a label allowlist, automated no-QNAME/no-client-IP checks, bounded export queues, structured JSON logs, optional sampled tracing, and a filled `app.Status` DTO (revisions, listeners, cache, upstreams, chaos, ready/degraded, warnings). Artifact: [api/metrics/v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/metrics/v1alpha1.json).
+- Production CLI: `serve`, `validate`, `canonicalize`, `verify`, `query`, `healthcheck`, `version`, and `chaos emergency-disable --pid-file`.
+- Hardened multi-stage image `ghcr.io/hilather/labdns` (scratch, UID 65532, Apache-2.0 OCI labels, no shell).
 
 ### Changed
 
@@ -78,7 +80,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Errors use `capabilities.ProblemFrom` → `application/problem+json`. Wrong method on a registered path is `method_not_allowed` (405).
 - Unauthenticated remote management is denied; `127.0.0.1` / `::1` may omit a bearer token. Health live/ready remain probe-accessible.
 - `POST /v1/chaos:emergency-disable` exists and shares `app.Service`; packet-level chaos still runs on the DNS path independently of REST.
-- `labdns serve` does not yet bind the management listener (DEP-001).
+- `labdns serve` binds management HTTP (`rest.Server`, default `:8080`) together with DNS. `--management-listen=off` leaves it unbound.
 
 ### MCP API and protocol compatibility
 
@@ -97,8 +99,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Deployment and operations
 
-- `labdns serve --config PATH` is the M1 process entry: compile bootstrap YAML and serve DNS on the configured listen address (default `:5353` UDP+TCP). Management HTTP (`rest.Server`, default `:8080`) is implemented but not yet wired into `serve` (DEP-001).
-- Runtime plan/apply/reset are process-local via `app.Service`. `expectedRevision` is required except privileged reset. Idempotency keys use a bounded in-memory LRU (default 256; `<=0` is not unlimited). Reset rereads the bootstrap mount and never writes it. Export is canonical YAML/JSON with no comments, plus bootstrap-to-runtime operations.
+- `labdns serve --config PATH` compiles bootstrap YAML, serves DNS on the configured listen address (default `:5353` UDP+TCP), and serves management HTTP on the configured address (default `:8080`). `--chaos-disable` / `LABDNS_CHAOS_DISABLE=1` set the process inhibit bit. `SIGTERM` is graceful (cancel delays, then listeners). `SIGUSR1` and `labdns chaos emergency-disable --pid-file` are the local emergency path.
+- Runtime plan/apply/reset are process-local via `app.Service`. `expectedRevision` is required except privileged reset. Idempotency keys use a bounded in-memory LRU (default 256; `<=0` is not unlimited). Reset rereads the bootstrap mount and never writes it. Export is canonical YAML/JSON with no comments, plus bootstrap-to-runtime operations. Container recreation discards runtime drift.
 
 ### Observability
 
@@ -125,3 +127,5 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - `labdns serve` does not yet bind the management listener (REST `/v1` + MCP `/mcp`); DEP-001 wires `rest.Server` and `mcp.Server`.
 - Full SEC-001 RBAC is not implemented; MCP uses the same loopback-unauth / remote-bearer stub as REST.
 - `make test-integration` and `make test-container` fail closed until later PRs. `make test-parity` runs the REST/MCP registry and adapter suites.
+- MCP adapter is not implemented; REST `/v1` is wired into `labdns serve`.
+- `make test-integration` and `make test-parity` fail closed until later PRs.

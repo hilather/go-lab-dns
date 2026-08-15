@@ -19,18 +19,21 @@ import (
 func TestServeFromConfigPackSampleNS1(t *testing.T) {
 	path := ephemeralPackSample(t)
 	ctx := testutil.Context(t)
-	srv, snap, err := serveFromConfig(ctx, serveFlags{Config: path})
+	rt, err := serveFromConfig(ctx, serveFlags{Config: path})
 	if err != nil {
 		t.Fatal(err)
 	}
 	testutil.Cleanup(t, func() {
-		_ = srv.Shutdown(t.Context())
+		_ = rt.Shutdown(t.Context())
 	})
-	if snap == nil || snap.Revision == "" {
+	if rt.snap == nil || rt.snap.Revision == "" {
 		t.Fatal("missing compiled snapshot")
 	}
-	if srv.UDPAddr() == nil {
+	if rt.UDPAddr() == nil {
 		t.Fatal("UDP not bound")
+	}
+	if rt.MgmtAddr() == "" {
+		t.Fatal("management not bound")
 	}
 
 	q, err := dnswire.PackQuery(7, model.Query{
@@ -39,7 +42,7 @@ func TestServeFromConfigPackSampleNS1(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw := exchangeUDP(t, srv.UDPAddr(), q)
+	raw := exchangeUDPTest(t, rt.UDPAddr(), q)
 	msg, err := dnswire.UnpackUpstream(raw)
 	if err != nil {
 		t.Fatal(err)
@@ -75,9 +78,9 @@ func TestServeFromConfigInvalidDoesNotListen(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	srv, snap, err := serveFromConfig(context.Background(), serveFlags{Config: path})
-	if err == nil || srv != nil || snap != nil {
-		t.Fatalf("invalid bootstrap bound: srv=%v snap=%v err=%v", srv, snap, err)
+	rt, err := serveFromConfig(context.Background(), serveFlags{Config: path})
+	if err == nil || rt != nil {
+		t.Fatalf("invalid bootstrap bound: rt=%v err=%v", rt, err)
 	}
 
 	ln2, err := net.Listen("tcp", addr)
@@ -112,6 +115,14 @@ func TestServeCLIInvalidConfig(t *testing.T) {
 	}
 }
 
+func TestServeCLIUnknownFlag(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := runContext(context.Background(), []string{"labdns", "serve", "--config", "x.yaml", "--not-a-flag"}, &stdout, &stderr)
+	if code != 2 {
+		t.Fatalf("exit %d, want 2, stderr=%q", code, stderr.String())
+	}
+}
+
 func TestServeCLIShutdown(t *testing.T) {
 	path := ephemeralPackSample(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -130,6 +141,10 @@ func TestServeCLIShutdown(t *testing.T) {
 	if !strings.Contains(stdout.String(), "listening") {
 		cancel()
 		t.Fatalf("serve never listened, stderr=%q stdout=%q", stderr.String(), stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "management") {
+		cancel()
+		t.Fatalf("stdout %q missing management bind", stdout.String())
 	}
 	cancel()
 	select {
@@ -156,6 +171,29 @@ func TestParseServeFlagsChaosDisable(t *testing.T) {
 	}
 }
 
+func TestParseServeFlagsEnvChaosDisable(t *testing.T) {
+	t.Setenv("LABDNS_CHAOS_DISABLE", "1")
+	var stderr bytes.Buffer
+	f, err := parseServeFlags([]string{"--config", "/tmp/x.yaml"}, &stderr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !f.ChaosDisable {
+		t.Fatal("LABDNS_CHAOS_DISABLE=1 must set ChaosDisable")
+	}
+}
+
+func TestParseServeFlagsManagementOff(t *testing.T) {
+	var stderr bytes.Buffer
+	f, err := parseServeFlags([]string{"--config", "/tmp/x.yaml", "--management-listen", "off"}, &stderr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !managementOff(f.ManagementListen) {
+		t.Fatalf("%+v", f)
+	}
+}
+
 func TestDnsListenAddrsDefault(t *testing.T) {
 	udp, tcp := dnsListenAddrs(nil)
 	if udp != ":5353" || tcp != ":5353" {
@@ -170,8 +208,9 @@ func ephemeralPackSample(t *testing.T) string {
 		t.Fatal(err)
 	}
 	rewritten := strings.Replace(string(src), `address: ":5353"`, `address: "127.0.0.1:0"`, 1)
+	rewritten = strings.Replace(rewritten, `address: ":8080"`, `address: "127.0.0.1:0"`, 1)
 	if rewritten == string(src) {
-		t.Fatal("pack-sample listen address not rewritten")
+		t.Fatal("pack-sample listen addresses not rewritten")
 	}
 	path := filepath.Join(t.TempDir(), "pack-sample.yaml")
 	if err := os.WriteFile(path, []byte(rewritten), 0o600); err != nil {
@@ -180,7 +219,7 @@ func ephemeralPackSample(t *testing.T) string {
 	return path
 }
 
-func exchangeUDP(t *testing.T, addr net.Addr, payload []byte) []byte {
+func exchangeUDPTest(t *testing.T, addr net.Addr, payload []byte) []byte {
 	t.Helper()
 	c, err := net.Dial("udp", addr.String())
 	if err != nil {
