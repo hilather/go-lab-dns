@@ -81,9 +81,9 @@ Requirements:
 
 - `expectedRevision` is required for writes except an explicitly privileged bootstrap reset.
 - Idempotency keys are retained in a bounded in-memory LRU (default **256** entries). Zero/`<=0` is not unlimited — it falls back to 256.
-- Repeated keys with the same request body (method + expected revision + reason + ticket + operations) return the original result.
-- Repeated keys with different requests return `idempotency_conflict`.
-- Failures are not cached, so a later retry after a `revision_conflict` can succeed.
+- Repeated keys with the same request identity (reason + ticket + operations) return the original result. `expectedRevision` is a precondition, not part of the key identity.
+- Repeated keys with different identity return `idempotency_conflict`.
+- Failures are not cached. A `revision_conflict` after a same-key plan evicts that key so a retry with the new revision can proceed.
 - Plans and applies use the same validation and compilation path. The live snapshot is never edited in place.
 - The returned diff is based on canonical state.
 - Reset clears the idempotency cache.

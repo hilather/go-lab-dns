@@ -58,6 +58,9 @@ func TestPlanDoesNotSwapApplyDoes(t *testing.T) {
 	if !applied.Drifted {
 		t.Fatal("apply should report drift")
 	}
+	if !plan.Impact.AuthoritativeMisses {
+		t.Fatal("adding an owner must flag authoritative-miss changes")
+	}
 	found := false
 	for _, r := range live.Canonical.Spec.Zones[0].Records {
 		if r.ID == "www-a" {
@@ -148,6 +151,51 @@ func TestIdempotencyPlanThenApplySameKey(t *testing.T) {
 	}
 	if again.AuditEventID != applied.AuditEventID {
 		t.Fatal("apply replay was not cached")
+	}
+}
+
+func TestIdempotencyRetryAfterRevisionConflict(t *testing.T) {
+	path := copyFixture(t)
+	svc, boot := mustBoot(t, path)
+	ctx := context.Background()
+	const key = "shared-after-conflict"
+	planIn := ChangeIn{
+		ExpectedRevision: boot.Revision,
+		IdempotencyKey:   key,
+		Reason:           "add www",
+		Operations:       []model.Operation{addWWWRecord()},
+	}
+	if _, err := svc.Plan(ctx, actor(), planIn); err != nil {
+		t.Fatal(err)
+	}
+	// Foreign apply moves the revision using a different key.
+	foreign, err := svc.Apply(ctx, actor(), ChangeIn{
+		ExpectedRevision: boot.Revision,
+		IdempotencyKey:   "foreign",
+		Reason:           "other",
+		Operations: []model.Operation{{
+			Op:     model.OpUpdate,
+			Target: model.Target{Kind: model.TargetDefaults},
+			Value:  json.RawMessage(`{"ttl":"45s","negativeTTL":"10s","cnameDepth":8}`),
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = svc.Apply(ctx, actor(), planIn)
+	requireCode(t, err, domainerr.CodeRevisionConflict)
+	planIn.ExpectedRevision = foreign.CandidateRevision
+	if _, err := svc.Apply(ctx, actor(), planIn); err != nil {
+		t.Fatalf("retry after revision_conflict should succeed: %v", err)
+	}
+	found := false
+	for _, r := range svc.Store().Load().Canonical.Spec.Zones[0].Records {
+		if r.ID == "www-a" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("retry apply did not land the record")
 	}
 }
 
@@ -343,6 +391,36 @@ func TestPlanCanceledContext(t *testing.T) {
 	_, err := svc.Plan(ctx, actor(), ChangeIn{ExpectedRevision: boot.Revision})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestClonePlanCopiesOperationValue(t *testing.T) {
+	path := copyFixture(t)
+	svc, boot := mustBoot(t, path)
+	in := ChangeIn{
+		ExpectedRevision: boot.Revision,
+		IdempotencyKey:   "raw",
+		Operations:       []model.Operation{addWWWRecord()},
+	}
+	plan, err := svc.Plan(context.Background(), actor(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Operations) == 0 || len(plan.Operations[0].Value) == 0 {
+		t.Fatal("plan missing op value")
+	}
+	plan.Operations[0].Value[0] = 'X'
+	in.Operations[0].Value[0] = 'Y'
+	again, err := svc.Plan(context.Background(), actor(), ChangeIn{
+		ExpectedRevision: boot.Revision,
+		IdempotencyKey:   "raw",
+		Operations:       []model.Operation{addWWWRecord()},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Operations[0].Value[0] == 'X' || again.Operations[0].Value[0] == 'Y' {
+		t.Fatal("cached plan shared RawMessage")
 	}
 }
 

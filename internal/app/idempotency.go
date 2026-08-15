@@ -84,6 +84,17 @@ func (c *idempCache) storeApply(key, fp string, r *ApplyResult) {
 	c.insertFrontLocked(&idempEntry{key: key, fp: fp, apply: cloneApply(r)})
 }
 
+func (c *idempCache) evict(key string) {
+	if c == nil || key == "" {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if e, ok := c.entries[key]; ok {
+		c.removeLocked(e)
+	}
+}
+
 func (c *idempCache) clear() {
 	if c == nil {
 		return
@@ -154,10 +165,11 @@ func (c *idempCache) unlinkLocked(e *idempEntry) {
 }
 
 type changeFingerprint struct {
-	ExpectedRevision model.Revision    `json:"expectedRevision"`
-	Reason           string            `json:"reason"`
-	Ticket           string            `json:"ticket"`
-	Operations       []model.Operation `json:"operations"`
+	// expectedRevision is a precondition, not request identity. A retry
+	// after revision_conflict must send the new revision with the same key.
+	Reason     string            `json:"reason"`
+	Ticket     string            `json:"ticket"`
+	Operations []model.Operation `json:"operations"`
 }
 
 func fingerprintChange(in ChangeIn) (string, error) {
@@ -174,10 +186,9 @@ func fingerprintChange(in ChangeIn) (string, error) {
 		}
 	}
 	b, err := json.Marshal(changeFingerprint{
-		ExpectedRevision: in.ExpectedRevision,
-		Reason:           in.Reason,
-		Ticket:           in.Ticket,
-		Operations:       ops,
+		Reason:     in.Reason,
+		Ticket:     in.Ticket,
+		Operations: ops,
 	})
 	if err != nil {
 		return "", domainerr.Internal("idempotency fingerprint: " + err.Error())
@@ -191,18 +202,45 @@ func clonePlan(p *Plan) *Plan {
 		return nil
 	}
 	out := *p
-	if p.Diff != nil {
-		out.Diff = append([]DiffEntry(nil), p.Diff...)
-	}
+	out.Diff = cloneDiff(p.Diff)
 	if p.Warnings != nil {
 		out.Warnings = append([]Warning(nil), p.Warnings...)
 	}
-	if p.Operations != nil {
-		out.Operations = append([]model.Operation(nil), p.Operations...)
-	}
+	out.Operations = cloneOps(p.Operations)
 	out.Impact = cloneImpact(p.Impact)
 	out.Auth.Scopes = append([]string(nil), p.Auth.Scopes...)
 	return &out
+}
+
+func cloneOps(ops []model.Operation) []model.Operation {
+	if ops == nil {
+		return nil
+	}
+	out := make([]model.Operation, len(ops))
+	for i, op := range ops {
+		out[i] = op
+		if op.Value != nil {
+			out[i].Value = append(json.RawMessage(nil), op.Value...)
+		}
+	}
+	return out
+}
+
+func cloneDiff(diff []DiffEntry) []DiffEntry {
+	if diff == nil {
+		return nil
+	}
+	out := make([]DiffEntry, len(diff))
+	for i, d := range diff {
+		out[i] = d
+		if d.Before != nil {
+			out[i].Before = append(json.RawMessage(nil), d.Before...)
+		}
+		if d.After != nil {
+			out[i].After = append(json.RawMessage(nil), d.After...)
+		}
+	}
+	return out
 }
 
 func cloneApply(r *ApplyResult) *ApplyResult {
@@ -219,7 +257,13 @@ func cloneImpact(in Impact) Impact {
 	out.Names = append([]model.Name(nil), in.Names...)
 	out.Zones = append([]model.ZoneID(nil), in.Zones...)
 	out.ClientGroups = append([]model.ClientGroupID(nil), in.ClientGroups...)
-	out.ChaosPolicies = append([]ChaosImpact(nil), in.ChaosPolicies...)
+	if in.ChaosPolicies != nil {
+		out.ChaosPolicies = make([]ChaosImpact, len(in.ChaosPolicies))
+		for i, p := range in.ChaosPolicies {
+			p.ExpiresAt = cloneTime(p.ExpiresAt)
+			out.ChaosPolicies[i] = p
+		}
+	}
 	out.CompatibilityWarnings = append([]string(nil), in.CompatibilityWarnings...)
 	out.RequiredPermissions = append([]string(nil), in.RequiredPermissions...)
 	out.SuggestedProbes = append([]string(nil), in.SuggestedProbes...)

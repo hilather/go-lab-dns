@@ -62,6 +62,29 @@ func TestResetRestoresBootstrap(t *testing.T) {
 	}
 }
 
+func TestFailedResetKeepsIdempotencyCache(t *testing.T) {
+	path := copyFixture(t)
+	svc, boot := mustBoot(t, path)
+	ctx := context.Background()
+	in := ChangeIn{
+		ExpectedRevision: boot.Revision,
+		IdempotencyKey:   "keep-me",
+		Reason:           "first",
+		Operations:       []model.Operation{addWWWRecord()},
+	}
+	if _, err := svc.Apply(ctx, actor(), in); err != nil {
+		t.Fatal(err)
+	}
+	svc.bootstrapPath = filepath.Join(t.TempDir(), "missing.yaml")
+	if _, err := svc.Reset(ctx, actor(), ResetIn{}); err == nil {
+		t.Fatal("expected failed reset")
+	}
+	in.Reason = "second"
+	in.ExpectedRevision = svc.Store().Load().Revision
+	_, err := svc.Apply(ctx, actor(), in)
+	requireCode(t, err, domainerr.CodeIdempotencyConflict)
+}
+
 func TestResetMissingFileLeavesActive(t *testing.T) {
 	path := copyFixture(t)
 	svc, boot := mustBoot(t, path)

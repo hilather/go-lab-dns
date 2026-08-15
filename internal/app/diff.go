@@ -187,11 +187,16 @@ func impactOf(before, after *model.State, diff []DiffEntry) Impact {
 				zoneSet[id] = struct{}{}
 				collectOneName(az, rec, nameSet, &imp.WildcardCoverage)
 			}
+			// New or removed owners change NXDOMAIN/NODATA vs NOERROR.
+			if !exists || ownerKey(old) != ownerKey(rec) {
+				imp.AuthoritativeMisses = true
+			}
 		}
 		for rid := range br {
 			if _, ok := ar[rid]; !ok {
 				zoneSet[id] = struct{}{}
 				collectOneName(bz, br[rid], nameSet, &imp.WildcardCoverage)
+				imp.AuthoritativeMisses = true
 			}
 		}
 	}
@@ -268,6 +273,10 @@ func recordEqual(a, b model.Record) bool {
 	return bytes.Equal(mustJSON(a), mustJSON(b))
 }
 
+func ownerKey(r model.Record) string {
+	return strings.ToLower(strings.TrimSpace(r.Owner))
+}
+
 func collectRecordNames(z model.Zone, names map[model.Name]struct{}, wild *bool) {
 	for _, r := range z.Records {
 		collectOneName(z, r, names, wild)
@@ -309,12 +318,12 @@ func chaosImpact(before, after *model.State) []ChaosImpact {
 		seen[p.ID] = struct{}{}
 		old, ok := prev[p.ID]
 		if !ok || old.enabled != p.Enabled || old.exp != expKey(p.ExpiresAt) {
-			out = append(out, ChaosImpact{ID: p.ID, Enabled: p.Enabled, ExpiresAt: p.ExpiresAt})
+			out = append(out, ChaosImpact{ID: p.ID, Enabled: p.Enabled, ExpiresAt: cloneTime(p.ExpiresAt)})
 		}
 	}
 	for _, p := range before.Spec.Chaos.Policies {
 		if _, ok := seen[p.ID]; !ok {
-			out = append(out, ChaosImpact{ID: p.ID, Enabled: false, ExpiresAt: p.ExpiresAt})
+			out = append(out, ChaosImpact{ID: p.ID, Enabled: false, ExpiresAt: cloneTime(p.ExpiresAt)})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })

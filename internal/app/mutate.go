@@ -42,6 +42,7 @@ func (s *App) planLocked(ctx context.Context, actor Actor, in ChangeIn) (*Plan, 
 	}
 	cand, err := s.buildCandidate(ctx, in, true)
 	if err != nil {
+		s.forgetIdempOnConflict(in.IdempotencyKey, err)
 		return nil, err
 	}
 	p := s.planFrom(cand)
@@ -71,8 +72,10 @@ func (s *App) applyLocked(ctx context.Context, actor Actor, in ChangeIn) (*Apply
 	}
 	cand, err := s.buildCandidate(ctx, in, true)
 	if err != nil {
+		s.forgetIdempOnConflict(in.IdempotencyKey, err)
 		return nil, err
 	}
+	cand.next = s.honorEmergency(cand.next)
 	prev := s.store.Swap(cand.next)
 	res := &ApplyResult{
 		Plan:       *s.planFrom(cand),
@@ -225,6 +228,14 @@ func (s *App) planFrom(c *candidate) *Plan {
 		Operations:        append([]model.Operation(nil), c.ops...),
 		Auth:              AuthDecision{Allowed: true, Scopes: []string{"dns.write"}},
 	}
+}
+
+func (s *App) forgetIdempOnConflict(key string, err error) {
+	de, ok := domainerr.As(err)
+	if !ok || de.Code != domainerr.CodeRevisionConflict {
+		return
+	}
+	s.idemp.evict(key)
 }
 
 func revisionOf(s *snapshot.Snapshot) model.Revision {

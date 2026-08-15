@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hilather/go-lab-dns/internal/cache"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
@@ -248,7 +249,10 @@ func (s *App) ListForwardingPolicies(ctx context.Context, actor Actor) ([]model.
 	if err != nil {
 		return nil, err
 	}
-	out := append([]model.ForwardingPolicy{}, snap.Canonical.Spec.Forwarding.Policies...)
+	out := make([]model.ForwardingPolicy, len(snap.Canonical.Spec.Forwarding.Policies))
+	for i, p := range snap.Canonical.Spec.Forwarding.Policies {
+		out[i] = p
+	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out, nil
 }
@@ -262,7 +266,10 @@ func (s *App) ListUpstreamPools(ctx context.Context, actor Actor) ([]model.Upstr
 	if err != nil {
 		return nil, err
 	}
-	out := append([]model.UpstreamPool{}, snap.Canonical.Spec.Forwarding.Pools...)
+	out := make([]model.UpstreamPool, len(snap.Canonical.Spec.Forwarding.Pools))
+	for i, p := range snap.Canonical.Spec.Forwarding.Pools {
+		out[i] = copyPool(p)
+	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out, nil
 }
@@ -367,6 +374,69 @@ func copyRecord(r model.Record) model.Record {
 		r.GenericRDATA = &g
 	}
 	return r
+}
+
+func copyPool(p model.UpstreamPool) model.UpstreamPool {
+	p.Upstreams = append([]model.Upstream(nil), p.Upstreams...)
+	return p
+}
+
+func copyChaosPolicy(p model.ChaosPolicy) model.ChaosPolicy {
+	if p.Labels != nil {
+		labels := make(map[string]string, len(p.Labels))
+		for k, v := range p.Labels {
+			labels[k] = v
+		}
+		p.Labels = labels
+	}
+	p.StartsAt = cloneTime(p.StartsAt)
+	p.ExpiresAt = cloneTime(p.ExpiresAt)
+	p.Scope = copyChaosScope(p.Scope)
+	if p.Budget != nil {
+		b := *p.Budget
+		p.Budget = &b
+	}
+	if p.Outcomes != nil {
+		outs := make([]model.ChaosOutcome, len(p.Outcomes))
+		for i, o := range p.Outcomes {
+			outs[i] = o
+			if o.Actions != nil {
+				acts := make([]model.ChaosAction, len(o.Actions))
+				for j, a := range o.Actions {
+					acts[j] = a
+					acts[j].Values = append([]string(nil), a.Values...)
+					if a.EDE != nil {
+						e := *a.EDE
+						acts[j].EDE = &e
+					}
+				}
+				outs[i].Actions = acts
+			}
+		}
+		p.Outcomes = outs
+	}
+	return p
+}
+
+func cloneTime(t *time.Time) *time.Time {
+	if t == nil {
+		return nil
+	}
+	c := *t
+	return &c
+}
+
+func copyChaosScope(s model.ChaosScope) model.ChaosScope {
+	s.RecordIDs = append([]model.RecordID(nil), s.RecordIDs...)
+	s.Owners = append([]model.Name(nil), s.Owners...)
+	s.WildcardSourceIDs = append([]model.RecordID(nil), s.WildcardSourceIDs...)
+	s.Zones = append([]model.ZoneID(nil), s.Zones...)
+	s.ForwardingIDs = append([]model.PolicyID(nil), s.ForwardingIDs...)
+	s.UpstreamPools = append([]model.PoolID(nil), s.UpstreamPools...)
+	s.ClientGroups = append([]model.ClientGroupID(nil), s.ClientGroups...)
+	s.QTypes = append([]model.RRType(nil), s.QTypes...)
+	s.Transports = append([]model.Transport(nil), s.Transports...)
+	return s
 }
 
 func canonicalQueryName(n model.Name) model.Name {

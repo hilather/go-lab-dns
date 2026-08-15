@@ -4,11 +4,86 @@ import (
 	"context"
 	"net/netip"
 	"testing"
+	"time"
 
 	"github.com/hilather/go-lab-dns/internal/cache"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
 	"github.com/hilather/go-lab-dns/internal/model"
 )
+
+func TestCopyOnWritePoolsPoliciesAndImpact(t *testing.T) {
+	path := copyNamedFixture(t, "pack-sample.yaml")
+	svc, boot := mustBoot(t, path)
+	ctx := context.Background()
+
+	pools, err := svc.ListUpstreamPools(ctx, actor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pools) == 0 || len(pools[0].Upstreams) == 0 {
+		t.Fatal("pack-sample missing pools")
+	}
+	wantEP := pools[0].Upstreams[0].Endpoint
+	poolID := pools[0].ID
+	pools[0].Upstreams[0].Endpoint = "9.9.9.9:53"
+	again, err := svc.ListUpstreamPools(ctx, actor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again[0].Upstreams[0].Endpoint != wantEP {
+		t.Fatal("ListUpstreamPools leaked live upstreams")
+	}
+	for _, p := range svc.Store().Load().Canonical.Spec.Forwarding.Pools {
+		if p.ID == poolID && p.Upstreams[0].Endpoint != wantEP {
+			t.Fatal("caller mutated live pool")
+		}
+	}
+
+	pol, err := svc.GetChaosPolicy(ctx, actor(), "slow-tools")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pol.Scope.RecordIDs) == 0 {
+		t.Fatal("slow-tools missing record scope")
+	}
+	pol.Scope.RecordIDs[0] = "mutated"
+	if pol.Labels == nil {
+		pol.Labels = map[string]string{}
+	}
+	pol.Labels["x"] = "y"
+	livePol, err := svc.GetChaosPolicy(ctx, actor(), "slow-tools")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if livePol.Scope.RecordIDs[0] == "mutated" {
+		t.Fatal("GetChaosPolicy leaked scope")
+	}
+
+	exp := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	plan, err := svc.Plan(ctx, actor(), ChangeIn{
+		ExpectedRevision: boot.Revision,
+		Operations: []model.Operation{{
+			Op:     model.OpUpdate,
+			Target: model.Target{Kind: model.TargetChaosActivation, ID: "slow-tools"},
+			Value:  mustJSON(model.ChaosActivation{Enabled: true, ExpiresAt: &exp}),
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Impact.ChaosPolicies) == 0 || plan.Impact.ChaosPolicies[0].ExpiresAt == nil {
+		t.Fatalf("impact=%+v", plan.Impact.ChaosPolicies)
+	}
+	*plan.Impact.ChaosPolicies[0].ExpiresAt = time.Date(1999, 1, 1, 0, 0, 0, 0, time.UTC)
+	if svc.Store().Load() != boot {
+		t.Fatal("plan swapped")
+	}
+	for _, p := range svc.Store().Load().Canonical.Spec.Chaos.Policies {
+		if p.ID == "slow-tools" && p.ExpiresAt != nil {
+			t.Fatal("impact ExpiresAt aliased live canonical")
+		}
+	}
+}
 
 func TestListAndGetZonesRecords(t *testing.T) {
 	path := copyFixture(t)

@@ -35,12 +35,22 @@ func repoRoot(t *testing.T) string {
 
 func fixturePath(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(repoRoot(t), "testdata", "config", "valid", "empty-client-groups.yaml")
+	return namedFixture(t, "empty-client-groups.yaml")
+}
+
+func namedFixture(t *testing.T, name string) string {
+	t.Helper()
+	return filepath.Join(repoRoot(t), "testdata", "config", "valid", name)
 }
 
 func copyFixture(t *testing.T) string {
 	t.Helper()
-	src, err := os.ReadFile(fixturePath(t))
+	return copyNamedFixture(t, "empty-client-groups.yaml")
+}
+
+func copyNamedFixture(t *testing.T, name string) string {
+	t.Helper()
+	src, err := os.ReadFile(namedFixture(t, name))
 	if err != nil {
 		t.Fatal(err)
 	}

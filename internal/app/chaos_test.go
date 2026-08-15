@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hilather/go-lab-dns/internal/domainerr"
+	"github.com/hilather/go-lab-dns/internal/model"
 )
 
 func TestChaosActivateStubs(t *testing.T) {
@@ -61,6 +62,24 @@ func TestEmergencyDisableDoesNotChangeRevision(t *testing.T) {
 	}
 	if svc.Store().Load().EmergencyChaosOff {
 		t.Fatal("emergency enable left the bit set")
+	}
+}
+
+func TestApplyPreservesEmergencyBit(t *testing.T) {
+	path := copyFixture(t)
+	svc, boot := mustBoot(t, path)
+	ctx := context.Background()
+	if _, err := svc.EmergencyDisableChaos(ctx, actor(), EmergencyIn{Reason: "stop"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Apply(ctx, actor(), ChangeIn{
+		ExpectedRevision: boot.Revision,
+		Operations:       []model.Operation{addWWWRecord()},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if !svc.Store().Load().EmergencyChaosOff {
+		t.Fatal("apply cleared EmergencyChaosOff")
 	}
 }
 

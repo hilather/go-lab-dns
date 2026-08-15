@@ -46,7 +46,10 @@ func (s *App) ListChaosPolicies(ctx context.Context, actor Actor) ([]model.Chaos
 	if err != nil {
 		return nil, err
 	}
-	out := append([]model.ChaosPolicy{}, snap.Canonical.Spec.Chaos.Policies...)
+	out := make([]model.ChaosPolicy, len(snap.Canonical.Spec.Chaos.Policies))
+	for i, p := range snap.Canonical.Spec.Chaos.Policies {
+		out[i] = copyChaosPolicy(p)
+	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out, nil
 }
@@ -62,7 +65,7 @@ func (s *App) GetChaosPolicy(ctx context.Context, actor Actor, id model.PolicyID
 	}
 	for _, p := range snap.Canonical.Spec.Chaos.Policies {
 		if p.ID == id {
-			copied := p
+			copied := copyChaosPolicy(p)
 			return &copied, nil
 		}
 	}
@@ -105,15 +108,16 @@ func (s *App) SetChaosExpiry(ctx context.Context, actor Actor, in ExpiryIn) (*Ap
 	return nil, domainerr.UnsupportedCapability("chaos set-expiry requires CHA-001")
 }
 
-// EmergencyDisableChaos compiles a new snapshot with EmergencyChaosOff set.
-// Canonical (and therefore Revision) is unchanged. YAML emergencyDisabled
-// still forces the bit on at compile time.
+// EmergencyDisableChaos copies the active Snapshot, sets EmergencyChaosOff,
+// and swaps. It does not compile and does not wait on Plan/Apply. Canonical
+// (and therefore Revision) is unchanged. YAML emergencyDisabled still forces
+// the bit on.
 func (s *App) EmergencyDisableChaos(ctx context.Context, actor Actor, in EmergencyIn) (*ApplyResult, error) {
 	return s.setEmergency(ctx, actor, in, true, "dns_chaos_emergency_disable")
 }
 
 // EmergencyEnableChaos clears the runtime emergency bit. It cannot relax a
-// YAML spec.chaos.emergencyDisabled=true compile OR.
+// YAML spec.chaos.emergencyDisabled=true value already on Canonical.
 func (s *App) EmergencyEnableChaos(ctx context.Context, actor Actor, in EmergencyIn) (*ApplyResult, error) {
 	return s.setEmergency(ctx, actor, in, false, "dns_chaos_emergency_enable")
 }
@@ -122,25 +126,23 @@ func (s *App) setEmergency(ctx context.Context, actor Actor, in EmergencyIn, off
 	if err := s.requireCtx(ctx); err != nil {
 		return nil, err
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// Fast path: do not take App.mu so a long apply compile cannot block
+	// emergency disable. Indexes and Canonical stay shared and immutable.
 	prev, err := s.active()
 	if err != nil {
 		return nil, err
 	}
-	if prev.Canonical == nil {
-		return nil, domainerr.Internal("active snapshot has no canonical state")
-	}
-	next, err := compileCandidate(ctx, prev.Canonical, prev, s.clock, off)
-	if err != nil {
-		return nil, asDomain(err)
-	}
-	displaced := s.store.Swap(next)
+	s.emergencyOff.Store(off)
+	next := *prev
+	yamlOff := prev.Canonical != nil && prev.Canonical.Spec.Chaos.EmergencyDisabled
+	next.EmergencyChaosOff = off || yamlOff
+	next.Generation = prev.Generation + 1
+	displaced := s.store.Swap(&next)
 	res := &ApplyResult{
 		Plan: Plan{
 			PreviousRevision:  revisionOf(displaced),
 			CandidateRevision: next.Revision,
-			Drifted:           drifted(next),
+			Drifted:           drifted(&next),
 			Auth:              AuthDecision{Allowed: true, Scopes: []string{"dns.chaos.emergency"}},
 		},
 		Applied:    true,

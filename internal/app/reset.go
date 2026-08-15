@@ -33,6 +33,14 @@ func (s *App) Reset(ctx context.Context, actor Actor, in ResetIn) (*ApplyResult,
 		return nil, err
 	}
 
+	diff, _, err := diffStates(canonicalOf(prev), next.Canonical)
+	if err != nil {
+		return nil, err
+	}
+	impact := impactOf(canonicalOf(prev), next.Canonical, diff)
+
+	// Runtime-only emergency bit does not survive reset.
+	s.emergencyOff.Store(false)
 	displaced := s.store.Swap(next)
 	// Bootstrap pointer tracks the last successfully compiled mount so a
 	// later reset without a path can still restore it. Set after compile
@@ -40,17 +48,12 @@ func (s *App) Reset(ctx context.Context, actor Actor, in ResetIn) (*ApplyResult,
 	s.store.SetBootstrap(next)
 	s.idemp.clear()
 
-	diff, human, err := diffStates(canonicalOf(displaced), next.Canonical)
-	if err != nil {
-		return nil, err
-	}
-	_ = human
 	cand := &candidate{
 		prev:   displaced,
 		next:   next,
 		base:   canonicalOf(displaced),
 		diff:   diff,
-		impact: impactOf(canonicalOf(displaced), next.Canonical, diff),
+		impact: impact,
 	}
 	res := &ApplyResult{
 		Plan:       *s.planFrom(cand),

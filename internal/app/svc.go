@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"sync"
+	"sync/atomic"
 
 	"github.com/hilather/go-lab-dns/internal/cache"
 	"github.com/hilather/go-lab-dns/internal/compiler"
@@ -48,6 +49,9 @@ type App struct {
 	bootstrapPath string
 	idemp         *idempCache
 	audit         *auditRing
+	// emergencyOff is set by the fast emergency path so a concurrent apply
+	// that compiled against an older snapshot still commits the inhibit bit.
+	emergencyOff atomic.Bool
 }
 
 var _ Service = (*App)(nil)
@@ -160,6 +164,17 @@ func compileCandidate(ctx context.Context, st *model.State, prev *snapshot.Snaps
 		return nil, err
 	}
 	return snap, nil
+}
+
+// honorEmergency ORs the process emergency bit onto next without mutating
+// the compiled pointer in place.
+func (s *App) honorEmergency(next *snapshot.Snapshot) *snapshot.Snapshot {
+	if s == nil || next == nil || !s.emergencyOff.Load() || next.EmergencyChaosOff {
+		return next
+	}
+	cp := *next
+	cp.EmergencyChaosOff = true
+	return &cp
 }
 
 func mustJSON(v any) json.RawMessage {
