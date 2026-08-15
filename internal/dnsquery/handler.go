@@ -135,21 +135,30 @@ func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 	}
 
 	if cl.ForwardingID == "" {
-		if haveLocal && !local.Fallthrough {
-			return local, nil
-		}
 		h.denied.Add(1)
-		h.logf("denied_forward group=%s zone=%s name=%s", cl.Group, cl.ZoneID, q.Name)
+		h.logf("denied_forward group=%s zone=%s policy=%s", cl.Group, cl.ZoneID, cl.ForwardingID)
 		return refused(snap, q, cl), nil
 	}
 
 	fq := q
 	var prefix []model.RR
-	if haveLocal && lastCNAMETarget(local.Answers) != "" {
-		fq.Name = lastCNAMETarget(local.Answers)
-		prefix = local.Answers
+	exchangeID := cl.ForwardingID
+	if haveLocal {
+		if target := lastCNAMETarget(local.Answers); target != "" {
+			fq.Name = target
+			prefix = local.Answers
+			// Ask the pool that matches the name sent upstream. cl.ForwardingID
+			// stays the original-QNAME selection for a future chaos.Decide.
+			tid, ok := snap.Forwarding.Select(target)
+			if !ok {
+				h.denied.Add(1)
+				h.logf("denied_forward group=%s zone=%s policy=%s", cl.Group, cl.ZoneID, cl.ForwardingID)
+				return refused(snap, q, cl), nil
+			}
+			exchangeID = tid
+		}
 	}
-	up, err := h.fwd.Exchange(ctx, snap, fq, cl.ForwardingID)
+	up, err := h.fwd.Exchange(ctx, snap, fq, exchangeID)
 	if err != nil {
 		if ctx.Err() != nil {
 			return model.Result{}, err

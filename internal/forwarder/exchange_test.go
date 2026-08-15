@@ -250,15 +250,21 @@ func TestHealthAwareDeterministic(t *testing.T) {
 }
 
 func TestStrategiesOrderedRRRandom(t *testing.T) {
+	h := NewHealth(nil)
+	h.RecordFailure("a")
+	h.RecordFailure("a")
+	if down, _ := h.Snapshot("a"); !down {
+		t.Fatal("need a down so production Health path is exercised")
+	}
 	pool := &snapshot.CompiledPool{
 		ID: "p", Strategy: model.StrategyOrdered,
 		Upstreams: []snapshot.CompiledUpstream{
 			{ID: "a"}, {ID: "b"}, {ID: "c"},
 		},
 	}
-	pk := newPicker(testutil.NewSeededRand(42), nil)
+	pk := newPicker(testutil.NewSeededRand(42), h)
 	if got := pk.order(pool)[0].ID; got != "a" {
-		t.Fatalf("ordered start=%s", got)
+		t.Fatalf("ordered must start at configured 0 even when down, got %s", got)
 	}
 	pool.Strategy = model.StrategyRoundRobin
 	var first []model.UpstreamID
@@ -270,4 +276,28 @@ func TestStrategiesOrderedRRRandom(t *testing.T) {
 	}
 	pool.Strategy = model.StrategyRandom
 	_ = pk.order(pool)
+	pool.Strategy = model.StrategyHealthAware
+	if got := pk.order(pool)[0].ID; got != "b" {
+		t.Fatalf("health-aware should skip down a, got %s", got)
+	}
+}
+
+func TestDefaultTimeoutFailoverFitsQueryBudget(t *testing.T) {
+	bad := startFake(t)
+	good := startFake(t)
+	bad.setHang(true)
+	good.setAnswers(model.RR{Name: "x.example.", Type: model.TypeA, Class: model.ClassIN, TTL: time.Second, Data: "192.0.2.12"})
+	// Timeout omitted (0) → DefaultExchangeTimeout 500ms. Parent 2s matches
+	// the query-handler budget and must still allow a second try.
+	fo := model.FailoverSpec{OnTimeout: true}
+	snap := snapTwo(t, bad.UDPAddr(), good.UDPAddr(), fo)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	res, err := NewRuntime(nil, nil, nil, nil).Exchange(ctx, snap, query("x.example."), "pol")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.RCode != model.RCodeNoError || res.UpstreamID != "good" {
+		t.Fatalf("%+v", res)
+	}
 }

@@ -336,6 +336,59 @@ func TestOverlayCNAMEFallthroughForwardsTarget(t *testing.T) {
 	wantRR(t, res, model.TypeA, "192.0.2.50")
 }
 
+func TestOverlayCNAMEUsesTargetSuffixPolicy(t *testing.T) {
+	corp := startQueryFake(t)
+	def := startQueryFake(t)
+	corp.setAnswers(model.RR{Name: "host.corp.example.net.", Type: model.TypeA, Class: model.ClassIN, TTL: time.Second, Data: "10.0.0.53"})
+	def.setAnswers(model.RR{Name: "host.corp.example.net.", Type: model.TypeA, Class: model.ClassIN, TTL: time.Second, Data: "10.9.9.9"})
+	st := &model.State{Spec: model.Spec{
+		Access:   model.AccessSpec{ClientGroups: []model.ClientGroup{{ID: "fwd", CIDRs: []string{"10.0.0.0/8"}, AllowForward: true}}},
+		Defaults: model.DefaultsSpec{TTL: time.Second, NegativeTTL: time.Second, CNAMEDepth: 8},
+		Zones: []model.Zone{{
+			ID: "ov", Name: "ov.example.", Mode: model.ZoneModeOverlay,
+			Records: []model.Record{{ID: "c", Owner: "alias", Type: model.TypeCNAME, TTL: time.Second, Values: []string{"host.corp.example.net."}}},
+		}},
+		Forwarding: model.ForwardingSpec{
+			Policies: []model.ForwardingPolicy{
+				{ID: "corp", Suffix: "corp.example.net.", UpstreamPool: "corporate"},
+				{ID: "def", Suffix: ".", UpstreamPool: "default"},
+			},
+			Pools: []model.UpstreamPool{
+				{ID: "corporate", Strategy: model.StrategyOrdered, Upstreams: []model.Upstream{
+					{ID: "corp-1", Endpoint: corp.UDPAddr(), Transport: model.TransportUDP},
+				}},
+				{ID: "default", Strategy: model.StrategyOrdered, Upstreams: []model.Upstream{
+					{ID: "def-1", Endpoint: def.UDPAddr(), Transport: model.TransportUDP},
+				}},
+			},
+		},
+	}}
+	snap := compileSnap(t, st)
+	store := snapshot.NewStore()
+	store.Swap(snap)
+	h := NewOpts(Opts{Store: store})
+	res := serve(t, h, model.Query{
+		Name: "alias.ov.example.", Type: model.TypeA, Class: model.ClassIN,
+		Client: netip.MustParseAddr("10.0.0.9"), RD: true,
+	})
+	if res.RCode != model.RCodeNoError {
+		t.Fatalf("rcode=%s", res.RCode)
+	}
+	wantRR(t, res, model.TypeA, "10.0.0.53")
+	if corp.Packets.Load() < 1 {
+		t.Fatal("overlay CNAME target under corp.example.net. must dial the corporate pool")
+	}
+	if def.Packets.Load() != 0 {
+		t.Fatalf("default pool packets=%d, want 0", def.Packets.Load())
+	}
+	if res.ForwardingID != "corp" {
+		t.Fatalf("exchange policy=%s, want corp", res.ForwardingID)
+	}
+	if res.Explanation == nil || res.Explanation.ForwardingID != "def" {
+		t.Fatalf("classified policy on original QNAME should stay default, got %+v", res.Explanation)
+	}
+}
+
 func TestEmptyClientGroupsServesLocalForwardsNone(t *testing.T) {
 	st := &model.State{Spec: model.Spec{
 		Access:   model.AccessSpec{UnknownClient: model.UnknownClientRefuseForward, ClientGroups: nil},

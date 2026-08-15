@@ -25,9 +25,15 @@ var (
 	ErrInvalidForwarding = errors.New("forwarder: invalid forwarding data")
 )
 
-// DefaultExchangeTimeout is the per-upstream attempt budget when
-// FailoverSpec.Timeout is zero. Zero is not unlimited.
-const DefaultExchangeTimeout = 2 * time.Second
+// DefaultExchangeTimeout is the per-upstream exchange budget when
+// FailoverSpec.Timeout is zero. Zero is not unlimited. 500ms is strictly
+// less than dnsserver's 2s query timeout so OnTimeout can still try a
+// second upstream inside the parent deadline.
+const DefaultExchangeTimeout = 500 * time.Millisecond
+
+// DefaultConnectTimeout is the Dial budget inside one attempt. It is
+// capped by the remaining attempt (exchange) deadline.
+const DefaultConnectTimeout = 250 * time.Millisecond
 
 // ExchangeOpts are chaos/request-path hooks. Zero value is a normal exchange.
 type ExchangeOpts struct {
@@ -147,6 +153,11 @@ func (rt *Runtime) ExchangeOpts(ctx context.Context, snap *snapshot.Snapshot, q 
 		}
 		if ferr != nil {
 			rt.Health.RecordFailure(up.ID)
+			// Parent total deadline expired: surface the error so dnsquery
+			// can HintDrop instead of synthesizing SERVFAIL.
+			if err := ctx.Err(); err != nil {
+				return model.Result{}, err
+			}
 			last = servfail(snap, q, policyID, up.ID)
 			if isTimeout(ferr) && !fo.OnTimeout {
 				return last, nil
@@ -185,6 +196,7 @@ func (rt *Runtime) ExchangeOpts(ctx context.Context, snap *snapshot.Snapshot, q 
 }
 
 func (rt *Runtime) attempt(ctx context.Context, q model.Query, up snapshot.CompiledUpstream, timeout time.Duration, allowTCPRetry bool) (model.Result, error, bool) {
+	// Exchange deadline for this attempt; total deadline is the parent ctx.
 	actx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -201,7 +213,13 @@ func (rt *Runtime) attempt(ctx context.Context, q model.Query, up snapshot.Compi
 	if up.Transport == model.TransportTCP {
 		network = "tcp"
 	}
-	conn, err := rt.Dial(actx, network, up.Endpoint)
+	connectTO := DefaultConnectTimeout
+	if connectTO > timeout {
+		connectTO = timeout
+	}
+	dctx, dcancel := context.WithTimeout(actx, connectTO)
+	conn, err := rt.Dial(dctx, network, up.Endpoint)
+	dcancel()
 	if err != nil {
 		return model.Result{}, err, false
 	}

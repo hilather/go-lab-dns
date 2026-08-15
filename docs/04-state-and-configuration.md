@@ -322,7 +322,7 @@ Published JSON Schema: [api/jsonschema/labdns.dev.v1alpha1.json](https://github.
 | `spec.listeners.management.restPath` | empty | `/v1` |
 | `spec.listeners.management.mcpPath` | empty | `/mcp` |
 | `spec.management.auth.profile` | empty | `dev-loopback-unauth` |
-| `spec.forwarding.policies[].failover.*` | omitted / Go zero | **not materialized**: bools stay `false` (no failover, no UDP→TCP retry); `timeout` 0 is **not** unlimited — `forwarder.Exchange` uses a 2s per-attempt budget |
+| `spec.forwarding.policies[].failover.*` | omitted / Go zero | **not materialized**: bools stay `false` (no failover, no UDP→TCP retry); `timeout` 0 is **not** unlimited — `forwarder.Exchange` uses a 500ms per-attempt budget (250ms connect cap) so it stacks under the 2s query timeout |
 | `spec.cache.*` | omitted / Go zero | **not materialized** by CFG; an enabled cache with `maxEntries<=0` is rejected. Zero TTL bounds mean no clamp on that side |
 
 Revision = `sha256:` + lowercase hex of SHA-256 of compact canonical JSON (materialized defaults, duration strings, no comments). Formatting-only YAML changes do not change the revision.

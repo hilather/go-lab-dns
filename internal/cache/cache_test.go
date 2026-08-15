@@ -143,6 +143,24 @@ func TestChaosHooksAndCopy(t *testing.T) {
 	}
 }
 
+func TestRemainingTTLOnGet(t *testing.T) {
+	clk := testutil.NewFakeClock(time.Date(2026, 8, 15, 12, 0, 0, 0, time.UTC))
+	c := New(Policy{Enabled: true, MaxEntries: 4}, clk)
+	k := Key{Revision: "r", Name: "a.example.", Type: model.TypeA, Class: model.ClassIN, Local: true}
+	c.Put(k, Entry{Result: model.Result{
+		RCode:   model.RCodeNoError,
+		Answers: []model.RR{{Name: "a.example.", Type: model.TypeA, Class: model.ClassIN, TTL: 5 * time.Second, Data: "192.0.2.1"}},
+	}}, PutOpts{})
+	clk.Advance(2 * time.Second)
+	got, ok := c.Get(k, GetOpts{})
+	if !ok {
+		t.Fatal("miss")
+	}
+	if got.Result.Answers[0].TTL != 3*time.Second {
+		t.Fatalf("remaining TTL=%s, want 3s", got.Result.Answers[0].TTL)
+	}
+}
+
 func TestDisabledAndZeroTTL(t *testing.T) {
 	c := New(Policy{Enabled: false, MaxEntries: 10}, nil)
 	k := Key{Revision: "r", Name: "a.", Type: model.TypeA, Class: model.ClassIN, Local: true}

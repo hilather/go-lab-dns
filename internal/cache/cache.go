@@ -133,6 +133,7 @@ func (c *Cache) Get(key Key, opts GetOpts) (Entry, bool) {
 		out.Stale = true
 		out.Result = copyResult(out.Result)
 		out.Result.Source = model.SourceCache
+		decayTTLs(&out.Result, now.Sub(n.ent.StoredAt))
 		return out, true
 	}
 	if opts.ForceMiss {
@@ -144,6 +145,7 @@ func (c *Cache) Get(key Key, opts GetOpts) (Entry, bool) {
 	out := copyEntry(n.ent)
 	out.Result = copyResult(out.Result)
 	out.Result.Source = model.SourceCache
+	decayTTLs(&out.Result, now.Sub(n.ent.StoredAt))
 	return out, true
 }
 
@@ -309,6 +311,27 @@ func (c *Cache) unlinkLocked(n *node) {
 	}
 	n.prev = nil
 	n.next = nil
+}
+
+func decayTTLs(r *model.Result, elapsed time.Duration) {
+	if r == nil {
+		return
+	}
+	if elapsed < 0 {
+		elapsed = 0
+	}
+	decay := func(rrs []model.RR) {
+		for i := range rrs {
+			if rrs[i].TTL > elapsed {
+				rrs[i].TTL -= elapsed
+			} else {
+				rrs[i].TTL = 0
+			}
+		}
+	}
+	decay(r.Answers)
+	decay(r.Authority)
+	decay(r.Additional)
 }
 
 func copyEntry(e Entry) Entry {

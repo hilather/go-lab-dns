@@ -91,7 +91,7 @@ Queries:
 - An owner with CNAME cannot have other ordinary data at that owner, apart from DNSSEC metadata if later supported.
 - Configuration compilation rejects detectable CNAME loops. Runtime loops (for example via wildcard CNAME) return SERVFAIL.
 - Runtime CNAME traversal has a strict configurable depth cap. `spec.defaults.cnameDepth` materializes to **8**. A zero `Snapshot.Defaults.CNAMEDepth` is **not** unlimited — `Resolve` falls back to 8.
-- Overlay CNAME chains **may terminate in a forwarded name**. When the next target is outside the selected zone's local data, `Resolve` includes the CNAME chain, sets `Fallthrough=true`, and stops. It does not call the forwarder. Authoritative CNAME that leaves the zone is returned as a CNAME answer (NOERROR, no SOA) and does **not** fall through.
+- Overlay CNAME chains **may terminate in a forwarded name**. When the next target is outside the selected zone's local data, `Resolve` includes the CNAME chain, sets `Fallthrough=true`, and stops. It does not call the forwarder. `dnsquery` then re-selects the forwarding policy on the CNAME target for `Exchange` (classification / future chaos still use the original QNAME's policy). Authoritative CNAME that leaves the zone is returned as a CNAME answer (NOERROR, no SOA) and does **not** fall through.
 - When the CNAME target is still inside the selected authoritative zone, the final name’s RCODE applies: in-zone NXDOMAIN is NXDOMAIN + CNAME + SOA; in-zone NODATA is NOERROR + CNAME + SOA. Overlay still Fallthroughs those cases instead of synthesizing a negative.
 - QTYPE CNAME returns the CNAME and does not follow. Other types follow in-zone CNAME targets, bounded by the depth cap.
 - Multiple values of the same owner, type, class, and TTL form one RRset.
@@ -124,7 +124,8 @@ Implemented in `internal/forwarder` + `internal/dnsquery`. `forwarder.Exchange` 
 - There is **no host-resolver fallback**. Only configured `host:port` endpoints are dialed.
 - UDP truncation from an upstream triggers a TCP retry to the **same** endpoint when `failover.udpTruncateRetryTCP` is true. The Go zero value is false (no retry).
 - NXDOMAIN (and other successful RCODEs except SERVFAIL/REFUSED) do **not** fail over.
-- Timeouts, transport errors, SERVFAIL, and REFUSED failover are explicit `FailoverSpec` bools. They are **not** materialized: the Go zero value means do not fail over. A zero `timeout` is **not** unlimited; Exchange uses a 2s per-attempt budget.
+- Timeouts, transport errors, SERVFAIL, and REFUSED failover are explicit `FailoverSpec` bools. They are **not** materialized: the Go zero value means do not fail over. A zero `timeout` is **not** unlimited; Exchange uses a **500ms** per-attempt budget so it stacks under the 2s query-handler total deadline (at least one failover try remains when `onTimeout` is set). Dial uses a 250ms connect budget capped by the remaining attempt time. If the parent deadline expires mid-attempt, Exchange returns the context error (no synthesized SERVFAIL).
+- Overlay CNAME that leaves local data re-selects the forwarding policy on the **CNAME target** for the upstream exchange. Classification (and a future chaos `Decide`) still sees the policy selected from the original QNAME.
 - Self-forwarding and cyclic configurations are rejected at `config.Validate` (they need the listen address).
 - Forwarded answers never set AA or AD. CD is passed through. RA is left false for the orchestrator.
 
@@ -158,7 +159,7 @@ Implemented in `internal/cache` (process-scoped; **not** a Snapshot field).
 
 - Keys include Revision, QNAME, QTYPE, QCLASS, a local/upstream bit, and (for upstream) CD + forwarding policy ID. Revision namespaces so a mutation cannot return a pre-swap local override. Unknown/local-only clients never look up or fill upstream entries.
 - Positive TTLs are clamped to `[minimumTTL, maximumTTL]` when those bounds are > 0. Negative TTLs are capped by `maximumNegativeTTL`. A zero bound means no clamp on that side. A clamped TTL of 0 is not stored.
-- Get returns a **copy**. Chaos hooks (`bypass`, `force-miss`, `serve-stale`, skip-put) change the request path or the returned copy; CHA-002 wires them.
+- Get returns a **copy** whose RR TTLs are remaining time (`storedTTL − elapsed`, floor 0). `ExpireAt` is authoritative. Chaos hooks (`bypass`, `force-miss`, `serve-stale`, skip-put) change the request path or the returned copy; CHA-002 wires them.
 - SERVFAIL/REFUSED/FORMERR/NOTIMP are not cached. Overlay `Fallthrough` results are not cached until a forward completes.
 
 ## DNS flags

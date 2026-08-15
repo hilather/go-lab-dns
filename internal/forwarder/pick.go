@@ -33,11 +33,15 @@ func (p *picker) order(pool *snapshot.CompiledPool) []snapshot.CompiledUpstream 
 	}
 	ups := append([]snapshot.CompiledUpstream(nil), pool.Upstreams...)
 	start := p.startIndex(pool)
-	if start <= 0 || start >= len(ups) {
+	if start > 0 && start < len(ups) {
+		ups = append(append([]snapshot.CompiledUpstream{}, ups[start:]...), ups[:start]...)
+	}
+	// Only health-aware reorders around down members. ordered / round-robin /
+	// random keep configured order so a down primary is not implicit failover.
+	if pool.Strategy == model.StrategyHealthAware {
 		return p.preferHealthy(ups)
 	}
-	rotated := append(append([]snapshot.CompiledUpstream{}, ups[start:]...), ups[:start]...)
-	return p.preferHealthy(rotated)
+	return ups
 }
 
 func (p *picker) startIndex(pool *snapshot.CompiledPool) int {
