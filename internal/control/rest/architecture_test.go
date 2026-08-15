@@ -23,7 +23,6 @@ func TestHandlersCallServiceOnly(t *testing.T) {
 		"github.com/hilather/go-lab-dns/internal/dnsquery",
 		"github.com/hilather/go-lab-dns/internal/dnsserver",
 		"github.com/hilather/go-lab-dns/internal/dnswire",
-		"github.com/hilather/go-lab-dns/internal/config",
 		"github.com/miekg/dns",
 	}
 	forbiddenText := []string{

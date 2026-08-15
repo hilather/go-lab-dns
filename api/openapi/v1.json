@@ -271,13 +271,6 @@
         "parameters": [
           {
             "in": "query",
-            "name": "cursor",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
             "name": "limit",
             "schema": {
               "minimum": 0,
@@ -1406,10 +1399,12 @@
         "operationId": "get_v1_state_export",
         "parameters": [
           {
+            "description": "Export encoding. Omitted or yaml returns canonical YAML (application/yaml). json returns a metadata wrapper.",
             "in": "query",
             "name": "format",
             "required": false,
             "schema": {
+              "default": "yaml",
               "enum": [
                 "yaml",
                 "json"
@@ -1425,9 +1420,15 @@
                 "schema": {
                   "$ref": "#/components/schemas/Export"
                 }
+              },
+              "application/yaml": {
+                "schema": {
+                  "description": "Canonical YAML document (default success path).",
+                  "type": "string"
+                }
               }
             },
-            "description": "Export"
+            "description": "Canonical export. Default (format omitted or yaml) is application/yaml. format=json is a wrapper object."
           },
           "default": {
             "content": {

@@ -3,6 +3,7 @@ package rest
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/hilather/go-lab-dns/internal/auth"
@@ -59,6 +60,17 @@ func TestHealthSkipsAuth(t *testing.T) {
 	requireStatus(t, rec, http.StatusOK)
 	ready := doRemote(t, s.Handler(), http.MethodGet, "/v1/health/ready", "", "192.0.2.10:9", "")
 	requireStatus(t, ready, http.StatusOK)
+}
+
+func TestRemoteXForwardedForNotTrusted(t *testing.T) {
+	s, _ := newTestServer(t)
+	req := httptest.NewRequest(http.MethodGet, "/v1/version", nil)
+	req.RemoteAddr = "192.0.2.10:9"
+	req.Header.Set("X-Forwarded-For", "127.0.0.1")
+	req.Header.Set("X-Real-IP", "127.0.0.1")
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	requireProblem(t, rec, http.StatusUnauthorized, "unauthenticated")
 }
 
 func TestIsLoopback(t *testing.T) {

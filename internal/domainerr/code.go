@@ -8,6 +8,7 @@ const (
 	CodeRevisionConflict           Code = "revision_conflict"
 	CodeIdempotencyConflict        Code = "idempotency_conflict"
 	CodeNotFound                   Code = "not_found"
+	CodeMethodNotAllowed           Code = "method_not_allowed"
 	CodeAlreadyExists              Code = "already_exists"
 	CodeForbidden                  Code = "forbidden"
 	CodeUnauthenticated            Code = "unauthenticated"
@@ -32,6 +33,7 @@ var catalog = []struct {
 	{CodeRevisionConflict, true},
 	{CodeIdempotencyConflict, false},
 	{CodeNotFound, false},
+	{CodeMethodNotAllowed, false},
 	{CodeAlreadyExists, false},
 	{CodeForbidden, false},
 	{CodeUnauthenticated, false},

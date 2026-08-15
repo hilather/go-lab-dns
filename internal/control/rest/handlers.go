@@ -278,7 +278,12 @@ func (s *Server) handleValidate(w http.ResponseWriter, r *http.Request, instance
 	if !s.decodeJSON(w, r, instance, &in) {
 		return
 	}
-	plan, err := s.svc.Validate(ctx, actor, app.ValidateIn{State: in.State, Operations: in.Operations})
+	st, err := decodeCandidateState(in.State)
+	if err != nil {
+		s.writeProblem(w, r, instance, asDomain(err))
+		return
+	}
+	plan, err := s.svc.Validate(ctx, actor, app.ValidateIn{State: st, Operations: in.Operations})
 	if err != nil {
 		s.writeProblem(w, r, instance, asDomain(err))
 		return

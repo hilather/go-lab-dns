@@ -137,7 +137,8 @@ type changeRequest struct {
 	Ticket           string            `json:"ticket"`
 	Mode             string            `json:"mode"`
 	Operations       []model.Operation `json:"operations"`
-	State            *model.State      `json:"state"`
+	// State is decoded with config.DecodeJSON so duration strings match GET /v1/state.
+	State json.RawMessage `json:"state"`
 }
 
 type resetRequest struct {

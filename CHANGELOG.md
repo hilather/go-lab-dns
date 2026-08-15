@@ -65,7 +65,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 - stdlib `net/http` management server (`internal/control/rest`) exposes every first-GA capability on `/v1`. Default listen address is `:8080`.
 - Generated OpenAPI 3.1: [api/openapi/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/openapi/v1.json).
-- Errors use `capabilities.ProblemFrom` → `application/problem+json`.
+- Errors use `capabilities.ProblemFrom` → `application/problem+json`. Wrong method on a registered path is `method_not_allowed` (405).
 - Unauthenticated remote management is denied; `127.0.0.1` / `::1` may omit a bearer token. Health live/ready remain probe-accessible.
 - `POST /v1/chaos:emergency-disable` exists and shares `app.Service`; packet-level chaos still runs on the DNS path independently of REST.
 - `labdns serve` does not yet bind the management listener (DEP-001).
@@ -102,6 +102,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Snapshot bootstrap serve (`compiler.Compile`, `AccessIndex` fill, `cmd/labdns serve`) has not started; `dnsquery` is constructed in tests against a hand-built `snapshot.Store`.
 - Plan/apply/export/reset and REST/MCP are not implemented; M1 serves only the compiled bootstrap snapshot.
 - REST/MCP adapters are not implemented; `app.Service` is the HTTP-less mutation surface.
+- MCP adapter is not implemented; REST `/v1` is available via `rest.Server` but not yet wired into `labdns serve` (DEP-001).
 - `labdns chaos emergency-disable --pid-file` is not implemented until DEP-001.
 - `make test-integration`, `make test-parity`, and `make test-container` fail closed until later PRs.
 - YAML configuration decode, JSON Schema, snapshot compilation, resolver, forwarder, and control-plane work have not started.

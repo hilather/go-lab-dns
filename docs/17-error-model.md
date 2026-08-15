@@ -39,6 +39,7 @@ validation_failed
 revision_conflict
 idempotency_conflict
 not_found
+method_not_allowed
 already_exists
 forbidden
 unauthenticated
@@ -68,6 +69,7 @@ REST uses `application/problem+json`, appropriate status codes, and the domain e
 | `forbidden` | 403 |
 | `protected_object` | 403 |
 | `not_found` | 404 |
+| `method_not_allowed` | 405 |
 | `revision_conflict` | 409 |
 | `idempotency_conflict` | 409 |
 | `already_exists` | 409 |
@@ -92,6 +94,7 @@ JSON-RPC transport codes differ from HTTP; `data.code` matches REST.
 |---|---|
 | `validation_failed` | -32602 |
 | `unsupported_capability` | -32601 |
+| `method_not_allowed` | -32601 |
 | `unsupported_protocol_version` | -32600 |
 | `unauthenticated` | -32001 |
 | `forbidden` | -32003 |

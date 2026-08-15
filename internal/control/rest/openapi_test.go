@@ -43,6 +43,37 @@ func TestRenderOpenAPICoversRegistry(t *testing.T) {
 	if schemas["Spec"] == nil || schemas["Problem"] == nil || schemas["State"] == nil {
 		t.Fatalf("missing Spec/Problem/State: %v", keysOf(schemas))
 	}
+	export, _ := paths["/v1/state:export"].(map[string]any)
+	getExp, _ := export["get"].(map[string]any)
+	params, _ := getExp["parameters"].([]any)
+	foundDefault := false
+	for _, p := range params {
+		pm, _ := p.(map[string]any)
+		if pm["name"] != "format" {
+			continue
+		}
+		sch, _ := pm["schema"].(map[string]any)
+		if sch["default"] == "yaml" {
+			foundDefault = true
+		}
+	}
+	if !foundDefault {
+		t.Fatal("export format should default to yaml")
+	}
+	resp200, _ := getExp["responses"].(map[string]any)["200"].(map[string]any)
+	content, _ := resp200["content"].(map[string]any)
+	if content["application/yaml"] == nil {
+		t.Fatal("export 200 missing application/yaml")
+	}
+	audit, _ := paths["/v1/audit"].(map[string]any)
+	getAudit, _ := audit["get"].(map[string]any)
+	auditParams, _ := getAudit["parameters"].([]any)
+	for _, p := range auditParams {
+		pm, _ := p.(map[string]any)
+		if pm["name"] == "cursor" {
+			t.Fatal("audit must not advertise cursor until the ring supports it")
+		}
+	}
 }
 
 func TestGeneratedOpenAPIMatchesRender(t *testing.T) {

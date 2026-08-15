@@ -19,12 +19,6 @@ func (s *Server) writeProblem(w http.ResponseWriter, r *http.Request, instance s
 	s.writeProblemDoc(w, r, problemDoc{Problem: p})
 }
 
-func (s *Server) writeStatusProblem(w http.ResponseWriter, r *http.Request, instance string, err error, status int) {
-	p := capabilities.ProblemFrom(err, instance)
-	p.Status = status
-	s.writeProblemDoc(w, r, problemDoc{Problem: p})
-}
-
 func (s *Server) writeRevisionProblem(w http.ResponseWriter, r *http.Request, instance string, err error, expected string) {
 	p := capabilities.ProblemFrom(err, instance)
 	s.writeProblemDoc(w, r, problemDoc{Problem: p, ExpectedRevision: expected})

@@ -104,8 +104,11 @@ func openAPIOperation(c capabilities.Capability, b capabilities.RESTBinding) map
 	if strings.HasPrefix(b.Path, "/v1/state:export") {
 		params, _ := op["parameters"].([]any)
 		params = append(params, map[string]any{
-			"name": "format", "in": "query", "required": false,
-			"schema": map[string]any{"type": "string", "enum": []any{"yaml", "json"}},
+			"name":        "format",
+			"in":          "query",
+			"required":    false,
+			"description": "Export encoding. Omitted or yaml returns canonical YAML (application/yaml). json returns a metadata wrapper.",
+			"schema":      map[string]any{"type": "string", "enum": []any{"yaml", "json"}, "default": "yaml"},
 		})
 		op["parameters"] = params
 	}
@@ -113,6 +116,13 @@ func openAPIOperation(c capabilities.Capability, b capabilities.RESTBinding) map
 		params, _ := op["parameters"].([]any)
 		params = append(params,
 			map[string]any{"name": "cursor", "in": "query", "schema": map[string]any{"type": "string"}},
+			map[string]any{"name": "limit", "in": "query", "schema": map[string]any{"type": "integer", "minimum": 0}},
+		)
+		op["parameters"] = params
+	}
+	if b.Path == "/v1/audit" {
+		params, _ := op["parameters"].([]any)
+		params = append(params,
 			map[string]any{"name": "limit", "in": "query", "schema": map[string]any{"type": "integer", "minimum": 0}},
 		)
 		op["parameters"] = params
@@ -133,7 +143,7 @@ func optionalBody(id capabilities.ID) bool {
 
 func needsPagination(path string) bool {
 	switch path {
-	case "/v1/zones", "/v1/zones/{zoneId}/records", "/v1/audit":
+	case "/v1/zones", "/v1/zones/{zoneId}/records":
 		return true
 	default:
 		return false
@@ -170,6 +180,32 @@ func pathParameters(path string) []any {
 }
 
 func openAPIResponses(c capabilities.Capability, b capabilities.RESTBinding) map[string]any {
+	if c.ID == capabilities.StateExport {
+		return map[string]any{
+			"200": map[string]any{
+				"description": "Canonical export. Default (format omitted or yaml) is application/yaml. format=json is a wrapper object.",
+				"content": map[string]any{
+					"application/yaml": map[string]any{
+						"schema": map[string]any{
+							"type":        "string",
+							"description": "Canonical YAML document (default success path).",
+						},
+					},
+					"application/json": map[string]any{
+						"schema": map[string]any{"$ref": "#/components/schemas/Export"},
+					},
+				},
+			},
+			"default": map[string]any{
+				"description": "application/problem+json domain error",
+				"content": map[string]any{
+					capabilities.ProblemContentType: map[string]any{
+						"schema": map[string]any{"$ref": "#/components/schemas/Problem"},
+					},
+				},
+			},
+		}
+	}
 	success := "200"
 	successSchema := map[string]any{"type": "object"}
 	if c.ID == capabilities.CacheFlush {

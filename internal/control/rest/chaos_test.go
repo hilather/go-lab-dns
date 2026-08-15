@@ -25,6 +25,15 @@ func TestChaosEmergencyRoute(t *testing.T) {
 	act := doLoopback(t, h, http.MethodPost, "/v1/chaos/policies/slow-tools:activate",
 		`{"expectedRevision":"`+rev+`","reason":"lab"}`)
 	requireStatus(t, act, http.StatusOK)
+	afterAct := decodeJSON(t, act)["candidateRevision"].(string)
+	deact := doLoopback(t, h, http.MethodPost, "/v1/chaos/policies/slow-tools:deactivate",
+		`{"expectedRevision":"`+afterAct+`","reason":"lab"}`)
+	requireStatus(t, deact, http.StatusOK)
+	// Re-activate so simulate/expire below still have an enabled policy.
+	rev = decodeJSON(t, deact)["candidateRevision"].(string)
+	act = doLoopback(t, h, http.MethodPost, "/v1/chaos/policies/slow-tools:activate",
+		`{"expectedRevision":"`+rev+`","reason":"lab"}`)
+	requireStatus(t, act, http.StatusOK)
 
 	sim := doLoopback(t, h, http.MethodPost, "/v1/chaos:simulate",
 		`{"name":"foo.tools.lab.example.net.","type":"A","clientContext":{"clientGroup":"test-devices"},"nonce":"sim"}`)

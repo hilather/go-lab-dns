@@ -136,6 +136,19 @@ func TestContractMutations(t *testing.T) {
 	val := doLoopback(t, h, http.MethodPost, "/v1/state:validate", `{"operations":[{"op":"add","target":{"kind":"record","id":"www-a","zoneId":"lab-zone"},"value":{"id":"www-a","owner":"www","type":"A","values":["10.42.0.80"]}}]}`)
 	requireStatus(t, val, http.StatusOK)
 
+	gotState := doLoopback(t, h, http.MethodGet, "/v1/state", "")
+	requireStatus(t, gotState, http.StatusOK)
+	canonical, _ := decodeJSON(t, gotState)["canonical"].(map[string]any)
+	if canonical == nil {
+		t.Fatalf("state missing canonical: %s", gotState.Body.String())
+	}
+	roundTrip, err := json.Marshal(map[string]any{"state": canonical})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rt := doLoopback(t, h, http.MethodPost, "/v1/state:validate", string(roundTrip))
+	requireStatus(t, rt, http.StatusOK)
+
 	plan := doLoopback(t, h, http.MethodPost, "/v1/changes:plan", body)
 	requireStatus(t, plan, http.StatusOK)
 	if decodeJSON(t, plan)["candidateRevision"] == rev {
@@ -215,9 +228,7 @@ func TestUnknownPathAndMethod(t *testing.T) {
 	h := s.Handler()
 	requireProblem(t, doLoopback(t, h, http.MethodGet, "/v1/nope", ""), http.StatusNotFound, "not_found")
 	rec := doLoopback(t, h, http.MethodDelete, "/v1/state", "")
-	if rec.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("status=%d want 405 body=%s", rec.Code, rec.Body.String())
-	}
+	requireProblem(t, rec, http.StatusMethodNotAllowed, "method_not_allowed")
 	if rec.Header().Get("Allow") == "" {
 		t.Fatal("missing Allow")
 	}

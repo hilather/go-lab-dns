@@ -18,6 +18,7 @@ func TestMatchParameterizedAndColonSuffix(t *testing.T) {
 		{"GET", "/v1/chaos/policies", "", ""},
 		{"GET", "/v1/chaos/policies/slow-tools", "policyId", "slow-tools"},
 		{"POST", "/v1/chaos/policies/slow-tools:activate", "id", "slow-tools"},
+		{"POST", "/v1/chaos/policies/slow-tools:deactivate", "id", "slow-tools"},
 		{"POST", "/v1/chaos/policies/slow-tools:expire", "id", "slow-tools"},
 		{"POST", "/v1/resolve:explain", "", ""},
 	}

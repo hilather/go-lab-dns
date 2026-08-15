@@ -1202,6 +1202,7 @@ validation_failed
 revision_conflict
 idempotency_conflict
 not_found
+method_not_allowed
 already_exists
 forbidden
 unauthenticated

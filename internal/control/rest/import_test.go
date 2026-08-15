@@ -18,6 +18,7 @@ func TestRESTImportDAG(t *testing.T) {
 		"github.com/hilather/go-lab-dns/internal/auth":         true,
 		"github.com/hilather/go-lab-dns/internal/buildinfo":    true,
 		"github.com/hilather/go-lab-dns/internal/capabilities": true,
+		"github.com/hilather/go-lab-dns/internal/config":       true,
 		"github.com/hilather/go-lab-dns/internal/domainerr":    true,
 		"github.com/hilather/go-lab-dns/internal/model":        true,
 	}
@@ -33,7 +34,6 @@ func TestRESTImportDAG(t *testing.T) {
 		"github.com/hilather/go-lab-dns/internal/dnsquery",
 		"github.com/hilather/go-lab-dns/internal/dnsserver",
 		"github.com/hilather/go-lab-dns/internal/dnswire",
-		"github.com/hilather/go-lab-dns/internal/config",
 		"github.com/hilather/go-lab-dns/internal/control/mcp",
 	}
 	for _, pkg := range pkgs {

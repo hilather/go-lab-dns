@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -9,7 +10,9 @@ import (
 	"strings"
 
 	"github.com/hilather/go-lab-dns/internal/app"
+	"github.com/hilather/go-lab-dns/internal/config"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
+	"github.com/hilather/go-lab-dns/internal/model"
 )
 
 func (s *Server) decodeJSON(w http.ResponseWriter, r *http.Request, instance string, dst any) bool {
@@ -125,4 +128,14 @@ func idempotencyKey(r *http.Request, body string) string {
 		return body
 	}
 	return strings.TrimSpace(r.Header.Get(headerIdempotency))
+}
+
+// decodeCandidateState uses the config JSON codec so GET /v1/state duration
+// strings (30s, 1h, …) round-trip into POST /v1/state:validate.
+func decodeCandidateState(raw json.RawMessage) (*model.State, error) {
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil, nil
+	}
+	return config.DecodeJSON(raw)
 }

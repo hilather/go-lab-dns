@@ -242,7 +242,7 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if !methodOK {
 		w.Header().Set(headerAllow, allowedMethods(s.routes, r.URL.Path))
-		s.writeStatusProblem(w, r, instance, domainerr.ValidationFailed("method not allowed"), http.StatusMethodNotAllowed)
+		s.writeProblem(w, r, instance, domainerr.MethodNotAllowed("method not allowed"))
 		return
 	}
 

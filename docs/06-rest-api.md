@@ -120,7 +120,7 @@ The normal management resolve operation defaults to not consuming live chaos dec
 
 ## Pagination
 
-Use opaque cursors. Stable ordering must be documented. Filters are explicit typed fields, not arbitrary query-language expressions in the first release.
+Use opaque cursors on zone and record lists (`cursor` + `limit`). `GET /v1/audit` accepts `limit` only; the in-memory ring has no cursor until a later slice. Filters are explicit typed fields, not arbitrary query-language expressions in the first release.
 
 ## Conditional and idempotent writes
 

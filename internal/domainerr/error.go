@@ -111,6 +111,10 @@ func NotFound(message string) *Error {
 	return New(CodeNotFound, message)
 }
 
+func MethodNotAllowed(message string) *Error {
+	return New(CodeMethodNotAllowed, message)
+}
+
 func AlreadyExists(message string) *Error {
 	return New(CodeAlreadyExists, message)
 }

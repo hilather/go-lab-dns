@@ -64,6 +64,7 @@ var errorMap = map[domainerr.Code]mapping{
 	domainerr.CodeRevisionConflict:           {409, JSONRPCConflict, "State revision conflict"},
 	domainerr.CodeIdempotencyConflict:        {409, JSONRPCConflict, "Idempotency key conflict"},
 	domainerr.CodeNotFound:                   {404, JSONRPCNotFound, "Not found"},
+	domainerr.CodeMethodNotAllowed:           {405, JSONRPCMethodNotFound, "Method not allowed"},
 	domainerr.CodeAlreadyExists:              {409, JSONRPCConflict, "Already exists"},
 	domainerr.CodeForbidden:                  {403, JSONRPCForbidden, "Forbidden"},
 	domainerr.CodeUnauthenticated:            {401, JSONRPCUnauthenticated, "Unauthenticated"},
