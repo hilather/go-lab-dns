@@ -1,0 +1,19 @@
+# Binaries and test artifacts
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+coverage.out
+coverage.html
+
+# Local toolchain caches
+.gocache/
+.gomodcache/
+
+# Editor and OS noise
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store

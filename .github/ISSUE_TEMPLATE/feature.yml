@@ -1,0 +1,21 @@
+name: Feature request
+description: Propose a user-visible or operator-visible change
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+    validations:
+      required: true
+  - type: textarea
+    id: docs
+    attributes:
+      label: Design impact
+      description: Which normative docs, ADRs, or task files would change.

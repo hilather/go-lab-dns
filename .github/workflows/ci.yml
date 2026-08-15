@@ -1,0 +1,162 @@
+# LabDNS continuous integration (FND-001).
+#
+# Required jobs: format, lint, unit, race, fuzz-smoke, generated-file,
+# documentation, security-scan, container-test.
+#
+# container-test verifies that `make test-container` fails closed until PR-16.
+# Do not mark that Make target as a success no-op.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOTOOLCHAIN: local
+  GOPROXY: https://proxy.golang.org,direct
+
+jobs:
+  format:
+    name: format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: Format
+        run: make format
+      - name: Tree must stay clean
+        run: git diff --exit-code
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: Lint
+        run: make lint
+
+  unit:
+    name: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: Unit tests
+        run: make test | tee unit.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: unit-logs
+          path: unit.log
+          retention-days: 14
+
+  race:
+    name: race
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: Race tests
+        run: make test-race | tee race.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: race-logs
+          path: race.log
+          retention-days: 14
+
+  fuzz-smoke:
+    name: fuzz-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: Fuzz smoke
+        run: make test-fuzz-smoke | tee fuzz-smoke.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: fuzz-smoke-logs
+          path: fuzz-smoke.log
+          retention-days: 14
+
+  generated-file:
+    name: generated-file
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: Verify generated files
+        run: make verify-generated
+
+  documentation:
+    name: documentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: Documentation checks
+        run: make test-docs
+
+  security-scan:
+    name: security-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: Vulnerability scan
+        run: make security-scan
+
+  container-test:
+    name: container-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail-closed until PR-16
+        run: |
+          set +e
+          out=$(make test-container 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "${out}"
+          if [ "${status}" -eq 0 ]; then
+            echo "make test-container succeeded; it must fail closed until PR-16" >&2
+            exit 1
+          fi
+          printf '%s\n' "${out}" | grep -q 'unimplemented until PR-16'

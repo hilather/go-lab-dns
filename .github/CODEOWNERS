@@ -1,0 +1,41 @@
+# Default ownership. Teams can be added as the org formalizes.
+* @hilather
+
+# DNS semantics
+/docs/02-dns-semantics.md @hilather
+/internal/resolver/ @hilather
+/internal/dnswire/ @hilather
+/internal/dnsserver/ @hilather
+/internal/dnsquery/ @hilather
+
+# REST / MCP parity
+/docs/05-control-plane-and-parity.md @hilather
+/docs/06-rest-api.md @hilather
+/docs/07-mcp-api.md @hilather
+/internal/control/ @hilather
+/internal/capabilities/ @hilather
+/internal/app/ @hilather
+
+# Chaos and security
+/docs/03-chaos-engine.md @hilather
+/docs/08-security-architecture.md @hilather
+/docs/20-threat-model.md @hilather
+/SECURITY.md @hilather
+/internal/chaos/ @hilather
+/internal/auth/ @hilather
+/internal/audit/ @hilather
+
+# Deployment and operations
+/docs/11-deployment.md @hilather
+/docs/12-deployment-repository.md @hilather
+/docs/13-operations-and-runbooks.md @hilather
+/Dockerfile @hilather
+/examples/ @hilather
+
+# Release engineering
+/docs/14-release-engineering.md @hilather
+/docs/15-documentation-governance.md @hilather
+/CHANGELOG.md @hilather
+/RELEASE-NOTES-TEMPLATE.md @hilather
+/.github/ @hilather
+/Makefile @hilather
