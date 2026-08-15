@@ -1,6 +1,6 @@
 # CFG-001: Domain and Configuration Model
 
-Status: not-started
+Status: in-progress
 Recommended owner: Domain/configuration agent
 Dependencies: FND-001
 Exclusive ownership: `internal/model`, `internal/config`, source schemas, canonicalization
@@ -11,11 +11,11 @@ Implement strict, versioned YAML/JSON configuration and canonical domain types f
 
 ## Work items
 
-- [ ] Define stable IDs and canonical types without importing DNS wire or MCP SDK packages.
+- [x] Define stable IDs and canonical types without importing DNS wire or MCP SDK packages.
 - [ ] Implement FQDN normalization, owner-to-zone expansion, duration parsing, IP/CIDR parsing, and record-type validation.
-- [ ] Model authoritative and overlay zones.
-- [ ] Model common RR types and a validated presentation-format fallback.
-- [ ] Model forwarding policies, upstream pools, cache bounds, client groups, management settings, and chaos safety/policy structures.
+- [x] Model authoritative and overlay zones.
+- [x] Model common RR types and a validated presentation-format fallback.
+- [x] Model forwarding policies, upstream pools, cache bounds, client groups, management settings, and chaos safety/policy structures.
 - [ ] Implement strict decoding that rejects unknown fields.
 - [ ] Implement default materialization and deterministic canonical ordering.
 - [ ] Implement cross-reference validation for IDs and policy references.
@@ -43,11 +43,11 @@ Implement strict, versioned YAML/JSON configuration and canonical domain types f
 
 ## Documentation updates
 
-- [ ] Align `docs/04-state-and-configuration.md` with exact field names and defaults.
+- [x] Align `docs/04-state-and-configuration.md` with exact field names and defaults.
 - [ ] Publish generated schema documentation.
 - [ ] Add valid and invalid examples.
-- [ ] Update error catalog and compatibility notes.
-- [ ] Add release-note entry for configuration surfaces.
+- [x] Update error catalog and compatibility notes.
+- [x] Add release-note entry for configuration surfaces.
 
 ## Acceptance criteria
 

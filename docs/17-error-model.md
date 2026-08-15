@@ -30,6 +30,8 @@ Last reviewed: 2026-08-15
 }
 ```
 
+Go constructors and the closed catalog live in `internal/domainerr`. Do not invent synonyms.
+
 Stable codes include:
 
 ```text
