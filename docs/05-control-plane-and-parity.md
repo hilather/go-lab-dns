@@ -24,21 +24,23 @@ Two independently implemented control planes would drift, authorize differently,
 
 ## Capability registry
 
-Each public capability is declared once:
+Each public capability is declared once in `internal/capabilities`. There is no `Handler` field: adapters bind `ServiceMethods` by name so this package does not import `internal/app`.
 
 ```go
 type Capability struct {
-    Name             string
-    Version          string
-    Description      string
-    InputSchema      SchemaRef
-    OutputSchema     SchemaRef
-    RequiredScopes   []string
-    Mutating         bool
-    Idempotent       bool
-    Handler          Handler
-    REST             *RESTBinding
-    MCP              *MCPBinding
+    ID             ID
+    Title          string
+    Version        string
+    Description    string
+    InputSchema    *SchemaRef
+    OutputSchema   *SchemaRef
+    RequiredScopes []string
+    Mutating       bool
+    Idempotent     bool
+    RESTOnly       bool
+    REST           []RESTBinding
+    MCP            *MCPBinding
+    ServiceMethods []string
 }
 ```
 

@@ -103,6 +103,7 @@ Useful read-only resources:
 ```text
 labdns://state
 labdns://capabilities
+labdns://status
 labdns://schema/config
 labdns://zones/{zoneId}
 labdns://records/{recordId}

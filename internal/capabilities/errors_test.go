@@ -3,6 +3,7 @@ package capabilities
 import (
 	"encoding/json"
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -40,6 +41,76 @@ func TestEveryCatalogCodeHasMapping(t *testing.T) {
 	if !seenStatus[409] || !seenRPC[JSONRPCConflict] {
 		t.Fatal("expected conflict mapping")
 	}
+}
+
+func TestErrorMapMatchesDocs17Tables(t *testing.T) {
+	httpPairs := parseDocs17CodeIntTable(t, "Domain code | HTTP status")
+	rpcPairs := parseDocs17CodeIntTable(t, "Domain code | JSON-RPC code")
+	codes := domainerr.Codes()
+	if len(httpPairs) != len(codes) {
+		t.Fatalf("docs/17 HTTP table has %d rows, catalog has %d", len(httpPairs), len(codes))
+	}
+	if len(rpcPairs) != len(codes) {
+		t.Fatalf("docs/17 JSON-RPC table has %d rows, catalog has %d", len(rpcPairs), len(codes))
+	}
+	for _, code := range codes {
+		wantHTTP, ok := httpPairs[code]
+		if !ok {
+			t.Errorf("docs/17 HTTP table missing %s", code)
+			continue
+		}
+		wantRPC, ok := rpcPairs[code]
+		if !ok {
+			t.Errorf("docs/17 JSON-RPC table missing %s", code)
+			continue
+		}
+		if HTTPStatus(code) != wantHTTP {
+			t.Errorf("%s HTTPStatus=%d docs/17=%d", code, HTTPStatus(code), wantHTTP)
+		}
+		if JSONRPCCode(code) != wantRPC {
+			t.Errorf("%s JSONRPCCode=%d docs/17=%d", code, JSONRPCCode(code), wantRPC)
+		}
+	}
+}
+
+func parseDocs17CodeIntTable(t *testing.T, header string) map[domainerr.Code]int {
+	t.Helper()
+	body := readRepoFile(t, "docs", "17-error-model.md")
+	idx := strings.Index(body, header)
+	if idx < 0 {
+		t.Fatalf("docs/17-error-model.md: missing table %q", header)
+	}
+	out := make(map[domainerr.Code]int)
+	for _, line := range strings.Split(body[idx:], "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "|") {
+			if len(out) > 0 {
+				break
+			}
+			continue
+		}
+		cells := splitTableRow(line)
+		if len(cells) < 2 || cells[0] == "Domain code" || strings.HasPrefix(cells[0], "---") {
+			continue
+		}
+		codes := backticks(cells[0])
+		if len(codes) != 1 {
+			t.Fatalf("docs/17 row %q: want one domain code", line)
+		}
+		n, err := strconv.Atoi(strings.TrimSpace(cells[1]))
+		if err != nil {
+			t.Fatalf("docs/17 row %q: %v", line, err)
+		}
+		code := domainerr.Code(codes[0])
+		if _, dup := out[code]; dup {
+			t.Fatalf("docs/17 duplicate code %s", code)
+		}
+		out[code] = n
+	}
+	if len(out) == 0 {
+		t.Fatalf("parsed zero rows from docs/17 table %q", header)
+	}
+	return out
 }
 
 func TestProblemAndJSONRPCShareDomainData(t *testing.T) {

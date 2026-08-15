@@ -102,6 +102,9 @@ func TestParityMCPMutationsHaveREST(t *testing.T) {
 
 func TestDocs05TableCoversFrozenTitles(t *testing.T) {
 	body := readRepoFile(t, "docs", "05-control-plane-and-parity.md")
+	if strings.Contains(body, "Handler          Handler") || strings.Contains(body, "REST             *RESTBinding") {
+		t.Fatal("docs/05 still shows the pack Handler/*RESTBinding sketch; adapters must follow capability.go")
+	}
 	for _, c := range All() {
 		if !strings.Contains(body, c.Title) {
 			t.Errorf("docs/05 missing capability title %q", c.Title)
@@ -114,6 +117,33 @@ func TestDocs05TableCoversFrozenTitles(t *testing.T) {
 				t.Errorf("docs/05 missing tool %s", tool)
 			}
 		}
+	}
+}
+
+func TestDocs07ListsEveryResource(t *testing.T) {
+	body := readRepoFile(t, "docs", "07-mcp-api.md")
+	for _, uri := range Resources() {
+		if !strings.Contains(body, uri) {
+			t.Errorf("docs/07 missing resource %s", uri)
+		}
+	}
+}
+
+func TestDocs06UsesFrozenChaosTemplates(t *testing.T) {
+	body := readRepoFile(t, "docs", "06-rest-api.md")
+	for _, path := range []string{
+		"/v1/chaos/policies/{policyId}",
+		"/v1/chaos/policies/{id}:activate",
+		"/v1/chaos/policies/{id}:deactivate",
+		"/v1/chaos/policies/{id}:expire",
+	} {
+		if !strings.Contains(body, path) {
+			t.Errorf("docs/06 missing frozen path %s", path)
+		}
+	}
+	if strings.Contains(body, "/v1/chaos/policies/{policyId}:activate") ||
+		strings.Contains(body, "/v1/chaos/policies/{policyId}:deactivate") {
+		t.Fatal("docs/06 still uses {policyId} on activate/deactivate; catalog spelling is {id}")
 	}
 }
 

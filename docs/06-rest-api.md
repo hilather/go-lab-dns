@@ -81,14 +81,14 @@ GET  /v1/chaos/status
 GET  /v1/chaos/policies
 GET  /v1/chaos/policies/{policyId}
 POST /v1/chaos:simulate
-POST /v1/chaos/policies/{policyId}:activate
-POST /v1/chaos/policies/{policyId}:deactivate
+POST /v1/chaos/policies/{id}:activate
+POST /v1/chaos/policies/{id}:deactivate
 POST /v1/chaos/policies/{id}:expire
 POST /v1/chaos:emergency-disable
 POST /v1/chaos:emergency-enable
 ```
 
-Activate/deactivate/expire path templates are frozen as `{id}` in the capability table (`POST /v1/chaos/policies/{id}:activate` and siblings). `{policyId}` above is the same identifier for the GET representation.
+Activate/deactivate/expire templates are frozen as `{id}`. GET uses `{policyId}` for the same policy identifier. Adapters must register the catalog spellings so `LookupREST` matches.
 
 ### Audit
 
