@@ -86,6 +86,8 @@ type StateView struct {
 // Status is the agent-readable process DTO.
 type Status struct {
 	Version   buildinfo.Info
+	Ready     bool
+	Degraded  bool
 	Revisions RevisionView
 	Listeners []ListenerStatus
 	Cache     CacheSummary

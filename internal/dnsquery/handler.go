@@ -11,6 +11,7 @@ import (
 	"github.com/hilather/go-lab-dns/internal/dnsserver"
 	"github.com/hilather/go-lab-dns/internal/forwarder"
 	"github.com/hilather/go-lab-dns/internal/model"
+	"github.com/hilather/go-lab-dns/internal/observability"
 	"github.com/hilather/go-lab-dns/internal/resolver"
 	"github.com/hilather/go-lab-dns/internal/snapshot"
 	"github.com/hilather/go-lab-dns/internal/testutil"
@@ -34,6 +35,7 @@ type Handler struct {
 	clk    testutil.Clock
 	fwd    *forwarder.Runtime
 	eng    Engine
+	obs    *observability.Registry
 	denied atomic.Int64
 }
 
@@ -44,13 +46,14 @@ func New(store *snapshot.Store, eng Engine, c *cache.Cache, log Logger, clk test
 
 // Opts is the test/production constructor surface.
 type Opts struct {
-	Store  *snapshot.Store
-	Engine Engine
-	Cache  *cache.Cache
-	Log    Logger
-	Clock  testutil.Clock
-	Rand   testutil.Rand
-	Fwd    *forwarder.Runtime
+	Store   *snapshot.Store
+	Engine  Engine
+	Cache   *cache.Cache
+	Log     Logger
+	Clock   testutil.Clock
+	Rand    testutil.Rand
+	Fwd     *forwarder.Runtime
+	Metrics *observability.Registry
 }
 
 // NewOpts builds a Handler with injected runtime (fake upstreams, clock).
@@ -63,7 +66,7 @@ func NewOpts(o Opts) *Handler {
 	if fwd == nil {
 		fwd = forwarder.NewRuntime(clk, o.Rand, nil, nil)
 	}
-	return &Handler{store: o.Store, cache: o.Cache, log: o.Log, clk: clk, fwd: fwd, eng: o.Engine}
+	return &Handler{store: o.Store, cache: o.Cache, log: o.Log, clk: clk, fwd: fwd, eng: o.Engine, obs: o.Metrics}
 }
 
 func (h *Handler) logf(format string, args ...any) {
@@ -192,6 +195,7 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (*dnsserver.Re
 	if hold > 0 {
 		_ = resp.SetHoldFor(hold)
 	}
+	h.observeQuery(q, cl, res, pre, post)
 	return resp, hint, nil
 }
 
@@ -228,6 +232,7 @@ func (h *Handler) decide(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 		h.logf("chaos decide: %v", err)
 		return chaos.ActionPlan{}
 	}
+	h.observeChaos(plan)
 	return plan
 }
 
@@ -293,6 +298,7 @@ func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 
 	if cl.ForwardingID == "" {
 		h.denied.Add(1)
+		h.observeDenied(cl)
 		h.logf("denied_forward group=%s zone=%s policy=%s", cl.Group, cl.ZoneID, cl.ForwardingID)
 		return refused(snap, q, cl), nil
 	}
@@ -316,6 +322,7 @@ func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 			tid, ok := snap.Forwarding.Select(target)
 			if !ok {
 				h.denied.Add(1)
+				h.observeDenied(cl)
 				h.logf("denied_forward group=%s zone=%s policy=%s", cl.Group, cl.ZoneID, cl.ForwardingID)
 				return refused(snap, q, cl), nil
 			}
@@ -355,9 +362,11 @@ func (h *Handler) lookupCache(snap *snapshot.Snapshot, q model.Query, cl class, 
 		Local:    true,
 	}
 	if ent, ok := h.cache.Get(localKey, opts); ok {
+		h.observeCache("hit")
 		return ent, true
 	}
 	if cl.ForwardingID == "" {
+		h.observeCache("miss")
 		return cache.Entry{}, false
 	}
 	upKey := cache.Key{
@@ -369,7 +378,13 @@ func (h *Handler) lookupCache(snap *snapshot.Snapshot, q model.Query, cl class, 
 		ForwardingID: cl.ForwardingID,
 		Local:        false,
 	}
-	return h.cache.Get(upKey, opts)
+	ent, ok := h.cache.Get(upKey, opts)
+	if ok {
+		h.observeCache("hit")
+	} else {
+		h.observeCache("miss")
+	}
+	return ent, ok
 }
 
 func (h *Handler) storeCache(snap *snapshot.Snapshot, q model.Query, cl class, res model.Result, local bool, plan chaos.ActionPlan) {
@@ -475,4 +490,72 @@ func lastCNAMETarget(rrs []model.RR) model.Name {
 		}
 	}
 	return last
+}
+
+func (h *Handler) observeQuery(q model.Query, cl class, res model.Result, pre, post chaos.ActionPlan) {
+	if h == nil || h.obs == nil {
+		return
+	}
+	src := observability.SourceClass(string(res.Source))
+	h.obs.Inc(observability.MetricDNSQueries, map[string]string{
+		"transport":          string(q.Transport),
+		"client_group_class": observability.ClientGroupClass(cl.Group != "", cl.AllowForward),
+		"qtype_class":        observability.QTypeClass(string(q.Type)),
+		"source":             src,
+		"rcode":              string(res.RCode),
+	}, 1)
+	if res.ZoneID != "" {
+		h.obs.Inc(observability.MetricResolverOutcomes, map[string]string{
+			"source":  src,
+			"zone_id": string(res.ZoneID),
+		}, 1)
+	}
+	_ = pre
+	_ = post
+}
+
+func (h *Handler) observeDenied(cl class) {
+	if h == nil || h.obs == nil {
+		return
+	}
+	result := "no_policy"
+	if cl.Group == "" {
+		result = "unknown"
+	} else if !cl.AllowForward {
+		result = "local_only"
+	}
+	h.obs.Inc(observability.MetricDeniedForward, map[string]string{"result": result}, 1)
+}
+
+func (h *Handler) observeCache(result string) {
+	if h == nil || h.obs == nil {
+		return
+	}
+	h.obs.Inc(observability.MetricCacheLookups, map[string]string{"result": result}, 1)
+}
+
+func (h *Handler) observeChaos(plan chaos.ActionPlan) {
+	if h == nil || h.obs == nil {
+		return
+	}
+	for _, d := range plan.Decisions {
+		pid := string(d.PolicyID)
+		if d.Triggered {
+			h.obs.Inc(observability.MetricChaosMatches, map[string]string{"policy_id": pid, "result": "trigger"}, 1)
+			if d.OutcomeID != "" {
+				h.obs.Inc(observability.MetricChaosTriggers, map[string]string{"policy_id": pid, "outcome": d.OutcomeID}, 1)
+			}
+		} else {
+			h.obs.Inc(observability.MetricChaosMatches, map[string]string{"policy_id": pid, "result": "skip"}, 1)
+			if d.SkipReason != "" {
+				h.obs.Inc(observability.MetricChaosSkips, map[string]string{"policy_id": pid, "reason": d.SkipReason}, 1)
+			}
+		}
+		for _, a := range d.Actions {
+			if a.Type == "" {
+				continue
+			}
+			h.obs.Inc(observability.MetricChaosEffects, map[string]string{"policy_id": pid, "action": a.Type}, 1)
+		}
+	}
 }

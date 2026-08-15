@@ -22,6 +22,7 @@ func TestNoMiekgAndImportDAG(t *testing.T) {
 		"github.com/hilather/go-lab-dns/internal/forwarder":     true,
 		"github.com/hilather/go-lab-dns/internal/cache":         true,
 		"github.com/hilather/go-lab-dns/internal/dnsserver":     true,
+		"github.com/hilather/go-lab-dns/internal/observability": true,
 		"github.com/hilather/go-lab-dns/internal/testutil":      true,
 	}
 	for _, pkg := range pkgs {

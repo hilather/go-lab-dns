@@ -2,20 +2,60 @@
 
 Status: Proposed
 Owners: Operations
-Last reviewed: 2026-08-15 (CHA-002 delay cancel + emergency under load)
+Last reviewed: 2026-08-15 (OBS-001 diagnostic queries)
 
 ## Routine checks
 
 Operators should monitor:
 
-- Readiness and degraded state.
-- Active and bootstrap revisions and drift.
-- Upstream health and timeout rate.
-- Query latency and RCODE changes.
-- Cache hit rate and evictions.
-- Active chaos policies, expiry, budget use, and emergency-disable state.
-- Control-plane authorization failures.
+- Readiness and degraded state (`GET /v1/health/ready`, `GET /v1/status`).
+- Active and bootstrap revisions and drift (`labdns_state_drifted`, Status `revisions`).
+- Upstream health and timeout rate (`labdns_upstream_health`, `labdns_upstream_timeouts_total`).
+- Query latency and RCODE changes (`labdns_dns_queries_total`, `labdns_dns_query_duration_seconds`).
+- Cache hit rate and evictions (`labdns_cache_lookups_total`, `labdns_cache_evictions_total`).
+- Active chaos policies, expiry, budget use, and emergency-disable state (`labdns_chaos_*`, Status `chaos`).
+- Control-plane authorization failures (`labdns_auth_failures_total`).
+- Telemetry drops (`labdns_telemetry_dropped_total`).
 - Audit delivery.
+
+Catalog: [api/metrics/v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/metrics/v1alpha1.json). Semantics: [docs/09-observability.md](https://github.com/hilather/go-lab-dns/blob/main/docs/09-observability.md).
+
+## Diagnostic queries
+
+Prometheus-style examples (in-process scrape via `observability.Registry.WritePrometheus`):
+
+```text
+# Resolution mix (exact vs wildcard vs cache vs upstream)
+sum by (source, rcode) (labdns_dns_queries_total)
+
+# Refused forwards (unknown / local-only / no policy)
+sum by (result) (labdns_dns_denied_forward_total)
+
+# Cache effectiveness
+sum(labdns_cache_lookups_total{result="hit"}) /
+  clamp_min(sum(labdns_cache_lookups_total), 1)
+
+# Unhealthy upstreams
+labdns_upstream_health == 0
+
+# Chaos under load
+labdns_chaos_delayed_requests
+sum by (policy_id, action) (labdns_chaos_effects_total)
+labdns_chaos_emergency_disabled
+
+# Control-plane errors
+sum by (capability, result) (labdns_capability_calls_total{result="error"})
+
+# Telemetry backpressure
+sum by (reason) (labdns_telemetry_dropped_total)
+```
+
+Alert recommendations for DEP/GIT:
+
+- `labdns_dns_denied_forward_total` rising unexpectedly (open-resolver or client-group misconfig).
+- `labdns_telemetry_dropped_total` non-zero for more than a scrape interval (exporter stall).
+- `labdns_chaos_emergency_disabled == 1` outside a planned drill.
+- Status `degraded=true` while `ready=true` (upstream outage, local zones still serve).
 
 ## Runbook: unexpected resolution
 

@@ -15,6 +15,7 @@ import (
 	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/capabilities"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
+	"github.com/hilather/go-lab-dns/internal/observability"
 )
 
 const (
@@ -72,6 +73,12 @@ type Config struct {
 	WriteTimeout      time.Duration
 	// MaxConcurrent admits at most this many overlapping requests. Non-positive uses DefaultMaxConcurrent.
 	MaxConcurrent int
+	// Metrics records capability calls. Nil is a no-op.
+	Metrics *observability.Registry
+	// Logger is optional structured request logging. Nil is silent.
+	Logger *observability.Logger
+	// Tracer is optional sampled capability tracing. Nil disables.
+	Tracer *observability.Tracer
 }
 
 // Server is the stdlib net/http management listener.
@@ -83,6 +90,9 @@ type Server struct {
 	maxBody  int64
 	timeout  time.Duration
 	inflight chan struct{}
+	metrics  *observability.Registry
+	logger   *observability.Logger
+	tracer   *observability.Tracer
 
 	mu     sync.Mutex
 	http   *http.Server
@@ -115,6 +125,9 @@ func New(cfg Config) (*Server, error) {
 		maxBody:  maxBody,
 		timeout:  timeout,
 		inflight: make(chan struct{}, n),
+		metrics:  cfg.Metrics,
+		logger:   cfg.Logger,
+		tracer:   cfg.Tracer,
 	}
 	return s, nil
 }
@@ -202,9 +215,14 @@ func (s *Server) Addr() string {
 func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	reqID := requestID(r)
 	w.Header().Set(headerRequestID, reqID)
-	if tr := r.Header.Get(headerTraceID); tr != "" {
-		w.Header().Set(headerTraceID, tr)
+	traceID := r.Header.Get(headerTraceID)
+	if traceID != "" {
+		w.Header().Set(headerTraceID, traceID)
 	}
+	ctx := r.Context()
+	ctx = observability.WithRequestID(ctx, reqID)
+	ctx = observability.WithTraceID(ctx, traceID)
+	r = r.WithContext(ctx)
 	instance := requestURNPrefix + reqID
 
 	// Never advertise a permissive CORS policy.
@@ -221,7 +239,7 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := r.Context()
+	ctx = r.Context()
 	var cancel context.CancelFunc
 	if s.timeout > 0 {
 		ctx, cancel = context.WithTimeout(ctx, s.timeout)
@@ -248,11 +266,35 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 
 	actor, err := s.authenticate(r, rt.cap)
 	if err != nil {
+		if s.metrics != nil {
+			result := "error"
+			if de, ok := domainerr.As(err); ok {
+				switch de.Code {
+				case domainerr.CodeUnauthenticated:
+					result = "unauthenticated"
+				case domainerr.CodeForbidden:
+					result = "forbidden"
+				}
+			}
+			s.metrics.Inc(observability.MetricAuthFailures, map[string]string{"result": result}, 1)
+		}
 		s.writeProblem(w, r, instance, err)
 		return
 	}
 
-	s.dispatch(w, r, instance, actor, rt, params)
+	sw := &statusWriter{ResponseWriter: w, code: http.StatusOK}
+	start := time.Now()
+	if s.tracer != nil {
+		var span observability.Span
+		ctx, span = s.tracer.Start(r.Context(), string(rt.cap.ID), map[string]string{
+			"capability": string(rt.cap.ID),
+			"transport":  "rest",
+		})
+		r = r.WithContext(ctx)
+		defer s.tracer.Finish(span)
+	}
+	s.dispatch(sw, r, instance, actor, rt, params)
+	s.observe(rt, sw.code, time.Since(start), reqID)
 }
 
 func requestID(r *http.Request) string {
@@ -278,5 +320,43 @@ func (s *Server) isReady(ctx context.Context) bool {
 		return s.cfg.Ready()
 	}
 	st, err := s.svc.Status(ctx, auth.Actor{ID: "ready", Class: "startup"})
-	return err == nil && st != nil && st.Revisions.RuntimeRevision != ""
+	return err == nil && st != nil && st.Ready
+}
+
+func (s *Server) observe(rt compiledRoute, code int, d time.Duration, reqID string) {
+	result := "ok"
+	if code >= 400 {
+		result = "error"
+	}
+	if s.metrics != nil {
+		s.metrics.Inc(observability.MetricCapabilityCalls, map[string]string{
+			"capability": string(rt.cap.ID),
+			"transport":  "rest",
+			"result":     result,
+		}, 1)
+		s.metrics.Observe(observability.MetricCapabilityDuration, map[string]string{
+			"capability": string(rt.cap.ID),
+			"transport":  "rest",
+		}, d.Seconds())
+	}
+	if s.logger != nil {
+		s.logger.Log(observability.Record{
+			Event:      observability.EventCapabilityInvoke,
+			Component:  "rest",
+			RequestID:  reqID,
+			Capability: string(rt.cap.ID),
+			Result:     result,
+			DurationMS: float64(d.Milliseconds()),
+		})
+	}
+}
+
+type statusWriter struct {
+	http.ResponseWriter
+	code int
+}
+
+func (w *statusWriter) WriteHeader(code int) {
+	w.code = code
+	w.ResponseWriter.WriteHeader(code)
 }

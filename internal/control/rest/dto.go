@@ -41,6 +41,8 @@ type capabilityInfo struct {
 
 type statusResponse struct {
 	Version   versionResponse  `json:"version"`
+	Ready     bool             `json:"ready"`
+	Degraded  bool             `json:"degraded"`
 	Revisions revisionViewJSON `json:"revisions"`
 	Listeners []listenerJSON   `json:"listeners"`
 	Cache     cacheSummaryJSON `json:"cache"`
@@ -295,6 +297,8 @@ func fromStatus(st *app.Status) statusResponse {
 	}
 	out := statusResponse{
 		Version:   fromVersion(&st.Version),
+		Ready:     st.Ready,
+		Degraded:  st.Degraded,
 		Revisions: fromRevision(st.Revisions),
 		Cache: cacheSummaryJSON{
 			Enabled: st.Cache.Enabled, MaxEntries: st.Cache.MaxEntries,

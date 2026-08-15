@@ -155,7 +155,7 @@ The adapter is `internal/control/rest`. Routes are compiled from `capabilities.A
 | Pagination | Opaque `cursor` + `limit` query parameters on zone, record, and audit lists. |
 | Timeouts | Per-request context deadline (default 30s). `ListenAndServe` also sets read/write/header timeouts. |
 | Request ID | `X-Request-ID` is accepted or generated and echoed; problem `instance` is `urn:labdns:request:<id>`. |
-| Health | `GET /v1/health/live` is process liveness. `GET /v1/health/ready` is ready when `Status` reports a runtime revision. Chaos must not affect either. |
+| Health | `GET /v1/health/live` is process liveness. `GET /v1/health/ready` is ready when `Status.Ready` is true (runtime revision present and required listeners bound). Upstream failure is `Status.Degraded`, not unready. Chaos must not affect either probe. |
 
 `labdns serve` does not bind the management listener in this slice (DEP-001 / PR-16). Construct `rest.Server` with `Config.Addr` (empty → `:8080`) and `app.Service`.
 

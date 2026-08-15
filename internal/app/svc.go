@@ -11,6 +11,7 @@ import (
 	"github.com/hilather/go-lab-dns/internal/domainerr"
 	"github.com/hilather/go-lab-dns/internal/forwarder"
 	"github.com/hilather/go-lab-dns/internal/model"
+	"github.com/hilather/go-lab-dns/internal/observability"
 	"github.com/hilather/go-lab-dns/internal/snapshot"
 	"github.com/hilather/go-lab-dns/internal/testutil"
 )
@@ -39,6 +40,11 @@ type Options struct {
 	BootstrapPath  string
 	IdempotencyMax int
 	AuditMax       int
+	// HealthSource supplies listener/process/telemetry facts for Status.
+	// Nil assumes the process is serving and listeners are bound.
+	HealthSource HealthSource
+	// Metrics is optional control-plane / status scrape instrumentation.
+	Metrics *observability.Registry
 }
 
 // App is the process-local Service implementation.
@@ -52,9 +58,20 @@ type App struct {
 	bootstrapPath string
 	idemp         *idempCache
 	audit         *auditRing
+	healthSrc     HealthSource
+	metrics       *observability.Registry
 	// afterCompile runs after a successful compile, before Swap. Tests use
 	// it to interleave emergency disable with apply.
 	afterCompile func()
+}
+
+// HealthSource reports process and listener facts for the Status DTO.
+// Chaos must not be used to flip liveness or readiness.
+type HealthSource interface {
+	ProcessDown() bool
+	DNSDown() bool
+	MgmtDown() bool
+	TelemetryDrops() int64
 }
 
 var _ Service = (*App)(nil)
@@ -88,6 +105,8 @@ func New(opts Options) *App {
 		bootstrapPath: opts.BootstrapPath,
 		idemp:         newIdempCache(idempMax),
 		audit:         newAuditRing(auditMax),
+		healthSrc:     opts.HealthSource,
+		metrics:       opts.Metrics,
 	}
 }
 

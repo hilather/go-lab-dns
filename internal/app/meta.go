@@ -9,6 +9,7 @@ import (
 	"github.com/hilather/go-lab-dns/internal/capabilities"
 	"github.com/hilather/go-lab-dns/internal/config"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
+	"github.com/hilather/go-lab-dns/internal/observability"
 )
 
 // Version returns process buildinfo.
@@ -63,7 +64,59 @@ func (s *App) Status(ctx context.Context, actor Actor) (*Status, error) {
 	if cs, err := s.CacheStatus(ctx, actor); err == nil && cs != nil {
 		st.Cache = *cs
 	}
+	s.annotateStatus(st)
 	return st, nil
+}
+
+func (s *App) annotateStatus(st *Status) {
+	if st == nil {
+		return
+	}
+	unhealthy := 0
+	for _, u := range st.Upstreams {
+		if !u.Healthy {
+			unhealthy++
+		}
+	}
+	facts := observability.Facts{
+		HasRuntimeRevision: st.Revisions.RuntimeRevision != "",
+		Drifted:            st.Revisions.Drifted,
+		EmergencyChaos:     st.Chaos.EmergencyDisabled,
+		ChaosEnabled:       st.Chaos.Enabled,
+		UnhealthyUpstreams: unhealthy,
+		CacheEntries:       st.Cache.Entries,
+		CacheMax:           st.Cache.MaxEntries,
+	}
+	if s != nil && s.healthSrc != nil {
+		facts.ProcessDown = s.healthSrc.ProcessDown()
+		facts.DNSDown = s.healthSrc.DNSDown()
+		facts.MgmtDown = s.healthSrc.MgmtDown()
+		facts.TelemetryDrops = s.healthSrc.TelemetryDrops()
+	}
+	if s != nil && s.metrics != nil {
+		facts.TelemetryDrops += s.metrics.Dropped()
+		gen := float64(st.Revisions.Generation)
+		s.metrics.Set(observability.MetricStateGeneration, nil, gen)
+		drift := 0.0
+		if st.Revisions.Drifted {
+			drift = 1
+		}
+		s.metrics.Set(observability.MetricStateDrifted, nil, drift)
+		em := 0.0
+		if st.Chaos.EmergencyDisabled {
+			em = 1
+		}
+		s.metrics.Set(observability.MetricChaosEmergency, nil, em)
+	}
+	probe := observability.Evaluate(facts)
+	st.Ready = probe.Ready
+	st.Degraded = probe.Degraded
+	if len(probe.Warnings) > 0 {
+		st.Warnings = make([]Warning, len(probe.Warnings))
+		for i, w := range probe.Warnings {
+			st.Warnings[i] = Warning{Code: w.Code, Message: w.Message}
+		}
+	}
 }
 
 func (s *App) ConfigSchema(ctx context.Context, actor Actor) ([]byte, error) {

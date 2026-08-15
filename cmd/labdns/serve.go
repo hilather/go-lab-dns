@@ -13,8 +13,11 @@ import (
 	"github.com/hilather/go-lab-dns/internal/dnsquery"
 	"github.com/hilather/go-lab-dns/internal/dnsserver"
 	"github.com/hilather/go-lab-dns/internal/model"
+	"github.com/hilather/go-lab-dns/internal/observability"
 	"github.com/hilather/go-lab-dns/internal/snapshot"
 )
+
+var _ dnsserver.Metrics = observability.DNSTransport{}
 
 type serveFlags struct {
 	Config       string
@@ -88,7 +91,8 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*dnsserver.Server, 
 		MaximumNegativeTTL: snap.CachePolicy.MaximumNegativeTTL,
 		StaleServing:       snap.CachePolicy.StaleServing,
 	}, nil)
-	h := dnsquery.New(store, eng, c, nil, nil)
+	reg := observability.NewRegistry()
+	h := dnsquery.NewOpts(dnsquery.Opts{Store: store, Engine: eng, Cache: c, Metrics: reg})
 
 	udpAddr, tcpAddr := dnsListenAddrs(snap)
 	if udpAddr == "" && tcpAddr == "" {
@@ -98,6 +102,7 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*dnsserver.Server, 
 		UDPAddr: udpAddr,
 		TCPAddr: tcpAddr,
 		Handler: h,
+		Metrics: observability.NewDNSTransport(reg),
 	})
 	if err != nil {
 		return nil, nil, err

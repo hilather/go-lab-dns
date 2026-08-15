@@ -3,6 +3,7 @@
 Status: Proposed
 Owners: Architecture, Release Engineering
 Last reviewed: 2026-08-15 (MCP-001 2026-07-28 pin)
+Last reviewed: 2026-08-15 (OBS-001 metrics catalog)
 
 ## Public compatibility surfaces
 

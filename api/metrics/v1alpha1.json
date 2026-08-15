@@ -1,0 +1,731 @@
+{
+  "id": "labdns.dev/metrics/v1alpha1",
+  "version": "v1alpha1",
+  "allowedLabels": [
+    "action",
+    "capability",
+    "client_group_class",
+    "component",
+    "event",
+    "kind",
+    "outcome",
+    "phase",
+    "policy_id",
+    "qtype_class",
+    "queue",
+    "rcode",
+    "reason",
+    "result",
+    "source",
+    "transport",
+    "upstream_id",
+    "zone_id"
+  ],
+  "forbiddenLabels": [
+    "actor",
+    "actor_id",
+    "client",
+    "client_ip",
+    "detail",
+    "err",
+    "error",
+    "error_text",
+    "idempotency",
+    "idempotency_key",
+    "message",
+    "name",
+    "owner",
+    "peer",
+    "qname",
+    "query",
+    "query_name",
+    "remote_addr",
+    "source_ip",
+    "src",
+    "src_ip"
+  ],
+  "metrics": [
+    {
+      "name": "labdns_auth_failures_total",
+      "kind": "counter",
+      "help": "Management authentication and scope denials.",
+      "labels": [
+        "result"
+      ]
+    },
+    {
+      "name": "labdns_cache_entries",
+      "kind": "gauge",
+      "help": "Process cache occupancy.",
+      "labels": [
+        "kind"
+      ]
+    },
+    {
+      "name": "labdns_cache_evictions_total",
+      "kind": "counter",
+      "help": "Process cache evictions.",
+      "labels": null
+    },
+    {
+      "name": "labdns_cache_lookups_total",
+      "kind": "counter",
+      "help": "Process cache lookups.",
+      "labels": [
+        "result"
+      ]
+    },
+    {
+      "name": "labdns_capability_calls_total",
+      "kind": "counter",
+      "help": "Control-plane capability invocations.",
+      "labels": [
+        "capability",
+        "result",
+        "transport"
+      ]
+    },
+    {
+      "name": "labdns_capability_duration_seconds",
+      "kind": "histogram",
+      "help": "Control-plane capability latency.",
+      "labels": [
+        "capability",
+        "transport"
+      ],
+      "unit": "seconds"
+    },
+    {
+      "name": "labdns_chaos_budget_saturations_total",
+      "kind": "counter",
+      "help": "Chaos budget saturations and clamps.",
+      "labels": [
+        "policy_id"
+      ]
+    },
+    {
+      "name": "labdns_chaos_delay_seconds",
+      "kind": "histogram",
+      "help": "Applied chaos delay.",
+      "labels": [
+        "policy_id"
+      ],
+      "unit": "seconds"
+    },
+    {
+      "name": "labdns_chaos_delayed_requests",
+      "kind": "gauge",
+      "help": "In-flight delayed queries.",
+      "labels": null
+    },
+    {
+      "name": "labdns_chaos_effects_total",
+      "kind": "counter",
+      "help": "Executed chaos effects.",
+      "labels": [
+        "action",
+        "policy_id"
+      ]
+    },
+    {
+      "name": "labdns_chaos_emergency_disabled",
+      "kind": "gauge",
+      "help": "Emergency chaos inhibit (1=disabled).",
+      "labels": null
+    },
+    {
+      "name": "labdns_chaos_policy_matches_total",
+      "kind": "counter",
+      "help": "Chaos policy evaluations.",
+      "labels": [
+        "policy_id",
+        "result"
+      ]
+    },
+    {
+      "name": "labdns_chaos_policy_skips_total",
+      "kind": "counter",
+      "help": "Skipped chaos policies.",
+      "labels": [
+        "policy_id",
+        "reason"
+      ]
+    },
+    {
+      "name": "labdns_chaos_policy_triggers_total",
+      "kind": "counter",
+      "help": "Triggered chaos outcomes.",
+      "labels": [
+        "outcome",
+        "policy_id"
+      ]
+    },
+    {
+      "name": "labdns_dns_admission_total",
+      "kind": "counter",
+      "help": "DNS admission decisions.",
+      "labels": [
+        "rcode",
+        "result"
+      ]
+    },
+    {
+      "name": "labdns_dns_admitted_total",
+      "kind": "counter",
+      "help": "Admitted DNS queries after parse.",
+      "labels": [
+        "transport"
+      ]
+    },
+    {
+      "name": "labdns_dns_denied_forward_total",
+      "kind": "counter",
+      "help": "Queries that needed a forward and were refused.",
+      "labels": [
+        "result"
+      ]
+    },
+    {
+      "name": "labdns_dns_parse_total",
+      "kind": "counter",
+      "help": "DNS parse outcomes.",
+      "labels": [
+        "result"
+      ]
+    },
+    {
+      "name": "labdns_dns_queries_total",
+      "kind": "counter",
+      "help": "Completed DNS queries by bounded classes.",
+      "labels": [
+        "client_group_class",
+        "qtype_class",
+        "rcode",
+        "source",
+        "transport"
+      ]
+    },
+    {
+      "name": "labdns_dns_query_duration_seconds",
+      "kind": "histogram",
+      "help": "DNS query handler latency.",
+      "labels": [
+        "source",
+        "transport"
+      ],
+      "unit": "seconds"
+    },
+    {
+      "name": "labdns_dns_responses_total",
+      "kind": "counter",
+      "help": "Finished DNS responses including chaos transport actions.",
+      "labels": [
+        "action",
+        "rcode",
+        "transport"
+      ]
+    },
+    {
+      "name": "labdns_dns_tcp_events_total",
+      "kind": "counter",
+      "help": "TCP accept, reject, close, and reset events.",
+      "labels": [
+        "event"
+      ]
+    },
+    {
+      "name": "labdns_resolver_cname_depth_failures_total",
+      "kind": "counter",
+      "help": "CNAME chains that hit the depth cap.",
+      "labels": [
+        "zone_id"
+      ]
+    },
+    {
+      "name": "labdns_resolver_outcomes_total",
+      "kind": "counter",
+      "help": "Local resolver outcomes.",
+      "labels": [
+        "source",
+        "zone_id"
+      ]
+    },
+    {
+      "name": "labdns_state_compile_duration_seconds",
+      "kind": "histogram",
+      "help": "Snapshot compile duration.",
+      "labels": null,
+      "unit": "seconds"
+    },
+    {
+      "name": "labdns_state_drifted",
+      "kind": "gauge",
+      "help": "Runtime drifted from bootstrap (1=yes).",
+      "labels": null
+    },
+    {
+      "name": "labdns_state_generation",
+      "kind": "gauge",
+      "help": "Active snapshot generation.",
+      "labels": null
+    },
+    {
+      "name": "labdns_state_idempotency_hits_total",
+      "kind": "counter",
+      "help": "Idempotency-key cache hits.",
+      "labels": null
+    },
+    {
+      "name": "labdns_state_revision_conflicts_total",
+      "kind": "counter",
+      "help": "Optimistic-concurrency revision conflicts.",
+      "labels": null
+    },
+    {
+      "name": "labdns_state_validation_duration_seconds",
+      "kind": "histogram",
+      "help": "State validation duration.",
+      "labels": null,
+      "unit": "seconds"
+    },
+    {
+      "name": "labdns_telemetry_dropped_total",
+      "kind": "counter",
+      "help": "Telemetry samples dropped under backpressure or policy.",
+      "labels": [
+        "reason"
+      ]
+    },
+    {
+      "name": "labdns_upstream_exchange_duration_seconds",
+      "kind": "histogram",
+      "help": "Upstream exchange latency.",
+      "labels": [
+        "upstream_id"
+      ],
+      "unit": "seconds"
+    },
+    {
+      "name": "labdns_upstream_exchanges_total",
+      "kind": "counter",
+      "help": "Upstream exchanges.",
+      "labels": [
+        "rcode",
+        "result",
+        "upstream_id"
+      ]
+    },
+    {
+      "name": "labdns_upstream_failovers_total",
+      "kind": "counter",
+      "help": "Upstream failovers.",
+      "labels": [
+        "upstream_id"
+      ]
+    },
+    {
+      "name": "labdns_upstream_health",
+      "kind": "gauge",
+      "help": "Query-driven upstream reachability (1=healthy).",
+      "labels": [
+        "upstream_id"
+      ]
+    },
+    {
+      "name": "labdns_upstream_timeouts_total",
+      "kind": "counter",
+      "help": "Upstream timeouts.",
+      "labels": [
+        "upstream_id"
+      ]
+    },
+    {
+      "name": "labdns_upstream_transport_errors_total",
+      "kind": "counter",
+      "help": "Upstream transport errors.",
+      "labels": [
+        "upstream_id"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "auth.failure",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "cache.lookup",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "capability.invoke",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "chaos.budget",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "chaos.decide",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "chaos.emergency",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "dns.admission_failed",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "dns.denied_forward",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "dns.parse_failed",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "dns.query",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "health.change",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "resolver.outcome",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "state.apply",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "state.compile",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "state.reset",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "telemetry.drop",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "upstream.exchange",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
+      "name": "upstream.unhealthy",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    }
+  ]
+}

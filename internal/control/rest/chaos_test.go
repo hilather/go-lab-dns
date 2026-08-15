@@ -61,6 +61,10 @@ func TestChaosEmergencyRoute(t *testing.T) {
 	requireStatus(t, live, http.StatusOK)
 	ready := doLoopback(t, h, http.MethodGet, "/v1/health/ready", "")
 	requireStatus(t, ready, http.StatusOK)
+	agent := decodeJSON(t, doLoopback(t, h, http.MethodGet, "/v1/status", ""))
+	if agent["ready"] != true || agent["degraded"] == true {
+		t.Fatalf("status after chaos emergency=%s", after.Body.String())
+	}
 
 	en := doLoopback(t, h, http.MethodPost, "/v1/chaos:emergency-enable", `{"reason":"resume"}`)
 	requireStatus(t, en, http.StatusOK)

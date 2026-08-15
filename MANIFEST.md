@@ -45,6 +45,14 @@
 - `docs/adr/0006-pin-mcp-protocol-versions.md`
 - `docs/adr/0007-defer-unsafe-wire-chaos.md`
 
+## Generated contracts
+
+- `api/capabilities/v1.json`
+- `api/openapi/v1.json`
+- `api/metrics/v1alpha1.json`
+- `api/jsonschema/labdns.dev.v1alpha1.json`
+- `api/chaos/effects.json`
+
 ## Agent task plans
 
 See `tasks/README.md` and `tasks/00-program-board.md` for the ordered implementation plan.

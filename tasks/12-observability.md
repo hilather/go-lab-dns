@@ -1,6 +1,6 @@
 # OBS-001: Observability and Health
 
-Status: not-started
+Status: complete
 Recommended owner: Observability agent
 Dependencies: stable component interfaces
 Exclusive ownership: `internal/observability`, metrics catalog, health status aggregation
@@ -11,33 +11,33 @@ Add low-overhead structured logs, metrics, optional tracing, health, degraded st
 
 ## Work items
 
-- [ ] Define a versioned metric and event catalog.
-- [ ] Instrument DNS transport, resolver, wildcard, negative answers, cache, forwarding, upstreams, chaos, state, REST, MCP, auth, and audit.
-- [ ] Implement label allowlist and automated no-QNAME/no-client-IP checks.
-- [ ] Implement liveness, readiness, and degraded status semantics.
-- [ ] Implement build, revision, drift, upstream, cache, and chaos status views.
-- [ ] Add request/trace correlation across REST/MCP and application handlers.
-- [ ] Add optional sampled DNS tracing with redaction.
-- [ ] Implement bounded telemetry queues and drop metrics.
-- [ ] Add operational dashboards or documented queries as Markdown examples.
+- [x] Define a versioned metric and event catalog.
+- [x] Instrument DNS transport, resolver, wildcard, negative answers, cache, forwarding, upstreams, chaos, state, REST, MCP, auth, and audit.
+- [x] Implement label allowlist and automated no-QNAME/no-client-IP checks.
+- [x] Implement liveness, readiness, and degraded status semantics.
+- [x] Implement build, revision, drift, upstream, cache, and chaos status views.
+- [x] Add request/trace correlation across REST/MCP and application handlers.
+- [x] Add optional sampled DNS tracing with redaction.
+- [x] Implement bounded telemetry queues and drop metrics.
+- [x] Add operational dashboards or documented queries as Markdown examples.
 
 ## Required tests
 
-- [ ] Expected metrics are emitted for representative flows.
-- [ ] Raw QNAME and client IP are not metric labels.
-- [ ] Log and trace redaction tests.
-- [ ] Exporter failure/backpressure does not block DNS.
-- [ ] Liveness/readiness/degraded state tests.
-- [ ] Chaos policy metrics are bounded by configured policy count.
-- [ ] Metric catalog compatibility diff tests.
-- [ ] Regression test for every observability defect.
+- [x] Expected metrics are emitted for representative flows.
+- [x] Raw QNAME and client IP are not metric labels.
+- [x] Log and trace redaction tests.
+- [x] Exporter failure/backpressure does not block DNS.
+- [x] Liveness/readiness/degraded state tests.
+- [x] Chaos policy metrics are bounded by configured policy count.
+- [x] Metric catalog compatibility diff tests.
+- [x] Regression test for every observability defect.
 
 ## Documentation updates
 
-- [ ] Publish metric names, types, labels, and semantics.
-- [ ] Update runbooks with diagnostic queries.
-- [ ] Document privacy and debug-mode controls.
-- [ ] Add release-note entry for observability changes.
+- [x] Publish metric names, types, labels, and semantics.
+- [x] Update runbooks with diagnostic queries.
+- [x] Document privacy and debug-mode controls.
+- [x] Add release-note entry for observability changes.
 
 ## Acceptance criteria
 
@@ -48,3 +48,5 @@ Add low-overhead structured logs, metrics, optional tracing, health, degraded st
 ## Handoff
 
 Provide metric catalog and alert recommendations for DEP/GIT tasks.
+
+Catalog: `api/metrics/v1alpha1.json`. Alert starters live in `docs/13-operations-and-runbooks.md`.

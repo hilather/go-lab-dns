@@ -25,6 +25,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Domain-error mapping helpers: `domainerr` → RFC 9457 `application/problem+json` status hints and MCP JSON-RPC `data`. Parity harness fails if a table row is missing or renamed.
 - REST `/v1` adapter in `internal/control/rest`: routes registered from the capability registry, `application/problem+json`, loopback-only unauthenticated management (Q-AUTH), body/timeout/concurrency limits, and generated OpenAPI at [api/openapi/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/openapi/v1.json).
 - MCP Streamable HTTP adapter in `internal/control/mcp`: official Go SDK [`github.com/modelcontextprotocol/go-sdk v1.7.0`](https://github.com/modelcontextprotocol/go-sdk), protocol **2026-07-28 only**, tools and resources from the shared registry, four pack-07 prompts, structured JSON-RPC errors via `capabilities.JSONRPCFrom`, and generated manifest at [api/mcp/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/mcp/v1.json). Health live/ready are not tools. Stdio is a developer adapter only.
+- REST `/v1` adapter in `internal/control/rest`: routes registered from the capability registry, `application/problem+json`, loopback-only unauthenticated management (Q-AUTH), body/timeout/concurrency limits, and generated OpenAPI at [api/openapi/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/openapi/v1.json). MCP is not implemented.
+- Versioned metrics/events catalog (`labdns.dev/metrics/v1alpha1`) with a label allowlist, automated no-QNAME/no-client-IP checks, bounded export queues, structured JSON logs, optional sampled tracing, and a filled `app.Status` DTO (revisions, listeners, cache, upstreams, chaos, ready/degraded, warnings). Artifact: [api/metrics/v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/metrics/v1alpha1.json).
 
 ### Changed
 
@@ -61,6 +63,13 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - `EmergencyDisableChaos` sets a store-level inhibit bit that `Store.Swap` stamps onto every snapshot (apply cannot clear it). The emergency path CAS-stamps the current snapshot and does not roll back a concurrent apply. YAML `emergencyDisabled` still forces the bit on.
 - `SIGUSR1` (and `labdns serve --chaos-disable` / `LABDNS_CHAOS_DISABLE=1`) set the same inhibit bit. `SIGUSR2` is ignored.
 - CHA-002 executes the first-GA catalog in `internal/chaos/effects`: context-aware `fixed`/`uniform` delay (all four phases, budgets, cancel), RCODE/NODATA/EDE, TTL set/clamp/zero/jitter, alternate/omit/limit/shuffle/rotate, UDP drop/TC, TCP close/reset/hold, cache bypass/force-miss/expire/stale, upstream delay/unavailable/force/timeout/transport-error/failover/synthetic RCODE, and policy-scoped pressure. ADR 0007 malformed-wire effects are not implemented. Support matrix: [api/chaos/effects.json](https://github.com/hilather/go-lab-dns/blob/main/api/chaos/effects.json).
+
+### Observability
+
+- Catalog names, types, and labels are an operational compatibility surface. Forbidden default labels: raw QNAME, client IP, actor ID, idempotency key, free-form error text.
+- Telemetry backpressure drops samples (`labdns_telemetry_dropped_total`) and never blocks DNS. Series per metric are capped at 256.
+- `GET /v1/status` reports `ready`, `degraded`, and bounded warnings. Chaos (including emergency-disable) does not flip liveness, readiness, or degraded.
+- `spec.observability.logQNAME` is the documented debug gate for QNAME/client in structured logs; default off.
 
 ### REST API
 
