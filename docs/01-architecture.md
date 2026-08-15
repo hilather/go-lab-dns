@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: Architecture, DNS, Control Plane
-Last reviewed: 2026-08-15 (STA-001 bootstrap serve)
+Last reviewed: 2026-08-15 (STA-001 plan/apply/export/reset)
 Related ADRs: 0001, 0002, 0003, 0004, 0005
 
 ## Problem statement
@@ -190,6 +190,8 @@ The chaos engine receives a structured resolution context and cannot access mana
 `internal/dnsquery` implements that handler: one `Store.Load` per query, client-group classification from the compiled `AccessIndex` (an uncompiled zero index still walks spec CIDRs), zone + forwarding selection, `resolver.Resolve`, then `forwarder.Exchange` only when the client may forward. Chaos `Decide` is not called yet.
 
 `labdns serve --config PATH` loads bootstrap YAML, runs `compiler.Compile`, installs the snapshot on `snapshot.Store` (`SetBootstrap` + `Swap`), and binds UDP/TCP. Invalid bootstrap does not bind DNS. Management HTTP is not started in this slice.
+
+`internal/app.Service` implements plan/apply/validate/export/reset plus zone/record/resolve queries against the active snapshot. Mutations copy `Canonical`, apply typed `Operation`s, then normalize/validate/compile before `Store.Swap`. `expectedRevision` is required except privileged reset. Idempotency keys live in a bounded in-memory LRU (default 256; `<=0` is not unlimited). Reset rereads the bootstrap mount and never writes it. Chaos activate/deactivate/simulate/set-expiry return `unsupported_capability` until CHA-001; `EmergencyDisableChaos` sets `Snapshot.EmergencyChaosOff` without changing the content revision.
 
 Default listen address (first GA, configured later by CFG): `:5353` UDP+TCP.
 

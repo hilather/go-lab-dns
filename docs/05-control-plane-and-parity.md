@@ -2,7 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Application, REST, MCP
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-15 (STA-001 app.Service mutation contract)
 Related ADRs: 0004, 0006
 
 ## Problem statement
@@ -81,6 +81,8 @@ The registry is the source for:
 | Deactivate chaos | `POST /v1/chaos/policies/{id}:deactivate` | `dns_chaos_deactivate` |
 | Emergency disable | `POST /v1/chaos:emergency-disable` | `dns_chaos_emergency_disable` |
 | Query audit | `GET /v1/audit` | resource or `dns_audit_query` |
+
+The HTTP-less handler surface is `internal/app.Service`. REST and MCP must call it; they must not reimplement plan/apply/reset. Chaos activate/deactivate/simulate/set-expiry currently return `unsupported_capability` until CHA-001.
 
 ## Mutation contract
 

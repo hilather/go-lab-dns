@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: Operations
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-15 (STA-001 reset/idempotency)
 
 ## Routine checks
 
@@ -58,16 +58,17 @@ Operators should monitor:
 
 ## Runbook: bad runtime mutation
 
-1. Deactivate the specific policy or plan a corrective state change.
-2. If broad or uncertain, reset to bootstrap.
-3. Verify revision and run probes.
-4. Review why planning or approval did not catch the issue.
+1. Deactivate the specific policy or plan a corrective state change (`dns_change_plan` / `app.Service.Plan`).
+2. If broad or uncertain, reset to bootstrap (`dns_state_reset` / `app.Service.Reset`). Reset rereads the mount, compiles, and swaps only after success. A missing or invalid file leaves the active snapshot unchanged.
+3. Verify revision (`GetState`) and run `resolve` / `explain` probes.
+4. Review why planning or approval did not catch the issue. Replays of the same idempotency key return the original result; a different body with that key is `idempotency_conflict`. Reset clears the in-memory idempotency LRU (default 256).
 5. Add a validation rule, impact warning, regression test, or permission boundary.
+6. The process never writes the bootstrap file. Persist drift via `Export` (canonical YAML/JSON + bootstrap-to-runtime operations) into the deployment repository.
 
 ## Runbook: invalid new bootstrap file
 
-1. Do not restart a healthy process unnecessarily. A failed `labdns serve --config` start does not bind DNS.
-2. Use `state:validate` against the candidate file (control plane; not in M1). Until then, start against the file and read the structured load/compile error on stderr.
+1. Do not restart a healthy process unnecessarily. A failed `labdns serve --config` start does not bind DNS. A failed `Reset` also leaves the current runtime serving.
+2. Use `state:validate` / `app.Service.Validate` against the candidate document or operations. Structured `validation_failed` field violations name the path.
 3. Inspect structured field and invariant errors.
 4. Fix the deployment repository and rerun CI.
 5. Reset or redeploy only after validation passes.

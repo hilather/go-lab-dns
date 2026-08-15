@@ -12,7 +12,7 @@ Last reviewed: 2026-08-15
 | 3 | DNS wire server | DNS-001 | FND-001, core model interfaces from CFG-001 | UDP/TCP listeners and adapter | done |
 | 4 | Local resolver and wildcards | RES-001 | CFG-001, DNS-001 | Exact, wildcard, authoritative, overlay | done |
 | 5 | Forwarding and cache | FWD-001 | CFG-001, DNS-001, RES-001 interfaces | Upstream pools and cache | not-started |
-| 6 | Snapshot state and mutations | STA-001 | CFG-001, resolver compile interfaces | Atomic state, plan/apply/reset/export | in-progress (bootstrap serve) |
+| 6 | Snapshot state and mutations | STA-001 | CFG-001, resolver compile interfaces | Atomic state, plan/apply/reset/export | in-progress (app.Service mutations; REST/MCP later) |
 | 7 | Chaos core | CHA-001 | CFG-001, RES-001, STA-001 | Policy compiler, selectors, budgets | not-started |
 | 8 | Chaos effects | CHA-002 | CHA-001, FWD-001 | Delay, faults, TTL, answers, transport | not-started |
 | 9 | REST control plane | API-001 | STA-001, capability registry contract | REST v1 and OpenAPI | not-started |

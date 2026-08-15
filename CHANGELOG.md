@@ -20,6 +20,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Compiled `snapshot.AccessIndex` (longest-prefix CIDR → client group) filled by `snapshot.CompileAccess`.
 - `compiler.Compile` orchestrates normalize/validate, zone/forwarding/access indexes, and `sha256:` revision hashing. Chaos compile is a no-op until CHA-001.
 - `labdns serve --config PATH` loads bootstrap YAML, compiles an immutable snapshot, and binds UDP/TCP DNS. Invalid bootstrap does not listen.
+- `internal/app.Service` mutation core: `Plan`/`Apply`/`Validate`/`Export`/`Reset`, zone/record/resolve/explain queries, forwarding/cache views, in-memory audit ring, and `EmergencyDisableChaos`. REST/MCP adapters are not implemented.
 
 ### Changed
 
@@ -46,7 +47,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Chaos behavior
 
-- None.
+- `ActivateChaos` / `DeactivateChaos` / `SetChaosExpiry` / `SimulateChaos` return `unsupported_capability` until CHA-001.
+- `EmergencyDisableChaos` swaps a new snapshot with `EmergencyChaosOff` set; Canonical (and therefore Revision) is unchanged. YAML `emergencyDisabled` still forces the bit on at compile.
 
 ### REST API
 
@@ -66,6 +68,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 ### Deployment and operations
 
 - `labdns serve --config PATH` is the M1 process entry: compile bootstrap YAML and serve DNS on the configured listen address (default `:5353` UDP+TCP). Management HTTP is not bound.
+- Runtime plan/apply/reset are process-local via `app.Service`. `expectedRevision` is required except privileged reset. Idempotency keys use a bounded in-memory LRU (default 256; `<=0` is not unlimited). Reset rereads the bootstrap mount and never writes it. Export is canonical YAML/JSON with no comments, plus bootstrap-to-runtime operations.
 
 ### Observability
 
@@ -82,6 +85,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - DNS listeners require a `dnsserver.Handler`; the process does not yet serve from a compiled snapshot (no `dnsquery` orchestrator yet).
 - Snapshot bootstrap serve (`compiler.Compile`, `AccessIndex` fill, `cmd/labdns serve`) has not started; `dnsquery` is constructed in tests against a hand-built `snapshot.Store`.
 - Plan/apply/export/reset and REST/MCP are not implemented; M1 serves only the compiled bootstrap snapshot.
+- REST/MCP adapters are not implemented; `app.Service` is the HTTP-less mutation surface.
+- Chaos activate/deactivate/simulate/set-expiry are `unsupported_capability` stubs until CHA-001.
 - Chaos `Decide` is not wired; cache/exchange hooks exist but are unused on the live path.
 - `make test-integration`, `make test-parity`, and `make test-container` fail closed until later PRs.
 - YAML configuration decode, JSON Schema, snapshot compilation, resolver, forwarder, and control-plane work have not started.

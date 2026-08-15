@@ -2,10 +2,10 @@
 
 Status: Proposed normative behavior
 Owners: Configuration, Application
-Last reviewed: 2026-08-15 (STA-001 bootstrap compile/serve)
+Last reviewed: 2026-08-15 (STA-001 plan/apply/export/reset)
 Related ADRs: 0003, 0005
 
-Canonical Go types live in `internal/model`. YAML/JSON decode, default materialization, validation, canonical export, revision hashing, and the published schema live in `internal/config` and [api/jsonschema/labdns.dev.v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/jsonschema/labdns.dev.v1alpha1.json). `compiler.Compile` orchestrates normalize/validate plus zone, forwarding, and access indexes into an immutable `snapshot.Snapshot`. Plan/apply/reset are not in this slice.
+Canonical Go types live in `internal/model`. YAML/JSON decode, default materialization, validation, canonical export, revision hashing, and the published schema live in `internal/config` and [api/jsonschema/labdns.dev.v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/jsonschema/labdns.dev.v1alpha1.json). `compiler.Compile` orchestrates normalize/validate plus zone, forwarding, and access indexes into an immutable `snapshot.Snapshot`. `internal/app.Service` is the HTTP-less mutation core: copy candidate, apply `Operation`s, normalize, validate, compile, diff/impact, then dry-run (`Plan`) or atomic `Store.Swap` (`Apply`). REST/MCP adapters are not in this slice.
 
 ## Problem statement
 
@@ -80,15 +80,17 @@ Generation is process-local and monotonically increasing. Revision is content-ad
 Requirements:
 
 - `expectedRevision` is required for writes except an explicitly privileged bootstrap reset.
-- Idempotency keys are retained in a bounded in-memory cache.
-- Repeated keys with the same request return the original result.
-- Repeated keys with different requests return a conflict.
-- Plans and applies use the same validation and compilation path.
+- Idempotency keys are retained in a bounded in-memory LRU (default **256** entries). Zero/`<=0` is not unlimited — it falls back to 256.
+- Repeated keys with the same request body (method + expected revision + reason + ticket + operations) return the original result.
+- Repeated keys with different requests return `idempotency_conflict`.
+- Failures are not cached, so a later retry after a `revision_conflict` can succeed.
+- Plans and applies use the same validation and compilation path. The live snapshot is never edited in place.
 - The returned diff is based on canonical state.
+- Reset clears the idempotency cache.
 
 ## Reset
 
-Reset rereads the mounted bootstrap file, validates and compiles it, and swaps only after success. A bad replacement file leaves the current runtime state active. Reset clears runtime idempotency entries and optional runtime-only policy activation metadata as documented.
+Reset rereads the mounted bootstrap file, validates and compiles it, and swaps only after success. A missing or invalid replacement file leaves the current runtime state active and does not clear the idempotency cache. Reset clears runtime idempotency entries after a successful swap. Runtime-only `EmergencyChaosOff` is not preserved across reset (YAML `emergencyDisabled` still compiles on). The service never writes the bootstrap file. When no mount path is configured, reset recompiles the last `Store.Bootstrap()` canonical state.
 
 ## Export
 
