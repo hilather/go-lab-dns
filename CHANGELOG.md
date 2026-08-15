@@ -23,7 +23,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - `internal/app.Service` mutation core: `Plan`/`Apply`/`Validate`/`Export`/`Reset`, zone/record/resolve/explain queries, forwarding/cache views, in-memory audit ring, and `EmergencyDisableChaos`.
 - Frozen capability registry in `internal/capabilities` covering every first-GA REST↔MCP table row. Health live/ready are REST-only (not tools). Generated manifest: [api/capabilities/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/capabilities/v1.json).
 - Domain-error mapping helpers: `domainerr` → RFC 9457 `application/problem+json` status hints and MCP JSON-RPC `data`. Parity harness fails if a table row is missing or renamed.
-- REST `/v1` adapter in `internal/control/rest`: routes registered from the capability registry, `application/problem+json`, loopback-only unauthenticated management (Q-AUTH), body/timeout/concurrency limits, and generated OpenAPI at [api/openapi/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/openapi/v1.json). MCP is not implemented.
+- REST `/v1` adapter in `internal/control/rest`: routes registered from the capability registry, `application/problem+json`, loopback-only unauthenticated management (Q-AUTH), body/timeout/concurrency limits, and generated OpenAPI at [api/openapi/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/openapi/v1.json).
+- MCP Streamable HTTP adapter in `internal/control/mcp`: official Go SDK [`github.com/modelcontextprotocol/go-sdk v1.7.0`](https://github.com/modelcontextprotocol/go-sdk), protocol **2026-07-28 only**, tools and resources from the shared registry, four pack-07 prompts, structured JSON-RPC errors via `capabilities.JSONRPCFrom`, and generated manifest at [api/mcp/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/mcp/v1.json). Health live/ready are not tools. Stdio is a developer adapter only.
 
 ### Changed
 
@@ -72,7 +73,11 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### MCP API and protocol compatibility
 
-- MCP tool names and `labdns://` resource templates are frozen in the shared registry. No MCP server is implemented yet.
+- Pinned protocol **2026-07-28** (ADR 0006). `Mcp-Protocol-Version` is required and any other value is `unsupported_protocol_version`.
+- Official Go SDK `github.com/modelcontextprotocol/go-sdk v1.7.0` behind `internal/control/mcp`. Streamable HTTP at `/mcp` is stateless (`StreamableHTTPOptions.Stateless=true`).
+- Every first-GA MCP tool and `labdns://` resource is registered from `internal/capabilities`. Domain errors use `capabilities.JSONRPCFrom` so `data.code` matches REST.
+- Four read-only prompts (`plan_dns_override`, `diagnose_resolution`, `design_chaos_experiment`, `convert_runtime_drift`) point at existing tools only.
+- Stdio is a developer adapter (stderr logs, stdout protocol-clean) and is not required in the production image.
 
 ### Configuration and schema
 
@@ -108,3 +113,6 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - YAML configuration decode, JSON Schema, snapshot compilation, resolver, forwarder, and control-plane work have not started.
 - DNS listeners require a `dnsserver.Handler`; the process does not yet serve from a compiled snapshot.
 - `make test-integration`, `make test-parity`, `make test-config-compat`, and `make test-container` fail closed until later PRs.
+- `labdns serve` does not yet bind the management listener (REST `/v1` + MCP `/mcp`); DEP-001 wires `rest.Server` and `mcp.Server`.
+- Full SEC-001 RBAC is not implemented; MCP uses the same loopback-unauth / remote-bearer stub as REST.
+- `make test-integration` and `make test-container` fail closed until later PRs. `make test-parity` runs the REST/MCP registry and adapter suites.

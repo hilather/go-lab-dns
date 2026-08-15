@@ -17,7 +17,7 @@ help:
 		'LabDNS Make targets (Go 1.26; module github.com/hilather/go-lab-dns)' \
 		'  format              go fmt ./...' \
 		'  lint                go vet + golangci-lint $(GOLANGCI_LINT_VERSION)' \
-		'  generate            write testdata/generated/fixture.txt, api/capabilities/v1.json, and api/openapi/v1.json' \
+		'  generate            write testdata/generated/fixture.txt, api/capabilities/v1.json, api/openapi/v1.json, and api/mcp/v1.json' \
 		'  verify-generated    fail if generate would change the fixture' \
 		'  test                go test ./...' \
 		'  test-race           go test -race ./...' \
@@ -25,7 +25,7 @@ help:
 		'  test-docs           required documents and internal markdown links' \
 		'  security-scan       govulncheck' \
 		'  test-integration    unimplemented until later DNS/control-plane PRs' \
-		'  test-parity         unimplemented until API-001 / MCP-001' \
+		'  test-parity         REST/MCP capability parity and MCP goldens' \
 		'  test-config-compat  positive+negative v1alpha1 config fixtures' \
 		'  test-container      unimplemented until PR-16 / DEP-001'
 
@@ -63,8 +63,7 @@ test-integration:
 	@exit 1
 
 test-parity:
-	@echo 'unimplemented until API-001/MCP-001: REST/MCP parity tests' >&2
-	@exit 1
+	$(GO) test ./internal/capabilities ./internal/control/rest ./internal/control/mcp -count=1
 
 test-config-compat:
 	$(GO) test ./internal/config -run TestConfigCompat -count=1

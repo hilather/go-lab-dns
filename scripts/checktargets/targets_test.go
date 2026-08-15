@@ -29,7 +29,6 @@ var requiredTargets = []string{
 
 var unimplementedTargets = []string{
 	"test-integration",
-	"test-parity",
 	"test-container",
 }
 

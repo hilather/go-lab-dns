@@ -16,7 +16,7 @@ Last reviewed: 2026-08-15
 | 7 | Chaos core | CHA-001 | CFG-001, RES-001, STA-001 | Policy compiler, selectors, budgets | done |
 | 8 | Chaos effects | CHA-002 | CHA-001, FWD-001 | Delay, faults, TTL, answers, transport | done |
 | 9 | REST control plane | API-001 | STA-001, capability registry contract | REST v1 and OpenAPI | not-started |
-| 10 | MCP control plane | MCP-001 | STA-001, capability registry contract | MCP tools/resources and parity | not-started |
+| 10 | MCP control plane | MCP-001 | STA-001, capability registry contract | MCP tools/resources and parity | done |
 | 11 | Auth, security, and audit | SEC-001 | API-001/MCP-001 interfaces, DNS admission interfaces | RBAC, limits, audit | not-started |
 | 12 | Observability | OBS-001 | Stable component interfaces | Metrics, logs, health, tracing | not-started |
 | 13 | CLI and container | DEP-001 | Runnable server | CLI, image, graceful lifecycle | not-started |

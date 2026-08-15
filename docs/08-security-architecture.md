@@ -45,7 +45,7 @@ First-GA DNS listener numeric defaults (DNS-001; YAML overrides land with CFG/ST
 - Workload identity, mTLS, OAuth-compatible bearer tokens, or reverse-proxy identity as a deployment choice.
 - Shared auth middleware for REST and MCP.
 - Resource-aware RBAC.
-- Origin validation for MCP Streamable HTTP and browser-reachable REST.
+- Origin validation for MCP Streamable HTTP and browser-reachable REST. MCP `/mcp` rejects a present non-loopback Origin unless it is on the adapter allowlist (DNS-rebinding default-deny). Missing Origin is allowed for official SDK/curl clients. Full RBAC is SEC-001.
 - Strict body, header, rate, and timeout limits.
 - No permissive CORS by default.
 

@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: Architecture, Release Engineering
-Last reviewed: 2026-08-15 (CHA-001 hash-v1 goldens)
+Last reviewed: 2026-08-15 (MCP-001 2026-07-28 pin)
 
 ## Public compatibility surfaces
 
@@ -34,7 +34,7 @@ Use `/v1` for the first stable family. Additive optional fields are preferred. B
 
 ## MCP
 
-Pin supported MCP protocol versions and test each. Do not automatically claim support for a newly published protocol revision. Adapter updates require conformance and parity tests. Tool schemas have their own capability version metadata when needed.
+First GA pins **2026-07-28 only** (ADR 0006). The adapter records the pin in `buildinfo.Protocols.MCP` and [api/mcp/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/mcp/v1.json). Do not automatically claim support for a newly published protocol revision. Adapter updates require conformance and parity tests. Tool schemas have their own capability version metadata when needed.
 
 ## Chaos algorithm versions
 

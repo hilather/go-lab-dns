@@ -1,0 +1,11 @@
+labdns://capabilities
+labdns://status
+labdns://schema/config
+labdns://state
+labdns://zones/{zoneId}
+labdns://records/{recordId}
+labdns://upstreams
+labdns://chaos/policies/{policyId}
+labdns://audit/recent
+labdns://docs/dns-semantics
+labdns://docs/chaos-safety

@@ -1,0 +1,91 @@
+{
+  "apiVersion": "labdns.dev/mcp/v1",
+  "generatedBy": "internal/control/mcp.RenderManifest; DO NOT EDIT.",
+  "protocol": "2026-07-28",
+  "sdk": "github.com/modelcontextprotocol/go-sdk",
+  "sdkVersion": "v1.7.0",
+  "tools": [
+    "dns_version_get",
+    "dns_capabilities_get",
+    "dns_status_get",
+    "dns_schema_get",
+    "dns_state_get",
+    "dns_state_validate",
+    "dns_change_plan",
+    "dns_change_apply",
+    "dns_state_export",
+    "dns_state_reset",
+    "dns_zones_list",
+    "dns_zone_get",
+    "dns_records_list",
+    "dns_record_get",
+    "dns_resolve",
+    "dns_explain_resolution",
+    "dns_forwarding_policies_list",
+    "dns_upstream_pools_list",
+    "dns_upstreams_status",
+    "dns_cache_status",
+    "dns_cache_flush",
+    "dns_chaos_status",
+    "dns_chaos_policies_list",
+    "dns_chaos_policy_get",
+    "dns_chaos_simulate",
+    "dns_chaos_activate",
+    "dns_chaos_deactivate",
+    "dns_chaos_set_expiry",
+    "dns_chaos_emergency_disable",
+    "dns_chaos_emergency_enable",
+    "dns_audit_query",
+    "dns_audit_get",
+    "dns_docs_get"
+  ],
+  "resources": [
+    "labdns://capabilities",
+    "labdns://status",
+    "labdns://schema/config",
+    "labdns://state",
+    "labdns://zones/{zoneId}",
+    "labdns://records/{recordId}",
+    "labdns://upstreams",
+    "labdns://chaos/policies/{policyId}",
+    "labdns://audit/recent",
+    "labdns://docs/dns-semantics",
+    "labdns://docs/chaos-safety"
+  ],
+  "prompts": [
+    {
+      "name": "plan_dns_override",
+      "title": "Plan a DNS override",
+      "description": "Guide an agent through reading state, planning a typed override, and applying only after review. Uses existing tools only."
+    },
+    {
+      "name": "diagnose_resolution",
+      "title": "Diagnose why a name resolved a certain way",
+      "description": "Explain a live answer using resolve/explain and the DNS semantics document. Read-only."
+    },
+    {
+      "name": "design_chaos_experiment",
+      "title": "Design a bounded chaos experiment",
+      "description": "Design a chaos policy using simulation and safety docs. Activation is a separate high-impact tool."
+    },
+    {
+      "name": "convert_runtime_drift",
+      "title": "Convert runtime drift into a deployment-repository change",
+      "description": "Turn in-memory drift into GitOps operations via export. Does not write the bootstrap file."
+    }
+  ],
+  "mutatingTools": [
+    "dns_change_apply",
+    "dns_state_reset",
+    "dns_cache_flush",
+    "dns_chaos_activate",
+    "dns_chaos_deactivate",
+    "dns_chaos_set_expiry",
+    "dns_chaos_emergency_disable",
+    "dns_chaos_emergency_enable"
+  ],
+  "healthNotTools": [
+    "health.live",
+    "health.ready"
+  ]
+}

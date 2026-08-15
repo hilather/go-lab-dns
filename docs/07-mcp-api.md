@@ -2,9 +2,11 @@
 
 Status: Proposed
 Owners: MCP, Application
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-15 (MCP-001 Streamable HTTP adapter)
 Target protocol baseline: 2026-07-28
 Related ADRs: 0004, 0006
+Implementation: `internal/control/mcp` wrapping `github.com/modelcontextprotocol/go-sdk v1.7.0`
+Generated manifest: [api/mcp/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/mcp/v1.json)
 
 ## Problem statement
 
@@ -200,7 +202,15 @@ Record tool name, protocol version, result, latency, auth result, and request co
 
 MCP protocol versions, tool names, schemas, resource URIs, and result/error structures are public surfaces. The implementation records supported protocol versions in build metadata and the capability resource.
 
+## First-GA pin
+
+- Protocol **2026-07-28 only**. The Streamable HTTP handler requires `Mcp-Protocol-Version: 2026-07-28` and rejects every other value with `unsupported_protocol_version`.
+- Official SDK `github.com/modelcontextprotocol/go-sdk v1.7.0`. Stateless Streamable HTTP (`Stateless=true`) is required for this protocol revision.
+- Origin: missing Origin is allowed (SDK/curl). A present Origin must be loopback (`http://127.0.0.1`, `http://localhost`, `http://[::1]`) or on `AllowedOrigins`; otherwise 403 `forbidden`.
+- Auth matches REST until SEC-001: loopback may omit a bearer; remote peers need `Authorization: Bearer`.
+- Stdio: `Server.RunStdio` is a developer adapter; logs go to stderr. Not required in the production image.
+
 ## Open questions
 
-- MCP protocol versions: first GA pins **2026-07-28 only** (ADR 0006).
-- Stdio: developer adapter only; not in the production image.
+- MCP protocol versions: first GA pins **2026-07-28 only** (ADR 0006). Resolved.
+- Stdio: developer adapter only; not in the production image. Resolved.

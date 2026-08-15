@@ -1,0 +1,8 @@
+dns_change_apply
+dns_state_reset
+dns_cache_flush
+dns_chaos_activate
+dns_chaos_deactivate
+dns_chaos_set_expiry
+dns_chaos_emergency_disable
+dns_chaos_emergency_enable

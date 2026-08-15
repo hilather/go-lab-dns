@@ -1,4 +1,5 @@
-// Command generate writes testdata/generated/fixture.txt, api/capabilities/v1.json, and api/openapi/v1.json.
+// Command generate writes testdata/generated/fixture.txt, api/capabilities/v1.json,
+// api/openapi/v1.json, and api/mcp/v1.json.
 package main
 
 import (
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/hilather/go-lab-dns/internal/capabilities"
+	"github.com/hilather/go-lab-dns/internal/control/mcp"
 	"github.com/hilather/go-lab-dns/internal/control/rest"
 )
 
@@ -39,6 +41,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "generate: openapi: %v\n", err)
 		os.Exit(1)
 	}
+	mcpManifest, err := mcp.RenderManifest()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "generate: mcp: %v\n", err)
+		os.Exit(1)
+	}
 	files := []struct {
 		rel  string
 		body []byte
@@ -46,6 +53,7 @@ func main() {
 		{filepath.Join("testdata", "generated", "fixture.txt"), []byte(got)},
 		{filepath.FromSlash(capabilities.ManifestRelPath), manifest},
 		{filepath.FromSlash(rest.OpenAPIRelPath), openapi},
+		{filepath.FromSlash(mcp.ManifestRelPath), mcpManifest},
 	}
 	if *check {
 		for _, f := range files {

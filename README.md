@@ -74,7 +74,7 @@ make test-fuzz-smoke
 make security-scan
 ```
 
-`make generate` writes `testdata/generated/fixture.txt` from `testdata/generated/source.txt` and `go.mod`, the frozen capability manifest to [`api/capabilities/v1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/capabilities/v1.json), and OpenAPI 3.1 to [`api/openapi/v1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/openapi/v1.json). `make verify-generated` fails when any generated file is stale.
+`make generate` writes `testdata/generated/fixture.txt` from `testdata/generated/source.txt` and `go.mod`, the frozen capability manifest to [`api/capabilities/v1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/capabilities/v1.json), OpenAPI 3.1 to [`api/openapi/v1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/openapi/v1.json), and the MCP manifest to [`api/mcp/v1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/mcp/v1.json). `make verify-generated` fails when any generated file is stale.
 
 `make test-config-compat` runs the v1alpha1 positive and negative configuration fixtures under `testdata/config`.
 
@@ -82,7 +82,7 @@ Targets that are not yet implemented fail closed (non-zero exit with an explicit
 
 ```text
 make test-integration    # later DNS/control-plane PRs
-make test-parity         # API-001 / MCP-001
+make test-parity         # REST/MCP capability parity and MCP goldens
 make test-container      # PR-16 / DEP-001
 ```
 

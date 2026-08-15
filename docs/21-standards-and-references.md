@@ -34,4 +34,4 @@ The implementation baseline in this pack is MCP 2026-07-28. Newer revisions must
 
 ## Go libraries
 
-The architecture recommends a DNS library behind `internal/dnswire` and the official MCP Go SDK behind `internal/control/mcp`. Select and pin exact module versions during implementation. Do not spread library-specific types through domain packages.
+The architecture recommends a DNS library behind `internal/dnswire` and the official MCP Go SDK behind `internal/control/mcp`. Pins: `github.com/miekg/dns v1.1.72` and `github.com/modelcontextprotocol/go-sdk v1.7.0` (MCP protocol 2026-07-28 only). Do not spread library-specific types through domain packages.
