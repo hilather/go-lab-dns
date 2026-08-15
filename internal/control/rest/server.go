@@ -61,7 +61,8 @@ type Config struct {
 	Auth Authenticator
 	// Live overrides liveness. Nil is always live while the process serves.
 	Live func() bool
-	// Ready overrides readiness. Nil is "Status reports a runtime revision".
+	// Ready overrides readiness. Nil is app.Status.Ready (revision present
+	// and required listeners bound; chaos does not flip it).
 	Ready func() bool
 	// MaxBodyBytes caps decoded request bodies. Non-positive uses DefaultMaxBodyBytes.
 	MaxBodyBytes int64

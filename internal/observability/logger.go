@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -42,31 +43,55 @@ type Record struct {
 	Client string `json:"client,omitempty"`
 }
 
-// Logger writes JSON events. A full queue drops the event instead of
-// blocking the caller.
+// Logger writes JSON events. The default path writes synchronously so
+// records are not silently buffered. WithQueue enables a non-blocking
+// buffer that drops (and counts) on overflow.
 type Logger struct {
 	mu       sync.Mutex
 	out      io.Writer
 	q        *Queue[Record]
+	reg      *Registry
 	now      func() time.Time
+	dropped  atomic.Int64
 	LogQNAME bool
 	sync     bool
 }
 
-// NewLogger writes JSON lines to w. w may be nil (discard).
+// NewLogger writes JSON lines to w on the calling goroutine. w may be nil (discard).
 func NewLogger(w io.Writer) *Logger {
 	return &Logger{
-		out: w,
-		q:   NewQueue[Record](DefaultQueueSize),
-		now: time.Now,
+		out:  w,
+		now:  time.Now,
+		sync: true,
 	}
 }
 
-// WithSync writes on the calling goroutine. Tests use this so they do
-// not need a drain loop.
+// WithSync writes on the calling goroutine (the NewLogger default).
 func (l *Logger) WithSync() *Logger {
 	if l != nil {
 		l.sync = true
+	}
+	return l
+}
+
+// WithQueue switches Log to a bounded TrySend buffer. A full queue never
+// blocks; overflow increments Logger.Dropped and labdns_telemetry_dropped_total
+// when a Registry is attached via WithMetrics.
+func (l *Logger) WithQueue(n int) *Logger {
+	if l == nil {
+		return nil
+	}
+	l.sync = false
+	if l.q == nil {
+		l.q = NewQueue[Record](n)
+	}
+	return l
+}
+
+// WithMetrics records queue overflow on the catalog drop counter.
+func (l *Logger) WithMetrics(r *Registry) *Logger {
+	if l != nil {
+		l.reg = r
 	}
 	return l
 }
@@ -96,8 +121,19 @@ func (l *Logger) Log(rec Record) {
 		return
 	}
 	if !l.q.TrySend(rec) {
-		return
+		l.dropped.Add(1)
+		if l.reg != nil {
+			l.reg.Inc(MetricTelemetryDropped, map[string]string{"reason": "log"}, 1)
+		}
 	}
+}
+
+// Dropped is the number of records discarded by a full WithQueue buffer.
+func (l *Logger) Dropped() int64 {
+	if l == nil {
+		return 0
+	}
+	return l.dropped.Load()
 }
 
 // Drain writes queued records to the sink until q is empty. Non-blocking

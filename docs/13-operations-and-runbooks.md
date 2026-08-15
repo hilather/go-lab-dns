@@ -53,7 +53,7 @@ sum by (reason) (labdns_telemetry_dropped_total)
 Alert recommendations for DEP/GIT:
 
 - `labdns_dns_denied_forward_total` rising unexpectedly (open-resolver or client-group misconfig).
-- `labdns_telemetry_dropped_total` non-zero for more than a scrape interval (exporter stall).
+- `labdns_telemetry_dropped_total` non-zero for more than a scrape interval after an export queue is attached (`EnableExport`) or a log `WithQueue` overflows. In-memory scrapes (`WritePrometheus`) do not use the export queue.
 - `labdns_chaos_emergency_disabled == 1` outside a planned drill.
 - Status `degraded=true` while `ready=true` (upstream outage, local zones still serve).
 

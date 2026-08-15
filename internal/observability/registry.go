@@ -73,16 +73,31 @@ func NewRegistry() *Registry {
 		gauges:   map[seriesKey]float64{},
 		hists:    map[seriesKey]*hist{},
 		seriesN:  map[string]int{},
-		export:   NewQueue[Sample](DefaultQueueSize),
 	}
 }
 
-// Export is the optional non-blocking export queue. Callers may drain it;
-// a full queue does not block Inc.
+// EnableExport attaches a bounded push queue. Scrapes use Snapshot /
+// WritePrometheus and do not need this. Overflow is counted only when a
+// queue is attached.
+func (r *Registry) EnableExport(n int) *Queue[Sample] {
+	if r == nil {
+		return nil
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.export == nil {
+		r.export = NewQueue[Sample](n)
+	}
+	return r.export
+}
+
+// Export is the optional non-blocking export queue. Nil until EnableExport.
 func (r *Registry) Export() *Queue[Sample] {
 	if r == nil {
 		return nil
 	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	return r.export
 }
 
@@ -125,7 +140,7 @@ func (r *Registry) observe(name string, want Kind, labels map[string]string, v f
 		r.drop("unknown_metric")
 		return
 	}
-	if err := CheckLabels(name, labels); err != nil {
+	if err := checkLabelsDef(def, labels); err != nil {
 		r.drop(LabelReason(err))
 		return
 	}
@@ -213,7 +228,7 @@ func (r *Registry) dropLocked(reason string) {
 }
 
 func (r *Registry) sampleLocked(key seriesKey, def MetricDef) Sample {
-	s := Sample{Name: key.name, Kind: def.Kind, Labels: decodeLabels(key.labels)}
+	s := Sample{Name: key.name, Kind: def.Kind, Labels: scrapeLabels(key.name, key.labels)}
 	switch def.Kind {
 	case KindCounter:
 		s.Value = r.counters[key]
@@ -236,14 +251,14 @@ func (r *Registry) Snapshot() []Sample {
 	defer r.mu.Unlock()
 	var out []Sample
 	for key, v := range r.counters {
-		out = append(out, Sample{Name: key.name, Kind: KindCounter, Labels: decodeLabels(key.labels), Value: v})
+		out = append(out, Sample{Name: key.name, Kind: KindCounter, Labels: scrapeLabels(key.name, key.labels), Value: v})
 	}
 	for key, v := range r.gauges {
-		out = append(out, Sample{Name: key.name, Kind: KindGauge, Labels: decodeLabels(key.labels), Value: v})
+		out = append(out, Sample{Name: key.name, Kind: KindGauge, Labels: scrapeLabels(key.name, key.labels), Value: v})
 	}
 	for key, h := range r.hists {
 		b, sum, n := h.snapshot()
-		out = append(out, Sample{Name: key.name, Kind: KindHistogram, Labels: decodeLabels(key.labels), Buckets: b, Sum: sum, Count: n})
+		out = append(out, Sample{Name: key.name, Kind: KindHistogram, Labels: scrapeLabels(key.name, key.labels), Buckets: b, Sum: sum, Count: n})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Name != out[j].Name {
@@ -368,6 +383,8 @@ func filterLabels(def MetricDef, in map[string]string) map[string]string {
 	return out
 }
 
+// encodeLabels is delimiter-safe: pairs are k\x00v joined by \x01 so
+// configured IDs that contain ',' or '=' cannot invent extra scrape keys.
 func encodeLabels(order []string, labels map[string]string) string {
 	if len(order) == 0 {
 		return ""
@@ -375,10 +392,10 @@ func encodeLabels(order []string, labels map[string]string) string {
 	var b strings.Builder
 	for i, k := range order {
 		if i > 0 {
-			b.WriteByte(',')
+			b.WriteByte(1)
 		}
 		b.WriteString(k)
-		b.WriteByte('=')
+		b.WriteByte(0)
 		if labels != nil {
 			b.WriteString(labels[k])
 		}
@@ -391,9 +408,36 @@ func decodeLabels(enc string) map[string]string {
 		return nil
 	}
 	out := map[string]string{}
-	for _, part := range strings.Split(enc, ",") {
-		k, v, _ := strings.Cut(part, "=")
+	for _, part := range strings.Split(enc, "\x01") {
+		k, v, ok := strings.Cut(part, "\x00")
+		if !ok {
+			continue
+		}
 		out[k] = v
+	}
+	return out
+}
+
+func scrapeLabels(name, enc string) map[string]string {
+	raw := decodeLabels(enc)
+	if len(raw) == 0 {
+		return raw
+	}
+	def, ok := LookupMetric(name)
+	if !ok {
+		return nil
+	}
+	if checkLabelsDef(def, raw) == nil {
+		return raw
+	}
+	out := make(map[string]string, len(def.Labels))
+	for _, k := range def.Labels {
+		if ForbiddenLabel(k) {
+			continue
+		}
+		if v, ok := raw[k]; ok {
+			out[k] = v
+		}
 	}
 	return out
 }

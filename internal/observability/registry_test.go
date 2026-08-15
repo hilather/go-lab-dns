@@ -76,18 +76,52 @@ func TestRegistrySeriesCap(t *testing.T) {
 	}
 }
 
+func TestUnusedExportQueueDoesNotDrop(t *testing.T) {
+	r := NewRegistry()
+	if r.Export() != nil {
+		t.Fatal("export queue must stay nil until EnableExport")
+	}
+	for i := 0; i < DefaultQueueSize+8; i++ {
+		r.Inc(MetricDNSParse, map[string]string{"result": "ok"}, 1)
+	}
+	if r.Dropped() != 0 {
+		t.Fatalf("unused export must not count drops, dropped=%d", r.Dropped())
+	}
+	if _, ok := r.Get(MetricTelemetryDropped, map[string]string{"reason": "export"}); ok {
+		t.Fatal("false-positive export drop")
+	}
+}
+
 func TestExportBackpressureDoesNotBlock(t *testing.T) {
 	r := NewRegistry()
+	q := r.EnableExport(1)
 	// Fill the export queue, then Inc must still return and record.
-	for i := 0; i < r.Export().Cap()+8; i++ {
+	for i := 0; i < q.Cap()+8; i++ {
 		r.Inc(MetricDNSParse, map[string]string{"result": "ok"}, 1)
 	}
 	v, ok := r.Get(MetricDNSParse, map[string]string{"result": "ok"})
 	if !ok || v < 1 {
 		t.Fatalf("counter lost under export backpressure v=%v", v)
 	}
-	if r.Export().Dropped() == 0 && r.Dropped() == 0 {
-		t.Fatal("expected export or policy drops")
+	if q.Dropped() == 0 {
+		t.Fatal("expected export queue drops")
+	}
+}
+
+func TestLabelEncodeDoesNotInventQNAME(t *testing.T) {
+	r := NewRegistry()
+	evil := "a,qname=evil.example."
+	r.Inc(MetricChaosEffects, map[string]string{"policy_id": evil, "action": "drop"}, 1)
+	var buf bytes.Buffer
+	if err := r.WritePrometheus(&buf); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if strings.Contains(out, `qname="`) {
+		t.Fatalf("scrape invented qname label:\n%s", out)
+	}
+	if !strings.Contains(out, evil) {
+		t.Fatalf("policy_id value missing from scrape:\n%s", out)
 	}
 }
 

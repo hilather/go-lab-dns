@@ -231,13 +231,18 @@ func Events() []EventDef {
 
 // LookupMetric returns the catalog definition for name.
 func LookupMetric(name string) (MetricDef, bool) {
-	for _, m := range Metrics() {
-		if m.Name == name {
-			return m, true
-		}
-	}
-	return MetricDef{}, false
+	def, ok := metricIndex[name]
+	return def, ok
 }
+
+var metricIndex = func() map[string]MetricDef {
+	defs := Metrics()
+	m := make(map[string]MetricDef, len(defs))
+	for _, d := range defs {
+		m[d.Name] = d
+	}
+	return m
+}()
 
 // Catalog returns the versioned document.
 func Catalog() Document {

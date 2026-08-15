@@ -40,6 +40,9 @@ func TestQueryEmitsBoundedMetrics(t *testing.T) {
 	if _, ok := reg.Get(observability.MetricResolverOutcomes, map[string]string{"source": "exact", "zone_id": "lab-zone"}); !ok {
 		t.Fatal("missing resolver outcome")
 	}
+	if _, ok := reg.Get(observability.MetricDNSQueryDuration, map[string]string{"transport": "udp", "source": "exact"}); !ok {
+		t.Fatal("missing query duration histogram")
+	}
 	for _, s := range reg.Snapshot() {
 		if _, bad := s.Labels["qname"]; bad {
 			t.Fatalf("qname label leaked: %+v", s)

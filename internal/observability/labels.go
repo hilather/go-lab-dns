@@ -46,6 +46,10 @@ func CheckLabels(metric string, labels map[string]string) error {
 	if !ok {
 		return labelError("unknown_metric")
 	}
+	return checkLabelsDef(def, labels)
+}
+
+func checkLabelsDef(def MetricDef, labels map[string]string) error {
 	allowed := make(map[string]struct{}, len(def.Labels))
 	for _, l := range def.Labels {
 		allowed[l] = struct{}{}

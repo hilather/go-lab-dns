@@ -99,6 +99,10 @@ Rename or semantic change of a metric name or label requires migration notes and
 | `labdns_state_drifted` | gauge | — |
 | `labdns_telemetry_dropped_total` | counter | `reason` |
 
+Live increments today: DNS admitted/queries/duration/parse/admission/responses/tcp/denied_forward, resolver outcomes, cache lookups, chaos match/trigger/skip/effects, capability calls/duration, auth failures, state generation/drifted, chaos emergency, telemetry dropped.
+
+Catalog-only (not yet live-incremented): CNAME depth failures, cache entries/evictions, upstream exchange/timeout/transport/health/failover, chaos delay histogram / delayed-requests / budget, compile/validate duration, revision conflicts, idempotency hits.
+
 ## Cardinality policy
 
 Allowed bounded labels include configured zone ID, chaos policy ID, upstream ID, capability name, transport, RCODE, result, resolution source, QTYPE class, and client-group class (`known` / `unknown` / `local_only`). Prohibited default labels include raw QNAME, raw client IP, idempotency key, actor ID, and arbitrary error text.
@@ -113,8 +117,8 @@ Request/trace correlation uses `X-Request-ID` and `X-Trace-ID` on REST and conte
 
 ## Health
 
-- Liveness: process event loop and listener health only (`GET /v1/health/live`).
-- Readiness: valid active snapshot, required listeners bound (`GET /v1/health/ready`). Driven by `app.Status.Ready`.
+- Liveness: process serve loop only (`GET /v1/health/live` is `!closed` unless `Config.Live` overrides). Listener bind state is not part of liveness.
+- Readiness: valid active snapshot and required listeners bound (`GET /v1/health/ready`). Driven by `app.Status.Ready`.
 - Upstream failure does not make the service unready when local zones still work; `Status.Degraded` is set instead.
 - Chaos does not affect health endpoints or `Ready`/`Degraded`. Emergency-disable is an informational Status warning only.
 

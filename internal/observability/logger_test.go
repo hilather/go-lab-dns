@@ -40,10 +40,21 @@ func TestLoggerLogQNAMEDebug(t *testing.T) {
 	}
 }
 
+func TestLoggerDefaultWritesSync(t *testing.T) {
+	var buf bytes.Buffer
+	l := NewLogger(&buf)
+	l.Log(Record{Event: EventDNSQuery, ZoneID: "lab-zone"})
+	if !strings.Contains(buf.String(), EventDNSQuery) {
+		t.Fatalf("default Log must write: %s", buf.String())
+	}
+}
+
 func TestLoggerQueueDropDoesNotBlock(t *testing.T) {
-	l := NewLogger(nil)
-	l.q = NewQueue[Record](1)
-	l.q.TrySend(Record{Event: EventDNSQuery})
+	reg := NewRegistry()
+	l := NewLogger(nil).WithQueue(1).WithMetrics(reg)
+	if !l.Queue().TrySend(Record{Event: EventDNSQuery}) {
+		t.Fatal("first enqueue")
+	}
 	done := make(chan struct{})
 	go func() {
 		l.Log(Record{Event: EventDeniedForward})
@@ -54,7 +65,10 @@ func TestLoggerQueueDropDoesNotBlock(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("Log blocked on full queue")
 	}
-	if l.Queue().Dropped() == 0 {
+	if l.Queue().Dropped() == 0 || l.Dropped() == 0 {
 		t.Fatal("expected drop")
+	}
+	if v, ok := reg.Get(MetricTelemetryDropped, map[string]string{"reason": "log"}); !ok || v < 1 {
+		t.Fatalf("log overflow not counted: %v ok=%v", v, ok)
 	}
 }

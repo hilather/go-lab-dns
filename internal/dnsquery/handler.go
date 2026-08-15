@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync/atomic"
+	"time"
 
 	"github.com/hilather/go-lab-dns/internal/cache"
 	"github.com/hilather/go-lab-dns/internal/chaos"
@@ -85,7 +86,21 @@ func (h *Handler) DeniedForward() int64 {
 }
 
 // ServeDNS implements dnsserver.Handler.
-func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (*dnsserver.Response, dnsserver.TransportHint, error) {
+func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (resp *dnsserver.Response, hint dnsserver.TransportHint, err error) {
+	started := mono(h)
+	var q model.Query
+	var cl class
+	var tracked bool
+	defer func() {
+		if !tracked {
+			return
+		}
+		res := model.Result{}
+		if resp != nil {
+			res = resp.Result()
+		}
+		h.observeQuery(q, cl, res, started)
+	}()
 	if err := ctx.Err(); err != nil {
 		return nil, dnsserver.HintDrop, err
 	}
@@ -99,13 +114,14 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (*dnsserver.Re
 	if req == nil {
 		return dnsserver.NewResponse(model.Result{RCode: model.RCodeFormErr}), dnsserver.HintSend, nil
 	}
-	q := *req
+	q = *req
 	q.Name = canonicalName(string(q.Name))
 	if q.Class == "" {
 		q.Class = model.ClassIN
 	}
 
-	cl := classify(snap, q)
+	cl = classify(snap, q)
+	tracked = true
 	sticky := chaos.NewStickyRand()
 	pre := chaos.ActionPlan{}
 	if !h.inhibited() {
@@ -186,8 +202,8 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (*dnsserver.Re
 	if hintPlan.TransportHint == "" {
 		hintPlan = pre
 	}
-	hint := effects.Hint(hintPlan, q.Transport, h.metrics())
-	resp := dnsserver.NewResponse(res)
+	hint = effects.Hint(hintPlan, q.Transport, h.metrics())
+	resp = dnsserver.NewResponse(res)
 	hold := hintPlan.Hold
 	if hold == 0 {
 		hold = pre.Hold
@@ -195,7 +211,6 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (*dnsserver.Re
 	if hold > 0 {
 		_ = resp.SetHoldFor(hold)
 	}
-	h.observeQuery(q, cl, res, pre, post)
 	return resp, hint, nil
 }
 
@@ -492,7 +507,7 @@ func lastCNAMETarget(rrs []model.RR) model.Name {
 	return last
 }
 
-func (h *Handler) observeQuery(q model.Query, cl class, res model.Result, pre, post chaos.ActionPlan) {
+func (h *Handler) observeQuery(q model.Query, cl class, res model.Result, started time.Duration) {
 	if h == nil || h.obs == nil {
 		return
 	}
@@ -510,8 +525,24 @@ func (h *Handler) observeQuery(q model.Query, cl class, res model.Result, pre, p
 			"zone_id": string(res.ZoneID),
 		}, 1)
 	}
-	_ = pre
-	_ = post
+	sec := 0.0
+	if h.clk != nil {
+		d := h.clk.Monotonic() - started
+		if d > 0 {
+			sec = d.Seconds()
+		}
+	}
+	h.obs.Observe(observability.MetricDNSQueryDuration, map[string]string{
+		"transport": string(q.Transport),
+		"source":    src,
+	}, sec)
+}
+
+func mono(h *Handler) time.Duration {
+	if h != nil && h.clk != nil {
+		return h.clk.Monotonic()
+	}
+	return 0
 }
 
 func (h *Handler) observeDenied(cl class) {
