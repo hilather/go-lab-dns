@@ -56,7 +56,7 @@ internal_error
 
 ## REST mapping
 
-REST uses `application/problem+json`, appropriate status codes, and the domain error in extension fields. Helpers live in `internal/capabilities` (`ProblemFrom`); adapters do not re-implement the table.
+REST uses `application/problem+json`, appropriate status codes, and the domain error in extension fields. Helpers live in `internal/capabilities` (`ProblemFrom`); `internal/control/rest` serializes that document and does not re-implement the table.
 
 `type` is `urn:labdns:error:` plus the code with underscores replaced by hyphens (example: `urn:labdns:error:revision-conflict`).
 

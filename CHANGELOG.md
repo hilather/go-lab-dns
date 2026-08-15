@@ -20,9 +20,10 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Compiled `snapshot.AccessIndex` (longest-prefix CIDR → client group) filled by `snapshot.CompileAccess`.
 - `compiler.Compile` orchestrates normalize/validate, zone/forwarding/chaos/access indexes, and `sha256:` revision hashing.
 - `labdns serve --config PATH` loads bootstrap YAML, compiles an immutable snapshot, and binds UDP/TCP DNS. Invalid bootstrap does not listen.
-- `internal/app.Service` mutation core: `Plan`/`Apply`/`Validate`/`Export`/`Reset`, zone/record/resolve/explain queries, forwarding/cache views, in-memory audit ring, and `EmergencyDisableChaos`. REST/MCP adapters are not implemented.
+- `internal/app.Service` mutation core: `Plan`/`Apply`/`Validate`/`Export`/`Reset`, zone/record/resolve/explain queries, forwarding/cache views, in-memory audit ring, and `EmergencyDisableChaos`.
 - Frozen capability registry in `internal/capabilities` covering every first-GA REST↔MCP table row. Health live/ready are REST-only (not tools). Generated manifest: [api/capabilities/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/capabilities/v1.json).
-- Domain-error mapping helpers: `domainerr` → RFC 9457 `application/problem+json` status hints and MCP JSON-RPC `data` (no HTTP or MCP server yet). Parity harness fails if a table row is missing or renamed.
+- Domain-error mapping helpers: `domainerr` → RFC 9457 `application/problem+json` status hints and MCP JSON-RPC `data`. Parity harness fails if a table row is missing or renamed.
+- REST `/v1` adapter in `internal/control/rest`: routes registered from the capability registry, `application/problem+json`, loopback-only unauthenticated management (Q-AUTH), body/timeout/concurrency limits, and generated OpenAPI at [api/openapi/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/openapi/v1.json). MCP is not implemented.
 
 ### Changed
 
@@ -62,7 +63,12 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### REST API
 
-- Capability names, `/v1` paths, and problem+json status hints are frozen in the shared registry. No REST server is implemented yet.
+- stdlib `net/http` management server (`internal/control/rest`) exposes every first-GA capability on `/v1`. Default listen address is `:8080`.
+- Generated OpenAPI 3.1: [api/openapi/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/openapi/v1.json).
+- Errors use `capabilities.ProblemFrom` → `application/problem+json`.
+- Unauthenticated remote management is denied; `127.0.0.1` / `::1` may omit a bearer token. Health live/ready remain probe-accessible.
+- `POST /v1/chaos:emergency-disable` exists and shares `app.Service`; packet-level chaos still runs on the DNS path independently of REST.
+- `labdns serve` does not yet bind the management listener (DEP-001).
 
 ### MCP API and protocol compatibility
 
@@ -77,7 +83,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Deployment and operations
 
-- `labdns serve --config PATH` is the M1 process entry: compile bootstrap YAML and serve DNS on the configured listen address (default `:5353` UDP+TCP). Management HTTP is not bound.
+- `labdns serve --config PATH` is the M1 process entry: compile bootstrap YAML and serve DNS on the configured listen address (default `:5353` UDP+TCP). Management HTTP (`rest.Server`, default `:8080`) is implemented but not yet wired into `serve` (DEP-001).
 - Runtime plan/apply/reset are process-local via `app.Service`. `expectedRevision` is required except privileged reset. Idempotency keys use a bounded in-memory LRU (default 256; `<=0` is not unlimited). Reset rereads the bootstrap mount and never writes it. Export is canonical YAML/JSON with no comments, plus bootstrap-to-runtime operations.
 
 ### Observability

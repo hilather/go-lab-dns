@@ -1,6 +1,6 @@
 # REST API Design
 
-Status: Proposed
+Status: Implemented (API-001)
 Owners: REST, Application
 Last reviewed: 2026-08-15
 Related ADRs: 0004
@@ -15,11 +15,13 @@ Related ADRs: 0004
 ## Base behavior
 
 - Base path: `/v1`.
-- JSON request and response bodies unless exporting YAML.
-- Problem responses use `application/problem+json` with a stable domain error code. Status hints are produced by `capabilities.ProblemFrom` (no HTTP server in the registry package).
-- Mutations accept `Idempotency-Key` and expected revision in the body or a documented conditional header.
-- Request bodies and response sizes are bounded.
-- Management listener is not public by default.
+- JSON request and response bodies unless exporting YAML (`GET /v1/state:export?format=yaml`, default).
+- Problem responses use `application/problem+json` with a stable domain error code. Status hints are produced by `capabilities.ProblemFrom`; `internal/control/rest` only serializes and sets `Instance` (`urn:labdns:request:…`).
+- Mutations accept `Idempotency-Key` and expected revision in the body, `If-Match`, or `X-LabDNS-Expected-Revision`.
+- Request bodies default to a 1 MiB cap; handlers also enforce a request deadline and a concurrent-request admission cap.
+- Management listener default address is `:8080` (`rest.DefaultAddr`). The listener is not public by default.
+- OpenAPI 3.1 is generated from the capability registry and `model.Spec` at [api/openapi/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/openapi/v1.json) (`make generate`).
+- Authentication (Q-AUTH): unauthenticated access is allowed only from `127.0.0.1` and `::1`. Non-loopback peers require `Authorization: Bearer`. Health live/ready skip auth so process probes work. `X-Forwarded-For` is not trusted. No permissive CORS headers are emitted.
 
 ## Endpoints
 
@@ -143,9 +145,23 @@ Use opaque cursors. Stable ordering must be documented. Filters are explicit typ
 }
 ```
 
+## Implementation notes
+
+The adapter is `internal/control/rest`. Routes are compiled from `capabilities.All()` (catalog spellings, including `{id}:activate` / `:expire`). Handlers call `app.Service` only.
+
+| Concern | Behavior |
+|---|---|
+| Auth | Loopback unauthenticated; remote bearer required. `Authenticator` hook is the SEC-001 seam. |
+| Pagination | Opaque `cursor` + `limit` query parameters on zone, record, and audit lists. |
+| Timeouts | Per-request context deadline (default 30s). `ListenAndServe` also sets read/write/header timeouts. |
+| Request ID | `X-Request-ID` is accepted or generated and echoed; problem `instance` is `urn:labdns:request:<id>`. |
+| Health | `GET /v1/health/live` is process liveness. `GET /v1/health/ready` is ready when `Status` reports a runtime revision. Chaos must not affect either. |
+
+`labdns serve` does not bind the management listener in this slice (DEP-001 / PR-16). Construct `rest.Server` with `Config.Addr` (empty → `:8080`) and `app.Service`.
+
 ## Security considerations
 
-Validate Origin where browser access is possible, disable permissive CORS by default, authenticate before parsing large bodies where the server stack permits, and rate-limit by actor and source network.
+Validate Origin where browser access is possible, disable permissive CORS by default, authenticate before parsing large bodies where the server stack permits, and rate-limit by actor and source network. First GA trusts `RemoteAddr` only (no forwarded-client spoofing) and emits no `Access-Control-Allow-Origin`.
 
 ## Observability
 

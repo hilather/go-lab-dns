@@ -17,7 +17,7 @@ help:
 		'LabDNS Make targets (Go 1.26; module github.com/hilather/go-lab-dns)' \
 		'  format              go fmt ./...' \
 		'  lint                go vet + golangci-lint $(GOLANGCI_LINT_VERSION)' \
-		'  generate            write testdata/generated/fixture.txt and api/capabilities/v1.json' \
+		'  generate            write testdata/generated/fixture.txt, api/capabilities/v1.json, and api/openapi/v1.json' \
 		'  verify-generated    fail if generate would change the fixture' \
 		'  test                go test ./...' \
 		'  test-race           go test -race ./...' \

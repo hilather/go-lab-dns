@@ -1,0 +1,2013 @@
+{
+  "components": {
+    "schemas": {
+      "ActivationIn": {
+        "description": "Application type ActivationIn (internal/app).",
+        "type": "object"
+      },
+      "ApplyResult": {
+        "description": "Application type ApplyResult (internal/app).",
+        "type": "object"
+      },
+      "AuditEvent": {
+        "description": "Application type AuditEvent (internal/app).",
+        "type": "object"
+      },
+      "AuditList": {
+        "description": "Application type AuditList (internal/app).",
+        "type": "object"
+      },
+      "AuditQuery": {
+        "description": "Application type AuditQuery (internal/app).",
+        "type": "object"
+      },
+      "CacheSummary": {
+        "description": "Application type CacheSummary (internal/app).",
+        "type": "object"
+      },
+      "CapabilityView": {
+        "description": "Application type CapabilityView (internal/app).",
+        "type": "object"
+      },
+      "ChangeIn": {
+        "description": "Application type ChangeIn (internal/app).",
+        "type": "object"
+      },
+      "ChaosRuntimeStatus": {
+        "description": "Application type ChaosRuntimeStatus (internal/app).",
+        "type": "object"
+      },
+      "EmergencyIn": {
+        "description": "Application type EmergencyIn (internal/app).",
+        "type": "object"
+      },
+      "ExpiryIn": {
+        "description": "Application type ExpiryIn (internal/app).",
+        "type": "object"
+      },
+      "ExplainOut": {
+        "description": "Application type ExplainOut (internal/app).",
+        "type": "object"
+      },
+      "Export": {
+        "description": "Application type Export (internal/app).",
+        "type": "object"
+      },
+      "FieldViolation": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "FlushIn": {
+        "description": "Application type FlushIn (internal/app).",
+        "type": "object"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Plan": {
+        "description": "Application type Plan (internal/app).",
+        "type": "object"
+      },
+      "Problem": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "currentRevision": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "type": "string"
+          },
+          "fieldViolations": {
+            "items": {
+              "$ref": "#/components/schemas/FieldViolation"
+            },
+            "type": "array"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "remediation": {
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code"
+        ],
+        "type": "object"
+      },
+      "Record": {
+        "description": "Application type Record (internal/app).",
+        "type": "object"
+      },
+      "ResetIn": {
+        "description": "Application type ResetIn (internal/app).",
+        "type": "object"
+      },
+      "ResolveIn": {
+        "description": "Application type ResolveIn (internal/app).",
+        "type": "object"
+      },
+      "ResolveOut": {
+        "description": "Application type ResolveOut (internal/app).",
+        "type": "object"
+      },
+      "SimulateIn": {
+        "description": "Application type SimulateIn (internal/app).",
+        "type": "object"
+      },
+      "SimulateOut": {
+        "description": "Application type SimulateOut (internal/app).",
+        "type": "object"
+      },
+      "Spec": {
+        "description": "model.Spec v1alpha1. Normative JSON Schema: api/jsonschema/labdns.dev.v1alpha1.json",
+        "properties": {
+          "access": {
+            "type": "object"
+          },
+          "cache": {
+            "type": "object"
+          },
+          "chaos": {
+            "type": "object"
+          },
+          "defaults": {
+            "type": "object"
+          },
+          "forwarding": {
+            "type": "object"
+          },
+          "listeners": {
+            "type": "object"
+          },
+          "management": {
+            "type": "object"
+          },
+          "observability": {
+            "type": "object"
+          },
+          "zones": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "State": {
+        "description": "labdns.dev/v1alpha1 LabDNS document. Field list is model.State wrapping model.Spec.",
+        "properties": {
+          "apiVersion": {
+            "const": "labdns.dev/v1alpha1",
+            "type": "string"
+          },
+          "kind": {
+            "const": "LabDNS",
+            "type": "string"
+          },
+          "metadata": {
+            "properties": {
+              "labels": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/Spec"
+          }
+        },
+        "required": [
+          "apiVersion",
+          "kind",
+          "spec"
+        ],
+        "type": "object"
+      },
+      "StateView": {
+        "description": "Application type StateView (internal/app).",
+        "type": "object"
+      },
+      "Status": {
+        "description": "Application type Status (internal/app).",
+        "type": "object"
+      },
+      "ValidateIn": {
+        "description": "Application type ValidateIn (internal/app).",
+        "type": "object"
+      },
+      "Zone": {
+        "description": "Application type Zone (internal/app).",
+        "type": "object"
+      },
+      "buildinfoInfo": {
+        "description": "Application type buildinfo.Info (internal/app).",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "bearerFormat": "token",
+        "description": "Required for non-loopback peers. Loopback (127.0.0.1 / ::1) may omit the token (Q-AUTH / dev-loopback-unauth).",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "REST adapter for the shared LabDNS capability registry. Generated from internal/capabilities and model.Spec. Do not edit by hand.",
+    "title": "LabDNS Management API",
+    "version": "v1",
+    "x-generated-by": "internal/control/rest.RenderOpenAPI; DO NOT EDIT."
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/audit": {
+      "get": {
+        "description": "Query recent in-memory audit events.",
+        "operationId": "get_v1_audit",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditList"
+                }
+              }
+            },
+            "description": "Audit list"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Audit list",
+        "tags": [
+          "audit"
+        ],
+        "x-capability-id": "audit.list",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.audit.read"
+        ]
+      }
+    },
+    "/v1/audit/{eventId}": {
+      "get": {
+        "description": "Get one audit event by ID.",
+        "operationId": "get_v1_audit_eventId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eventId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditEvent"
+                }
+              }
+            },
+            "description": "Audit get"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Audit get",
+        "tags": [
+          "audit"
+        ],
+        "x-capability-id": "audit.get",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.audit.read"
+        ]
+      }
+    },
+    "/v1/cache/status": {
+      "get": {
+        "description": "Process cache bounds and counters.",
+        "operationId": "get_v1_cache_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CacheSummary"
+                }
+              }
+            },
+            "description": "Cache status"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Cache status",
+        "tags": [
+          "cache"
+        ],
+        "x-capability-id": "cache.status",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.read"
+        ]
+      }
+    },
+    "/v1/cache:flush": {
+      "post": {
+        "description": "Flush the process cache. Does not change desired state.",
+        "operationId": "post_v1_cache_flush",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlushIn"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "204": {
+            "description": "Cache flush"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Cache flush",
+        "tags": [
+          "cache"
+        ],
+        "x-capability-id": "cache.flush",
+        "x-idempotent": true,
+        "x-mutating": true,
+        "x-required-scopes": [
+          "dns.admin"
+        ]
+      }
+    },
+    "/v1/capabilities": {
+      "get": {
+        "description": "Capability list and protocol metadata.",
+        "operationId": "get_v1_capabilities",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilityView"
+                }
+              }
+            },
+            "description": "Capabilities"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Capabilities",
+        "tags": [
+          "capabilities"
+        ],
+        "x-capability-id": "capabilities",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.read"
+        ]
+      }
+    },
+    "/v1/changes:apply": {
+      "post": {
+        "description": "Apply operations. Also requires resource-scoped writes when the change set touches those resources.",
+        "operationId": "post_v1_changes_apply",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyResult"
+                }
+              }
+            },
+            "description": "Apply"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Apply",
+        "tags": [
+          "change"
+        ],
+        "x-capability-id": "change.apply",
+        "x-idempotent": true,
+        "x-mutating": true,
+        "x-required-scopes": [
+          "dns.write"
+        ]
+      }
+    },
+    "/v1/changes:plan": {
+      "post": {
+        "description": "Dry-run operations against the active snapshot.",
+        "operationId": "post_v1_changes_plan",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            },
+            "description": "Plan"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Plan",
+        "tags": [
+          "change"
+        ],
+        "x-capability-id": "change.plan",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.write"
+        ]
+      }
+    },
+    "/v1/chaos/policies": {
+      "get": {
+        "description": "List chaos policies or get one policy by ID.",
+        "operationId": "get_v1_chaos_policies",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Chaos policies"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Chaos policies",
+        "tags": [
+          "chaos"
+        ],
+        "x-capability-id": "chaos.policies",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.chaos.read"
+        ]
+      }
+    },
+    "/v1/chaos/policies/{id}:activate": {
+      "post": {
+        "description": "Typed wrappers around apply for chaos policy enabled state.",
+        "operationId": "post_v1_chaos_policies_id_activate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivationIn"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyResult"
+                }
+              }
+            },
+            "description": "Activate / deactivate"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Activate / deactivate",
+        "tags": [
+          "chaos"
+        ],
+        "x-capability-id": "chaos.activate",
+        "x-idempotent": false,
+        "x-mutating": true,
+        "x-required-scopes": [
+          "dns.chaos.activate"
+        ]
+      }
+    },
+    "/v1/chaos/policies/{id}:deactivate": {
+      "post": {
+        "description": "Typed wrappers around apply for chaos policy enabled state.",
+        "operationId": "post_v1_chaos_policies_id_deactivate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivationIn"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyResult"
+                }
+              }
+            },
+            "description": "Activate / deactivate"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Activate / deactivate",
+        "tags": [
+          "chaos"
+        ],
+        "x-capability-id": "chaos.activate",
+        "x-idempotent": false,
+        "x-mutating": true,
+        "x-required-scopes": [
+          "dns.chaos.activate"
+        ]
+      }
+    },
+    "/v1/chaos/policies/{id}:expire": {
+      "post": {
+        "description": "Extend or shorten a chaos policy expiry via the shared apply path.",
+        "operationId": "post_v1_chaos_policies_id_expire",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpiryIn"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyResult"
+                }
+              }
+            },
+            "description": "Set expiry"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Set expiry",
+        "tags": [
+          "chaos"
+        ],
+        "x-capability-id": "chaos.set_expiry",
+        "x-idempotent": false,
+        "x-mutating": true,
+        "x-required-scopes": [
+          "dns.chaos.activate"
+        ]
+      }
+    },
+    "/v1/chaos/policies/{policyId}": {
+      "get": {
+        "description": "List chaos policies or get one policy by ID.",
+        "operationId": "get_v1_chaos_policies_policyId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "policyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Chaos policies"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Chaos policies",
+        "tags": [
+          "chaos"
+        ],
+        "x-capability-id": "chaos.policies",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.chaos.read"
+        ]
+      }
+    },
+    "/v1/chaos/status": {
+      "get": {
+        "description": "Chaos runtime status including the emergency-off bit.",
+        "operationId": "get_v1_chaos_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChaosRuntimeStatus"
+                }
+              }
+            },
+            "description": "Chaos status"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Chaos status",
+        "tags": [
+          "chaos"
+        ],
+        "x-capability-id": "chaos.status",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.chaos.read"
+        ]
+      }
+    },
+    "/v1/chaos:emergency-disable": {
+      "post": {
+        "description": "Set or clear the runtime EmergencyChaosOff bit.",
+        "operationId": "post_v1_chaos_emergency_disable",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmergencyIn"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyResult"
+                }
+              }
+            },
+            "description": "Emergency disable / enable"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Emergency disable / enable",
+        "tags": [
+          "chaos"
+        ],
+        "x-capability-id": "chaos.emergency",
+        "x-idempotent": true,
+        "x-mutating": true,
+        "x-required-scopes": [
+          "dns.chaos.emergency"
+        ]
+      }
+    },
+    "/v1/chaos:emergency-enable": {
+      "post": {
+        "description": "Set or clear the runtime EmergencyChaosOff bit.",
+        "operationId": "post_v1_chaos_emergency_enable",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmergencyIn"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyResult"
+                }
+              }
+            },
+            "description": "Emergency disable / enable"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Emergency disable / enable",
+        "tags": [
+          "chaos"
+        ],
+        "x-capability-id": "chaos.emergency",
+        "x-idempotent": true,
+        "x-mutating": true,
+        "x-required-scopes": [
+          "dns.chaos.emergency"
+        ]
+      }
+    },
+    "/v1/chaos:simulate": {
+      "post": {
+        "description": "Simulate chaos decisions without sleeping, sending packets, or mutating cache.",
+        "operationId": "post_v1_chaos_simulate",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulateOut"
+                }
+              }
+            },
+            "description": "Simulate"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Simulate",
+        "tags": [
+          "chaos"
+        ],
+        "x-capability-id": "chaos.simulate",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.chaos.read"
+        ]
+      }
+    },
+    "/v1/docs/chaos-safety": {
+      "get": {
+        "description": "Embedded chaos-engine safety document.",
+        "operationId": "get_v1_docs_chaos_safety",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "text/markdown": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Docs: chaos safety"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Docs: chaos safety",
+        "tags": [
+          "docs"
+        ],
+        "x-capability-id": "docs.chaos-safety",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.read"
+        ]
+      }
+    },
+    "/v1/docs/dns-semantics": {
+      "get": {
+        "description": "Embedded DNS semantics document.",
+        "operationId": "get_v1_docs_dns_semantics",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "text/markdown": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Docs: DNS semantics"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Docs: DNS semantics",
+        "tags": [
+          "docs"
+        ],
+        "x-capability-id": "docs.dns-semantics",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.read"
+        ]
+      }
+    },
+    "/v1/forwarding/policies": {
+      "get": {
+        "description": "List compiled forwarding policies.",
+        "operationId": "get_v1_forwarding_policies",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Forwarding"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Forwarding",
+        "tags": [
+          "forwarding"
+        ],
+        "x-capability-id": "forwarding.policies",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.forwarders.read"
+        ]
+      }
+    },
+    "/v1/health/live": {
+      "get": {
+        "description": "Process liveness. Not an MCP tool; chaos must not affect it.",
+        "operationId": "get_v1_health_live",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            },
+            "description": "Health live"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "security": [],
+        "summary": "Health live",
+        "tags": [
+          "health"
+        ],
+        "x-capability-id": "health.live",
+        "x-idempotent": true,
+        "x-mutating": false
+      }
+    },
+    "/v1/health/ready": {
+      "get": {
+        "description": "Readiness (valid snapshot, listeners bound). Not an MCP tool.",
+        "operationId": "get_v1_health_ready",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            },
+            "description": "Health ready"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "security": [],
+        "summary": "Health ready",
+        "tags": [
+          "health"
+        ],
+        "x-capability-id": "health.ready",
+        "x-idempotent": true,
+        "x-mutating": false
+      }
+    },
+    "/v1/resolve": {
+      "post": {
+        "description": "Management-plane resolve. Defaults to not consuming live chaos.",
+        "operationId": "post_v1_resolve",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolveOut"
+                }
+              }
+            },
+            "description": "Resolve"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Resolve",
+        "tags": [
+          "resolve"
+        ],
+        "x-capability-id": "resolve",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.read"
+        ]
+      }
+    },
+    "/v1/resolve:explain": {
+      "post": {
+        "description": "Explain a resolve decision without changing live state.",
+        "operationId": "post_v1_resolve_explain",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplainOut"
+                }
+              }
+            },
+            "description": "Explain"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Explain",
+        "tags": [
+          "resolve"
+        ],
+        "x-capability-id": "resolve.explain",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.read"
+        ]
+      }
+    },
+    "/v1/schema/config": {
+      "get": {
+        "description": "Published v1alpha1 config JSON Schema.",
+        "operationId": "get_v1_schema_config",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/schema+json": {
+                "schema": {
+                  "description": "Published v1alpha1 JSON Schema",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Config schema"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Config schema",
+        "tags": [
+          "schema"
+        ],
+        "x-capability-id": "schema.config",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.read"
+        ]
+      }
+    },
+    "/v1/state": {
+      "get": {
+        "description": "Active revisions and a copy of canonical state.",
+        "operationId": "get_v1_state",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StateView"
+                }
+              }
+            },
+            "description": "Get state"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Get state",
+        "tags": [
+          "state"
+        ],
+        "x-capability-id": "state.get",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.read"
+        ]
+      }
+    },
+    "/v1/state:export": {
+      "get": {
+        "description": "Canonical export plus bootstrap-to-runtime operations.",
+        "operationId": "get_v1_state_export",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "yaml",
+                "json"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Export"
+                }
+              }
+            },
+            "description": "Export"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Export",
+        "tags": [
+          "state"
+        ],
+        "x-capability-id": "state.export",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.read"
+        ]
+      }
+    },
+    "/v1/state:reset": {
+      "post": {
+        "description": "Reread the bootstrap mount, compile, and swap. Never writes the file.",
+        "operationId": "post_v1_state_reset",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetIn"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyResult"
+                }
+              }
+            },
+            "description": "Reset"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Reset",
+        "tags": [
+          "state"
+        ],
+        "x-capability-id": "state.reset",
+        "x-idempotent": false,
+        "x-mutating": true,
+        "x-required-scopes": [
+          "dns.admin"
+        ]
+      }
+    },
+    "/v1/state:validate": {
+      "post": {
+        "description": "Validate a candidate document and/or operations without writing.",
+        "operationId": "post_v1_state_validate",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            },
+            "description": "Validate"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Validate",
+        "tags": [
+          "state"
+        ],
+        "x-capability-id": "state.validate",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.write"
+        ]
+      }
+    },
+    "/v1/status": {
+      "get": {
+        "description": "Single agent-readable status DTO.",
+        "operationId": "get_v1_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            },
+            "description": "Agent status"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Agent status",
+        "tags": [
+          "status"
+        ],
+        "x-capability-id": "status",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.read"
+        ]
+      }
+    },
+    "/v1/upstream-pools": {
+      "get": {
+        "description": "List configured upstream pools.",
+        "operationId": "get_v1_upstream_pools",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Pools"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Pools",
+        "tags": [
+          "upstream"
+        ],
+        "x-capability-id": "upstream.pools",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.forwarders.read"
+        ]
+      }
+    },
+    "/v1/upstreams/status": {
+      "get": {
+        "description": "Upstream health view.",
+        "operationId": "get_v1_upstreams_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Upstream status"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Upstream status",
+        "tags": [
+          "upstreams"
+        ],
+        "x-capability-id": "upstreams.status",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.forwarders.read"
+        ]
+      }
+    },
+    "/v1/version": {
+      "get": {
+        "description": "Build and protocol versions. The same payload is also embedded in dns_capabilities_get.",
+        "operationId": "get_v1_version",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/buildinfoInfo"
+                }
+              }
+            },
+            "description": "Version"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Version",
+        "tags": [
+          "version"
+        ],
+        "x-capability-id": "version",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.read"
+        ]
+      }
+    },
+    "/v1/zones": {
+      "get": {
+        "description": "List zones or get one zone by ID.",
+        "operationId": "get_v1_zones",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Zone"
+                }
+              }
+            },
+            "description": "Zones list/get"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Zones list/get",
+        "tags": [
+          "zones"
+        ],
+        "x-capability-id": "zones",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.read"
+        ]
+      }
+    },
+    "/v1/zones/{zoneId}": {
+      "get": {
+        "description": "List zones or get one zone by ID.",
+        "operationId": "get_v1_zones_zoneId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "zoneId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Zone"
+                }
+              }
+            },
+            "description": "Zones list/get"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Zones list/get",
+        "tags": [
+          "zones"
+        ],
+        "x-capability-id": "zones",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.read"
+        ]
+      }
+    },
+    "/v1/zones/{zoneId}/records": {
+      "get": {
+        "description": "List records in a zone or get one record by ID.",
+        "operationId": "get_v1_zones_zoneId_records",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "zoneId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Record"
+                }
+              }
+            },
+            "description": "Records list/get"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Records list/get",
+        "tags": [
+          "records"
+        ],
+        "x-capability-id": "records",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.read"
+        ]
+      }
+    },
+    "/v1/zones/{zoneId}/records/{recordId}": {
+      "get": {
+        "description": "List records in a zone or get one record by ID.",
+        "operationId": "get_v1_zones_zoneId_records_recordId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "zoneId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Record"
+                }
+              }
+            },
+            "description": "Records list/get"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Records list/get",
+        "tags": [
+          "records"
+        ],
+        "x-capability-id": "records",
+        "x-idempotent": true,
+        "x-mutating": false,
+        "x-required-scopes": [
+          "dns.read"
+        ]
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "servers": [
+    {
+      "description": "Management listener (default address :8080)",
+      "url": "/"
+    }
+  ],
+  "tags": [
+    {
+      "description": "Process liveness. Not an MCP tool; chaos must not affect it.",
+      "name": "health"
+    },
+    {
+      "description": "Build and protocol versions. The same payload is also embedded in dns_capabilities_get.",
+      "name": "version"
+    },
+    {
+      "description": "Capability list and protocol metadata.",
+      "name": "capabilities"
+    },
+    {
+      "description": "Single agent-readable status DTO.",
+      "name": "status"
+    },
+    {
+      "description": "Published v1alpha1 config JSON Schema.",
+      "name": "schema"
+    },
+    {
+      "description": "Active revisions and a copy of canonical state.",
+      "name": "state"
+    },
+    {
+      "description": "Dry-run operations against the active snapshot.",
+      "name": "change"
+    },
+    {
+      "description": "List zones or get one zone by ID.",
+      "name": "zones"
+    },
+    {
+      "description": "List records in a zone or get one record by ID.",
+      "name": "records"
+    },
+    {
+      "description": "Management-plane resolve. Defaults to not consuming live chaos.",
+      "name": "resolve"
+    },
+    {
+      "description": "List compiled forwarding policies.",
+      "name": "forwarding"
+    },
+    {
+      "description": "List configured upstream pools.",
+      "name": "upstream"
+    },
+    {
+      "description": "Upstream health view.",
+      "name": "upstreams"
+    },
+    {
+      "description": "Process cache bounds and counters.",
+      "name": "cache"
+    },
+    {
+      "description": "Chaos runtime status including the emergency-off bit.",
+      "name": "chaos"
+    },
+    {
+      "description": "Query recent in-memory audit events.",
+      "name": "audit"
+    },
+    {
+      "description": "Embedded DNS semantics document.",
+      "name": "docs"
+    }
+  ]
+}
