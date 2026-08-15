@@ -396,8 +396,8 @@ func TestRandomNonceStickyAcrossPhases(t *testing.T) {
 	snap := compileSnap(t, st)
 	eng := NewEngine(testutil.NewFakeClock(time.Date(2026, 8, 15, 20, 0, 0, 0, time.UTC)), testutil.NewSeededRand(1))
 	in := DecisionIn{
-		Query:           model.Query{Name: "x.example.", Type: model.TypeA, Transport: model.TransportUDP},
-		SimulationNonce: "query-nonce-1",
+		Query:  model.Query{Name: "x.example.", Type: model.TypeA, Transport: model.TransportUDP},
+		Sticky: NewStickyRand(),
 	}
 	in.Phase = PhasePreResolution
 	pre, err := eng.Decide(context.Background(), snap, in)
@@ -425,6 +425,55 @@ func TestRandomNonceStickyAcrossPhases(t *testing.T) {
 	if preTrig != postTrig || preOut != postOut {
 		t.Fatalf("phases disagreed pre=%v/%s post=%v/%s", preTrig, preOut, postTrig, postOut)
 	}
+}
+
+func TestDeterministicLiveIgnoresNonce(t *testing.T) {
+	st := sampleState(t)
+	for i := range st.Spec.Zones[0].Records {
+		st.Spec.Zones[0].Records[i].ChaosPolicyRefs = nil
+	}
+	st.Spec.Chaos.Policies = []model.ChaosPolicy{{
+		ID: "det", Owner: "o", Reason: "r", Enabled: true, SafetyClass: model.SafetyClassLow,
+		Selector: model.ChaosSelector{Mode: model.SelectorDeterministic, Seed: "stable", Probability: 0.4},
+		Outcomes: []model.ChaosOutcome{{ID: "o", Weight: 1, Actions: []model.ChaosAction{
+			{Type: model.ActionDelay, Phase: model.PhaseBeforeResponse, Distribution: model.DistUniform, Min: 10 * time.Millisecond, Max: 80 * time.Millisecond},
+		}}},
+	}}
+	snap := compileSnap(t, st)
+	eng := NewEngine(testutil.NewFakeClock(time.Date(2026, 8, 15, 20, 0, 0, 0, time.UTC)), nil)
+	in := DecisionIn{
+		Query: model.Query{Name: "x.example.", Type: model.TypeA, Transport: model.TransportUDP},
+		Phase: PhaseResponse,
+		Base:  &model.Result{RCode: model.RCodeNoError},
+	}
+	a, err := eng.Decide(context.Background(), snap, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := eng.Decide(context.Background(), snap, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Delay != b.Delay || triggered(a, "det") != triggered(b, "det") {
+		t.Fatalf("live deterministic must be stable: a=%+v b=%+v", a, b)
+	}
+	in.SimulationNonce = "must-not-change-live-hash-v1"
+	c, err := eng.Decide(context.Background(), snap, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Delay != a.Delay || triggered(c, "det") != triggered(a, "det") {
+		t.Fatalf("live Decide must ignore SimulationNonce: a delay=%s c delay=%s", a.Delay, c.Delay)
+	}
+}
+
+func triggered(plan ActionPlan, id model.PolicyID) bool {
+	for _, d := range plan.Decisions {
+		if d.PolicyID == id && d.Triggered {
+			return true
+		}
+	}
+	return false
 }
 
 func TestUniformUpstreamDelayIsMapped(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hilather/go-lab-dns/internal/chaos"
+	"github.com/hilather/go-lab-dns/internal/dnsserver"
 	"github.com/hilather/go-lab-dns/internal/model"
 	"github.com/hilather/go-lab-dns/internal/snapshot"
 	"github.com/hilather/go-lab-dns/internal/testutil"
@@ -138,6 +139,41 @@ func TestSleepDeadlineWaitsOutDelay(t *testing.T) {
 	}
 	if elapsed := time.Since(start); elapsed < 50*time.Millisecond {
 		t.Fatalf("slept %s, want full delay", elapsed)
+	}
+}
+
+func TestSleepShutdownAfterDeadline(t *testing.T) {
+	eng := chaos.NewEngine(nil, nil)
+	snap := delaySnap(4, 4)
+	plan := chaos.ActionPlan{Actions: []chaos.PlannedAction{{
+		Type: model.ActionDelay, Phase: model.PhaseBeforeResponse, Delay: time.Second, PolicyID: "p",
+	}}}
+	sess := NewSession(nil, eng.Budgets(), snap, nil)
+	defer sess.Release()
+	server, stop := context.WithCancel(context.Background())
+	defer stop()
+	qctx, qcancel := context.WithTimeout(server, 20*time.Millisecond)
+	defer qcancel()
+	ctx := dnsserver.WithServerContext(qctx, server)
+	done := make(chan error, 1)
+	start := time.Now()
+	go func() { done <- sess.Sleep(ctx, plan, model.PhaseBeforeResponse) }()
+	deadline := time.Now().Add(time.Second)
+	for eng.Budgets().InFlight() == 0 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	time.Sleep(30 * time.Millisecond) // query deadline fired; delay still running
+	stop()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("shutdown must abort the remaining delay")
+		}
+		if elapsed := time.Since(start); elapsed >= 800*time.Millisecond {
+			t.Fatalf("shutdown waited out the timer: %s", elapsed)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("sleep did not return after shutdown")
 	}
 }
 

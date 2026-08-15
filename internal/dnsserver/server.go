@@ -203,6 +203,7 @@ func (s *Server) handleQuery(ctx context.Context, req *dnswire.Request, parseErr
 
 	s.cfg.Metrics.IncQuery(string(req.Query.Transport))
 	q := req.Query
+	ctx = WithServerContext(ctx, s.ctx)
 	ctx = withPeer(ctx, q.Client, q.Transport)
 	ctx = s.annotate(ctx, &q)
 

@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/hilather/go-lab-dns/internal/chaos"
+	"github.com/hilather/go-lab-dns/internal/dnsserver"
 	"github.com/hilather/go-lab-dns/internal/model"
 	"github.com/hilather/go-lab-dns/internal/snapshot"
 	"github.com/hilather/go-lab-dns/internal/testutil"
@@ -124,8 +125,9 @@ func (s *Session) sleepOne(ctx context.Context, a chaos.PlannedAction) error {
 	select {
 	case <-done:
 		if ctx != nil && errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			// Query budget elapsed; finish the planned delay or emergency.
-			return s.waitDelayOrEmergency(timer)
+			// Query budget elapsed; finish the planned delay, or abort
+			// on emergency / server shutdown (not the query deadline).
+			return s.waitDelayOrEmergency(ctx, timer)
 		}
 		if s.metrics != nil {
 			s.metrics.DelayCanceled.Add(1)
@@ -139,13 +141,25 @@ func (s *Session) sleepOne(ctx context.Context, a chaos.PlannedAction) error {
 	}
 }
 
-func (s *Session) waitDelayOrEmergency(timer testutil.Timer) error {
+func (s *Session) waitDelayOrEmergency(ctx context.Context, timer testutil.Timer) error {
+	var shutdown <-chan struct{}
+	if sc := dnsserver.ServerContext(ctx); sc != nil {
+		shutdown = sc.Done()
+	}
 	select {
 	case <-s.cancelCh:
 		s.markStopped()
 		return nil
 	case <-timer.C():
 		return nil
+	case <-shutdown:
+		if s.metrics != nil {
+			s.metrics.DelayCanceled.Add(1)
+		}
+		if sc := dnsserver.ServerContext(ctx); sc != nil && sc.Err() != nil {
+			return sc.Err()
+		}
+		return context.Canceled
 	}
 }
 

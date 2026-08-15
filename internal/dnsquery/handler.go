@@ -2,8 +2,6 @@ package dnsquery
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"sync/atomic"
 
@@ -105,10 +103,10 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (*dnsserver.Re
 	}
 
 	cl := classify(snap, q)
-	nonce := newDecisionNonce()
+	sticky := chaos.NewStickyRand()
 	pre := chaos.ActionPlan{}
 	if !h.inhibited() {
-		pre = h.decide(ctx, snap, q, cl, nil, chaos.PhasePreResolution, nonce)
+		pre = h.decide(ctx, snap, q, cl, nil, chaos.PhasePreResolution, sticky)
 	} else {
 		pre = chaos.ActionPlan{Disabled: true, Reason: "emergency_disabled"}
 	}
@@ -153,7 +151,7 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (*dnsserver.Re
 		return dnsserver.NewResponse(res), dnsserver.HintSend, nil
 	}
 
-	post := h.decide(ctx, snap, q, cl, &res, chaos.PhaseResponse, nonce)
+	post := h.decide(ctx, snap, q, cl, &res, chaos.PhaseResponse, sticky)
 	if h.inhibited() {
 		applyRA(&res, cl)
 		return dnsserver.NewResponse(res), dnsserver.HintSend, nil
@@ -213,18 +211,18 @@ func (h *Handler) sendBase(ctx context.Context, snap *snapshot.Snapshot, q model
 	return dnsserver.NewResponse(res), dnsserver.HintSend, nil
 }
 
-func (h *Handler) decide(ctx context.Context, snap *snapshot.Snapshot, q model.Query, cl class, base *model.Result, phase chaos.Phase, nonce string) chaos.ActionPlan {
+func (h *Handler) decide(ctx context.Context, snap *snapshot.Snapshot, q model.Query, cl class, base *model.Result, phase chaos.Phase, sticky *chaos.StickyRand) chaos.ActionPlan {
 	if h == nil || h.eng == nil || h.inhibited() {
 		return chaos.ActionPlan{Disabled: h.inhibited(), Reason: inhibitReason(h)}
 	}
 	plan, err := h.eng.Decide(ctx, snap, chaos.DecisionIn{
-		Query:           q,
-		ClientGroupID:   cl.Group,
-		ZoneID:          cl.ZoneID,
-		ForwardingID:    cl.ForwardingID,
-		Base:            base,
-		Phase:           phase,
-		SimulationNonce: nonce,
+		Query:         q,
+		ClientGroupID: cl.Group,
+		ZoneID:        cl.ZoneID,
+		ForwardingID:  cl.ForwardingID,
+		Base:          base,
+		Phase:         phase,
+		Sticky:        sticky,
 	})
 	if err != nil {
 		h.logf("chaos decide: %v", err)
@@ -242,14 +240,6 @@ func inhibitReason(h *Handler) string {
 		return "emergency_disabled"
 	}
 	return ""
-}
-
-func newDecisionNonce() string {
-	var b [8]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return ""
-	}
-	return hex.EncodeToString(b[:])
 }
 
 func dropOnCtx(ctx context.Context) bool {
@@ -271,7 +261,11 @@ func liveWorkCtx(ctx context.Context) (context.Context, context.CancelFunc) {
 	if errors.Is(ctx.Err(), context.Canceled) {
 		return ctx, func() {}
 	}
-	return context.WithTimeout(context.WithoutCancel(ctx), dnsserver.DefaultQueryTimeout)
+	parent := dnsserver.ServerContext(ctx)
+	if parent == nil {
+		parent = context.Background()
+	}
+	return context.WithTimeout(parent, dnsserver.DefaultQueryTimeout)
 }
 
 func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Query, cl class, plan chaos.ActionPlan, beforeUpstream func() error) (model.Result, error) {

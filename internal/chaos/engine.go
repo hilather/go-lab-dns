@@ -291,12 +291,17 @@ func (e *Engine) uniforms(p model.ChaosPolicy, snap *snapshot.Snapshot, in Decis
 	if mode == "" {
 		mode = model.SelectorDeterministic
 	}
-	if mode == model.SelectorRandom && !simulate && in.SimulationNonce == "" {
-		p := unit(e.rng.Uint64())
-		w := unit(e.rng.Uint64())
-		return HashResult{P: p, W: w}, p, w
+	if mode == model.SelectorRandom && !simulate {
+		h := HashResult{}
+		if in.Sticky != nil {
+			h = in.Sticky.Draw(p.ID, e.rng)
+		} else {
+			h = randomDraw(e.rng)
+		}
+		return h, h.P, h.W
 	}
-	// Deterministic, and simulation of random: hash-v1 (nonce makes simulate stable).
+	// Deterministic, and simulation of random: hash-v1.
+	// Field 10 is empty on the live path; only Simulate fills it.
 	rev := p.Selector.Revision
 	if rev == "" {
 		rev = snap.Revision
@@ -304,6 +309,10 @@ func (e *Engine) uniforms(p model.ChaosPolicy, snap *snapshot.Snapshot, in Decis
 	client := ""
 	if in.Query.Client.IsValid() {
 		client = in.Query.Client.String()
+	}
+	nonce := ""
+	if simulate {
+		nonce = in.SimulationNonce
 	}
 	h := HashV1(HashFields{
 		Seed:        p.Selector.Seed,
@@ -314,7 +323,7 @@ func (e *Engine) uniforms(p model.ChaosPolicy, snap *snapshot.Snapshot, in Decis
 		ClientGroup: ClientGroupField(p.Selector, in.ClientGroupID, client),
 		Transport:   in.Query.Transport,
 		TimeBucket:  TimeBucketString(now, p.Selector.TimeBucket),
-		Nonce:       in.SimulationNonce,
+		Nonce:       nonce,
 	})
 	return h, h.P, h.W
 }
@@ -421,7 +430,11 @@ func (e *Engine) mapDelay(p model.ChaosPolicy, a model.ChaosAction, in DecisionI
 	}
 	u1 := h.U1
 	if a.Distribution == model.DistUniform || (a.Distribution == "" && (a.Min != 0 || a.Max != 0)) {
-		if p.Selector.Mode != model.SelectorRandom || simulate || in.SimulationNonce != "" {
+		if p.Selector.Mode != model.SelectorRandom || simulate {
+			nonce := ""
+			if simulate {
+				nonce = in.SimulationNonce
+			}
 			delayFields := HashFields{
 				Seed:        p.Selector.Seed,
 				Revision:    p.Selector.Revision,
@@ -431,12 +444,14 @@ func (e *Engine) mapDelay(p model.ChaosPolicy, a model.ChaosAction, in DecisionI
 				ClientGroup: ClientGroupField(p.Selector, in.ClientGroupID, clientString(in)),
 				Transport:   in.Query.Transport,
 				TimeBucket:  TimeBucketString(now, p.Selector.TimeBucket),
-				Nonce:       DelayNonce(in.SimulationNonce),
+				Nonce:       DelayNonce(nonce),
 			}
 			if delayFields.Revision == "" {
 				delayFields.Revision = snap.Revision
 			}
 			u1 = HashV1(delayFields).U1
+		} else if h.U1 != 0 {
+			u1 = h.U1
 		} else if e != nil {
 			u1 = e.rng.Uint64()
 		}
