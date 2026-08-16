@@ -6,7 +6,25 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Added
 
-- GA-001 1.0.0-rc.1 candidate: acceptance evidence index, curated release notes, known limitations, and security-reporting details. Program board FND-001–GA-001 marked done. **No git tag and no image publish** in this change.
+- None.
+
+### Changed
+
+- None.
+
+### Fixed
+
+- None.
+
+### Removed or deprecated
+
+- None.
+
+## v1.0.0-rc.1 — 2026-08-16
+
+### Added
+
+- GA-001 1.0.0-rc.1: acceptance evidence index, curated release notes, known limitations, and security-reporting details. Program board FND-001–GA-001 marked done. Image publish still waits for `ghcr.io/hilather/labdns` digest pin after this tag.
 - Initial architecture and implementation plan.
 - Repository foundation: Apache-2.0 license, Go 1.26 module `github.com/hilather/go-lab-dns`, package tree, Makefile, and fail-closed CI skeleton.
 - Canonical domain types in `internal/model`: `State`/`Spec`, zones, records, forwarding, chaos policies, `Operation`/`Target`, and `Query`/`Result`.
