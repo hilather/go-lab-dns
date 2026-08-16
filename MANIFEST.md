@@ -2,8 +2,9 @@
 
 ## Root guidance
 
-- `README.md`: project summary and reading order.
-- `START-HERE.md`: onboarding and definition of done.
+- `README.md`: operator-facing product page, YAML/REST/MCP quick starts, and documentation map.
+- `START-HERE.md`: onboarding, five-minute path, and definition of done.
+- `docs/README.md`: full documentation catalog (architecture, ADRs, tasks, contracts).
 - `AGENTS.md`: mandatory repository instructions.
 - `CONTRIBUTING.md`: contribution workflow.
 - `SECURITY.md`: top-level security policy (GitHub private advisories).
