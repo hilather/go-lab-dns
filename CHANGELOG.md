@@ -6,7 +6,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Added
 
-- None.
+- `serve` mounts the MCP Streamable HTTP adapter on the management listener at `spec.listeners.management.mcpPath` (default `/mcp`), sharing the address and bearer policy with REST. New `rest.Config.Mounts` serves additional handlers on the management listener under the same lifecycle.
 
 ### Changed
 
