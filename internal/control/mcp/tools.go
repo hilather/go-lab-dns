@@ -102,7 +102,6 @@ func (s *Server) registerTools() {
 		format := app.ExportYAML
 		switch strings.ToLower(in.Format) {
 		case "", "yaml", "yml":
-			format = app.ExportYAML
 		case "json":
 			format = app.ExportJSON
 		default:

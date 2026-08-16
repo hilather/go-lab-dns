@@ -1519,7 +1519,7 @@ All first-GA Open Questions are **resolved** (user 2026-08-15). Implementers do 
 |---|---|
 | Q-LIC | Apache-2.0 |
 | Q-MOD | Module path `github.com/hilather/go-lab-dns` (remote `https://github.com/hilather/go-lab-dns.git`) |
-| Q-GO | Go 1.26 (`go 1.26` in go.mod; CI latest 1.26.x) |
+| Q-GO | Go 1.26 (`go 1.26` in go.mod; CI latest 1.26.x; 1.27 deferred until stable — 2026-08-16 check found only RCs) |
 | Q-CNAME | Allow overlay CNAME → forwarded name, global depth cap |
 | Q-AUTH | Unauthenticated loopback only (`127.0.0.1` / `::1`); remote bearer token; GitOps uses bearer |
 | Q-IMG | `ghcr.io/hilather/labdns` |

@@ -138,15 +138,6 @@ func actionInPhase(phase string, want Phase) bool {
 	}
 }
 
-func isTransportAction(typ string) bool {
-	switch typ {
-	case model.ActionDrop, model.ActionTruncate, model.ActionTCPClose, model.ActionTCPReset:
-		return true
-	default:
-		return false
-	}
-}
-
 func containsType(xs []model.RRType, v model.RRType) bool {
 	want := model.RRType(strings.ToUpper(string(v)))
 	for _, x := range xs {

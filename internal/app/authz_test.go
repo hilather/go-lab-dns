@@ -17,7 +17,7 @@ func TestApplyDeniedForViewer(t *testing.T) {
 		ExpectedRevision: boot.Revision,
 		Operations:       []model.Operation{addWWWRecord()},
 	})
-	requireCode(t, err, domainerr.CodeForbidden)
+	_ = requireCode(t, err, domainerr.CodeForbidden)
 }
 
 func TestExportRedactsSecretRef(t *testing.T) {
@@ -112,10 +112,10 @@ func TestValidateMatchesPlanAuthorization(t *testing.T) {
 			Value:  []byte(`{"enabled":true}`),
 		}},
 	})
-	requireCode(t, err, domainerr.CodeForbidden)
+	_ = requireCode(t, err, domainerr.CodeForbidden)
 
 	_, err = svc.Validate(ctx, operator, ValidateIn{})
-	requireCode(t, err, domainerr.CodeForbidden)
+	_ = requireCode(t, err, domainerr.CodeForbidden)
 
 	copied2, err := cloneState(boot.Canonical)
 	if err != nil {
@@ -133,5 +133,5 @@ func TestValidateMatchesPlanAuthorization(t *testing.T) {
 			Value:  []byte(`{"id":"dns-a","type":"A","values":["10.42.0.9"]}`),
 		}},
 	})
-	requireCode(t, err, domainerr.CodeProtectedObject)
+	_ = requireCode(t, err, domainerr.CodeProtectedObject)
 }

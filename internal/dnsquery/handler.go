@@ -123,7 +123,7 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (resp *dnsserv
 	cl = classify(snap, q)
 	tracked = true
 	sticky := chaos.NewStickyRand()
-	pre := chaos.ActionPlan{}
+	var pre chaos.ActionPlan
 	if !h.inhibited() {
 		pre = h.decide(ctx, snap, q, cl, nil, chaos.PhasePreResolution, sticky)
 	} else {

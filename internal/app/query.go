@@ -251,9 +251,7 @@ func (s *App) ListForwardingPolicies(ctx context.Context, actor Actor) ([]model.
 		return nil, err
 	}
 	out := make([]model.ForwardingPolicy, len(snap.Canonical.Spec.Forwarding.Policies))
-	for i, p := range snap.Canonical.Spec.Forwarding.Policies {
-		out[i] = p
-	}
+	copy(out, snap.Canonical.Spec.Forwarding.Policies)
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out, nil
 }

@@ -13,7 +13,8 @@
 - `CHANGELOG.md`: curated unreleased and release history.
 - `RELEASE-NOTES-TEMPLATE.md`: complete between-tag functionality-difference template.
 - `docs/known-limitations.md`: honest first-GA residual.
-- `docs/releases/v1.0.0-rc.1.md`: curated 1.0.0-rc.1 candidate notes (no tag in this change).
+- `docs/releases/v1.0.0-rc.1.md`: curated 1.0.0-rc.1 candidate notes.
+- `docs/releases/v1.0.0-rc.2.md`: curated 1.0.0-rc.2 notes (MCP mount, Go 1.26.6, action SHA pins).
 - `docs/releases/acceptance-evidence.md`: docs/19 criterion → test/command index.
 - `CI-FAILURE-HARDENING-TEMPLATE.md`: root-cause and pipeline-hardening record.
 

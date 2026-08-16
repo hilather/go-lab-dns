@@ -94,7 +94,7 @@ func TestMissingExpectedRevisionFailClosed(t *testing.T) {
 	_, err := svc.Plan(context.Background(), actor(), ChangeIn{
 		Operations: []model.Operation{addWWWRecord()},
 	})
-	requireCode(t, err, domainerr.CodeValidationFailed)
+	_ = requireCode(t, err, domainerr.CodeValidationFailed)
 	if svc.Store().Load() != boot {
 		t.Fatal("missing revision mutated active")
 	}
@@ -183,7 +183,7 @@ func TestIdempotencyRetryAfterRevisionConflict(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = svc.Apply(ctx, actor(), planIn)
-	requireCode(t, err, domainerr.CodeRevisionConflict)
+	_ = requireCode(t, err, domainerr.CodeRevisionConflict)
 	planIn.ExpectedRevision = foreign.CandidateRevision
 	if _, err := svc.Apply(ctx, actor(), planIn); err != nil {
 		t.Fatalf("retry after revision_conflict should succeed: %v", err)
@@ -213,7 +213,7 @@ func TestIdempotencySameKeyDifferentBody(t *testing.T) {
 	}
 	in.Reason = "different"
 	_, err := svc.Apply(context.Background(), actor(), in)
-	requireCode(t, err, domainerr.CodeIdempotencyConflict)
+	_ = requireCode(t, err, domainerr.CodeIdempotencyConflict)
 }
 
 func TestInvalidOperationLeavesActiveUnchanged(t *testing.T) {
@@ -226,7 +226,7 @@ func TestInvalidOperationLeavesActiveUnchanged(t *testing.T) {
 			Target: model.Target{Kind: model.TargetRecord, ID: "x", ZoneID: "lab-zone"},
 		}},
 	})
-	requireCode(t, err, domainerr.CodeValidationFailed)
+	_ = requireCode(t, err, domainerr.CodeValidationFailed)
 	if svc.Store().Load() != boot {
 		t.Fatal("invalid op swapped active")
 	}
@@ -239,7 +239,7 @@ func TestInvalidOperationLeavesActiveUnchanged(t *testing.T) {
 			Value:  mustJSON(model.Record{ID: "x", Owner: "x", Type: model.TypeA, Values: []string{"1.2.3.4"}}),
 		}},
 	})
-	requireCode(t, err, domainerr.CodeValidationFailed)
+	_ = requireCode(t, err, domainerr.CodeValidationFailed)
 
 	_, err = svc.Apply(context.Background(), actor(), ChangeIn{
 		ExpectedRevision: boot.Revision,
@@ -249,7 +249,7 @@ func TestInvalidOperationLeavesActiveUnchanged(t *testing.T) {
 			Value:  mustJSON(model.Record{ID: "ns1-a", Owner: "ns1", Type: model.TypeA, Values: []string{"1.2.3.4"}}),
 		}},
 	})
-	requireCode(t, err, domainerr.CodeAlreadyExists)
+	_ = requireCode(t, err, domainerr.CodeAlreadyExists)
 
 	_, err = svc.Apply(context.Background(), actor(), ChangeIn{
 		ExpectedRevision: boot.Revision,
@@ -258,7 +258,7 @@ func TestInvalidOperationLeavesActiveUnchanged(t *testing.T) {
 			Target: model.Target{Kind: model.TargetRecord, ID: "nope", ZoneID: "lab-zone"},
 		}},
 	})
-	requireCode(t, err, domainerr.CodeNotFound)
+	_ = requireCode(t, err, domainerr.CodeNotFound)
 
 	if svc.Store().Load() != boot {
 		t.Fatal("failed applies swapped active")
@@ -332,9 +332,9 @@ func TestNoActiveSnapshotFailClosed(t *testing.T) {
 		ExpectedRevision: "sha256:x",
 		Operations:       []model.Operation{addWWWRecord()},
 	})
-	requireCode(t, err, domainerr.CodeInternalError)
+	_ = requireCode(t, err, domainerr.CodeInternalError)
 	_, err = svc.GetState(context.Background(), actor())
-	requireCode(t, err, domainerr.CodeInternalError)
+	_ = requireCode(t, err, domainerr.CodeInternalError)
 }
 
 func TestPreviousSnapshotIsSingleGeneration(t *testing.T) {

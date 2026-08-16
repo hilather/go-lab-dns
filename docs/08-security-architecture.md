@@ -2,7 +2,7 @@
 
 Status: Implemented (SEC-001)
 Owners: Security, DNS, Control Plane
-Last reviewed: 2026-08-15 (GA-001; reporting remains GitHub private advisories)
+Last reviewed: 2026-08-16 (GA-001; reporting remains GitHub private advisories; Actions SHA pins)
 Related ADRs: 0003, 0004, 0005, 0007
 
 ## Goals
@@ -138,6 +138,7 @@ Audit delivery failure cannot block DNS. First GA does **not** fail-close manage
 ## Supply chain
 
 - Pin direct dependencies.
+- Pin GitHub Actions by commit SHA (with a version comment); the toolchain version lives in one `GO_VERSION` env var per workflow, kept in sync with `go.mod` and the `Dockerfile`.
 - Generate an SBOM.
 - Scan source, dependencies, and images.
 - Use reproducible or provenance-attested builds where practical.

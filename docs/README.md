@@ -103,7 +103,8 @@ See [tasks/README.md](../tasks/README.md) and the [program board](../tasks/00-pr
 
 | Path | Role |
 |---|---|
-| [releases/v1.0.0-rc.1.md](releases/v1.0.0-rc.1.md) | Candidate notes |
+| [releases/v1.0.0-rc.1.md](releases/v1.0.0-rc.1.md) | 1.0.0-rc.1 candidate notes |
+| [releases/v1.0.0-rc.2.md](releases/v1.0.0-rc.2.md) | 1.0.0-rc.2 notes (MCP mount, toolchain, action pins) |
 | [releases/acceptance-evidence.md](releases/acceptance-evidence.md) | Acceptance index |
 | [ci-failure-hardening/2026-08-15-cli-help-not-generated.md](ci-failure-hardening/2026-08-15-cli-help-not-generated.md) | CI hardening note |
 | [../api/openapi/v1.json](../api/openapi/v1.json) | OpenAPI 3.1 |

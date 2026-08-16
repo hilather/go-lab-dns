@@ -1,21 +1,20 @@
 # Known limitations (first GA)
 
-Honest residual for the **1.0.0-rc.1** candidate. These are not defects hidden from the notes; they are out of first-GA scope, operator steps that this change does not perform, or documented bounds. See [docs/18-roadmap-and-non-goals.md](https://github.com/hilather/go-lab-dns/blob/main/docs/18-roadmap-and-non-goals.md) for deferred product work.
+Honest residual for first GA, last reviewed against **1.0.0-rc.2**. These are not defects hidden from the notes; they are out of first-GA scope, operator steps that a given change does not perform, or documented bounds. See [docs/18-roadmap-and-non-goals.md](https://github.com/hilather/go-lab-dns/blob/main/docs/18-roadmap-and-non-goals.md) for deferred product work.
 
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-16
 
-## This candidate does not tag or publish
+## Tag and image publish
 
-- No git tag is created in GA-001. A human tags the exact green commit.
-- No container image is pushed. `ghcr.io/hilather/labdns` digest is unpublished until the release pipeline builds from the tag.
+- `v1.0.0-rc.1` notes shipped before that tag existed. `v1.0.0-rc.2` is the first post-rc.1 tag and still does not publish `ghcr.io/hilather/labdns`.
 - The GitOps template still uses an all-zero digest placeholder until that pin exists ([examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md)).
-- Application binaries built without ldflags report version `dev`. The notes version `1.0.0-rc.1` is the candidate identity for the tag/image, not the default `dev` string.
+- Application binaries built without ldflags report version `dev`. The notes version `1.0.0-rc.2` is the candidate identity for the tag/image, not the default `dev` string.
 - Required GitHub Actions green-on-tag is enforced by `tag-gate`, not by this branch commit alone.
 
-## First release: no predecessor tag
+## Upgrade and rollback
 
-- Public-surface diff is against the git empty tree, not a previous `v*` tag.
-- There is no supported application upgrade path from an earlier LabDNS release. First install is the only supported “upgrade.”
+- Public-surface diff for `v1.0.0-rc.2` is against `v1.0.0-rc.1`, not the empty tree.
+- Upgrade from rc.1 is process restart onto this tag. Bootstrap YAML needs no migration. MCP `/mcp` on `serve` is the only operator-visible behavior delta.
 - Rollback is process restart onto a previous image digest / desired-state pin (ADR 0003). Runtime mutations are discarded on restart.
 - Tag-time SBOM (`go list -m -json all`) and provenance attestation are operator/release-pipeline outputs, not artifacts of this change.
 

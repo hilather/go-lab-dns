@@ -6,11 +6,13 @@ import (
 	"go/token"
 	"strings"
 	"testing"
+
+	"github.com/hilather/go-lab-dns/internal/testutil/goparse"
 )
 
 func TestNoMutationPrimitivesInProduction(t *testing.T) {
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, ".", nil, parser.ParseComments)
+	pkgs, err := goparse.ParseDir(fset, ".", parser.ParseComments)
 	if err != nil {
 		t.Fatal(err)
 	}

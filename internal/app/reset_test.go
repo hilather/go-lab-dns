@@ -82,7 +82,7 @@ func TestFailedResetKeepsIdempotencyCache(t *testing.T) {
 	in.Reason = "second"
 	in.ExpectedRevision = svc.Store().Load().Revision
 	_, err := svc.Apply(ctx, actor(), in)
-	requireCode(t, err, domainerr.CodeIdempotencyConflict)
+	_ = requireCode(t, err, domainerr.CodeIdempotencyConflict)
 }
 
 func TestResetMissingFileLeavesActive(t *testing.T) {
@@ -98,7 +98,7 @@ func TestResetMissingFileLeavesActive(t *testing.T) {
 	live := svc.Store().Load()
 	svc.bootstrapPath = filepath.Join(t.TempDir(), "missing.yaml")
 	_, err := svc.Reset(ctx, actor(), ResetIn{})
-	requireCode(t, err, domainerr.CodeValidationFailed)
+	_ = requireCode(t, err, domainerr.CodeValidationFailed)
 	if svc.Store().Load() != live {
 		t.Fatal("missing bootstrap reset swapped active")
 	}

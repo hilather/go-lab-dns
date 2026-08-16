@@ -241,7 +241,9 @@ func TestClassifySourcePanicIsSERVFAILAndFreesInflight(t *testing.T) {
 		t.Fatalf("panic hook rcode=%d", rcodeOf(t, out))
 	}
 	// Inflight must be released; a leaked slot would drop this query.
-	out = exchangeUDP(t, s.UDPAddr(), packA(t, "p2.lab.", 31, nil), 400*time.Millisecond)
+	// Use the same 1s budget as mustExchangeUDP so a busy `go test ./...`
+	// machine does not report a leak when the SERVFAIL is merely slow.
+	out = exchangeUDP(t, s.UDPAddr(), packA(t, "p2.lab.", 31, nil), time.Second)
 	if out == nil {
 		t.Fatal("inflight leaked; second query dropped")
 	}

@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/hilather/go-lab-dns/internal/testutil/goparse"
 )
 
 var documentedCodes = []Code{
@@ -240,7 +242,7 @@ func TestUnknownCodeNotRetryable(t *testing.T) {
 
 func TestNoRuntimeDebugImport(t *testing.T) {
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, ".", nil, parser.ImportsOnly)
+	pkgs, err := goparse.ParseDir(fset, ".", parser.ImportsOnly)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,7 +287,7 @@ func codesFromErrorModelDoc(t *testing.T) []Code {
 func codeConstants(t *testing.T) map[string]bool {
 	t.Helper()
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, ".", nil, 0)
+	pkgs, err := goparse.ParseDir(fset, ".", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

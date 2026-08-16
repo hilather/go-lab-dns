@@ -324,7 +324,6 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request, instance s
 	format := app.ExportYAML
 	switch strings.ToLower(r.URL.Query().Get("format")) {
 	case "", "yaml", "yml":
-		format = app.ExportYAML
 	case "json":
 		format = app.ExportJSON
 	default:

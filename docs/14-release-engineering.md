@@ -2,7 +2,7 @@
 
 Status: Normative release gate (REL-001)
 Owners: Release Engineering, All maintainers
-Last reviewed: 2026-08-15 (GA-001 1.0.0-rc.1 candidate)
+Last reviewed: 2026-08-16 (GA-001 1.0.0-rc.1 candidate; Actions SHA pins)
 
 ## Goals
 
@@ -24,7 +24,7 @@ Use semantic versioning for the application. Separately version:
 
 ## Required CI (no optional jobs)
 
-Every job in [`.github/workflows/ci.yml`](https://github.com/hilather/go-lab-dns/blob/main/.github/workflows/ci.yml) is required. There is no bypass, skip, `continue-on-error`, or unbounded retry. Local equivalents:
+Every job in [`.github/workflows/ci.yml`](https://github.com/hilather/go-lab-dns/blob/main/.github/workflows/ci.yml) is required. There is no bypass, skip, `continue-on-error`, or unbounded retry. Third-party actions are pinned by full commit SHA (version noted in a comment), and each workflow reads the Go toolchain from a single `GO_VERSION` env var that must match `go.mod` and the `Dockerfile` base image. Local equivalents:
 
 ```text
 make format
@@ -69,7 +69,7 @@ No administrative bypass is permitted for a required failed check. A skipped or 
 
 ### Operator checklist
 
-1. Land the release-candidate commit on `main` with required CI green. GA-001 attached [docs/releases/acceptance-evidence.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/acceptance-evidence.md) and candidate notes [docs/releases/v1.0.0-rc.1.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.1.md). **Do not tag from an agent change;** a human tags the exact green SHA.
+1. Land the release-candidate commit on `main` with required CI green. GA-001 attached [docs/releases/acceptance-evidence.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/acceptance-evidence.md) and candidate notes [docs/releases/v1.0.0-rc.1.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.1.md). Post-rc.1 notes live at [docs/releases/v1.0.0-rc.2.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.2.md). Tag only the exact green SHA.
 2. Write `docs/releases/vX.Y.Z.md` from `RELEASE-NOTES-TEMPLATE.md` (or copy `docs/releases/v1.0.0-rc.1.md` for `v1.0.0-rc.1`).
 3. Run `make verify-generated` and `make release-diff FROM=<prev> TO=HEAD NOTES=docs/releases/vX.Y.Z.md` locally (`<prev>` is the previous `v*` tag, or the empty-tree SHA from `go run ./scripts/release-diff -print-empty-tree` for the first tag).
 4. Freeze `CHANGELOG.md` Unreleased into `## vX.Y.Z — YYYY-MM-DD`.

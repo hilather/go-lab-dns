@@ -82,7 +82,7 @@ func checkDNSName(s string) *domainerr.FieldViolation {
 		}
 		for j, c := range lab {
 			// Underscore-labels (_sip._tcp, _acme-challenge) are ASCII and required for SRV.
-			if c > unicode.MaxASCII || !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '-' || c == '_') {
+			if c > unicode.MaxASCII || !isLabelChar(c) {
 				return &domainerr.FieldViolation{Code: violationInvalidName, Message: "label contains an invalid character"}
 			}
 			if c == '-' && (j == 0 || j == len(lab)-1) {
@@ -91,6 +91,10 @@ func checkDNSName(s string) *domainerr.FieldViolation {
 		}
 	}
 	return nil
+}
+
+func isLabelChar(c rune) bool {
+	return c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '-' || c == '_'
 }
 
 func isWildcardOwner(owner string) bool {

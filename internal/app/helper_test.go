@@ -33,11 +33,6 @@ func repoRoot(t *testing.T) string {
 	}
 }
 
-func fixturePath(t *testing.T) string {
-	t.Helper()
-	return namedFixture(t, "empty-client-groups.yaml")
-}
-
 func namedFixture(t *testing.T, name string) string {
 	t.Helper()
 	return filepath.Join(repoRoot(t), "testdata", "config", "valid", name)

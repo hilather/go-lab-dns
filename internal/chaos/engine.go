@@ -217,7 +217,7 @@ func (e *Engine) decide(snap *snapshot.Snapshot, in DecisionIn, filter []model.P
 		if reason := gateSkip(p, now, safety, snap.CompiledAt); reason != "" {
 			// Simulation answers "what would this policy do if activated".
 			// Live Decide still skips disabled policies.
-			if !(simulate && reason == "disabled") {
+			if !simulate || reason != "disabled" {
 				plan.Decisions = append(plan.Decisions, PolicyDecision{
 					PolicyID: p.ID, Precedence: cp.Precedence, SkipReason: reason,
 				})
@@ -296,7 +296,7 @@ func (e *Engine) uniforms(p model.ChaosPolicy, snap *snapshot.Snapshot, in Decis
 		mode = model.SelectorDeterministic
 	}
 	if mode == model.SelectorRandom && !simulate {
-		h := HashResult{}
+		var h HashResult
 		if in.Sticky != nil {
 			h = in.Sticky.Draw(p.ID, e.rng)
 		} else {

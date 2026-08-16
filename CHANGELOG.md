@@ -6,19 +6,40 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Added
 
+- None.
+
+### Changed
+
+- None.
+
+### Fixed
+
+- None.
+
+### Removed or deprecated
+
+- None.
+
+## v1.0.0-rc.2 — 2026-08-16
+
+Curated notes: [docs/releases/v1.0.0-rc.2.md](https://github.com/hilather/go-lab-dns/blob/v1.0.0-rc.2/docs/releases/v1.0.0-rc.2.md).
+
+### Added
+
 - `serve` mounts the MCP Streamable HTTP adapter on the management listener at `spec.listeners.management.mcpPath` (default `/mcp`), sharing the address and bearer policy with REST. New `rest.Config.Mounts` serves additional handlers on the management listener under the same lifecycle.
 
 ### Changed
 
 - Add a cinematic README header image (`docs/assets/header.jpg`) and a 1280×640 social card (`docs/assets/social.jpg`).
 - Rewrite the root README as an operator-facing product page: YAML bootstrap, CLI validate/serve, REST and MCP state-loading APIs, and a complete documentation map that links every architecture doc, ADR, and task list. Remove leftover agent-pack wording.
-- Pin CI and the image build toolchain to Go **1.26.6** (govulncheck on 1.26.5 reports GO-2026-6218 / 6090 / 6089 / 5972 / 5026, all fixed in 1.26.6). Bump `golang.org/x/net` to v0.55.0 (GO-2026-5026).
-- `golangci-lint` uses `govet` only until a dedicated pass re-enables the v2 standard preset (errcheck/unused/staticcheck on stack leftovers).
-- Tag-gate writes `release-diff.txt` under `${{ runner.temp }}` so `tee` does not dirty the worktree (`release-diff` fail-closes on untracked files).
+- Go 1.27 was evaluated on 2026-08-16 and deferred: only release candidates (up to `go1.27rc3`) exist. The pin stays **1.26.6** (already on the `v1.0.0-rc.1` tag SHA).
+- Bump indirect modules: `golang.org/x/net` v0.55.0 → v0.58.0, `x/sys` v0.45.0 → v0.47.0, `x/sync` v0.20.0 → v0.22.0, `x/mod` v0.33.0 → v0.40.0, `x/tools` v0.42.0 → v0.49.0, `x/oauth2` v0.35.0 → v0.36.0. Direct dependencies were already current.
+- CI workflows pin actions by commit SHA (`actions/checkout` v7.0.1, `actions/setup-go` v7.0.0, `actions/upload-artifact` v7.0.1, replacing Dependabot PRs #21–#23 floating v7 tags and the previous v4/v5 pins) and read the toolchain from one `GO_VERSION` workflow env var instead of scattered per-job pins.
+- `golangci-lint` again runs the full v2 `standard` preset (errcheck, govet, ineffassign, staticcheck, unused) after the post-rc.1 govet-only stopgap; the stack leftovers it flagged are fixed: deferred `Close` errors now explicitly discarded, deprecated `parser.ParseDir` replaced by test-only `internal/testutil/goparse.ParseDir`, dead helpers removed (`bearerToken` wrappers, unused MCP test scaffolding, duplicate `isTransportAction`), and De Morgan / tagged-switch / copy-loop cleanups applied.
 
 ### Fixed
 
-- None.
+- Lint-driven test hardening: the cache test now asserts `Original` stays empty after `Get` (was an empty branch), the rate-limit burst test consumes its two tokens in separate statements so the assertion is explicit, and the classify-panic inflight test waits a full second for the follow-up SERVFAIL so a busy `go test ./...` run is not reported as a leak.
 
 ### Removed or deprecated
 

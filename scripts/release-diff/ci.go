@@ -73,7 +73,7 @@ func fetchGitHubChecks(token, repo, sha string) ([]releasecontract.CheckRun, err
 			return nil, err
 		}
 		body, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if err != nil {
 			return nil, err
 		}

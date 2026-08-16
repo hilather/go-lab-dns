@@ -273,7 +273,7 @@ func healthcheckCmd(args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "labdns healthcheck: %v\n", err)
 		return 1
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		_, _ = fmt.Fprintf(stderr, "labdns healthcheck: status %d\n", resp.StatusCode)
 		return 1
@@ -287,7 +287,7 @@ func exchangeUDP(addr string, payload []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	_ = c.SetDeadline(time.Now().Add(2 * time.Second))
 	if _, err := c.Write(payload); err != nil {
 		return nil, err
@@ -305,7 +305,7 @@ func exchangeTCP(addr string, payload []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	_ = c.SetDeadline(time.Now().Add(2 * time.Second))
 	var hdr [2]byte
 	binary.BigEndian.PutUint16(hdr[:], uint16(len(payload)))

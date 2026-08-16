@@ -8,11 +8,13 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hilather/go-lab-dns/internal/testutil/goparse"
 )
 
 func TestNoMiekgOrPolicyImports(t *testing.T) {
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, ".", nil, parser.ImportsOnly)
+	pkgs, err := goparse.ParseDir(fset, ".", parser.ImportsOnly)
 	if err != nil {
 		t.Fatal(err)
 	}

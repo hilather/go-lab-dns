@@ -30,7 +30,7 @@ func TestDecodePackSampleYAML(t *testing.T) {
 
 func TestDecodeJSONUnknownField(t *testing.T) {
 	_, err := DecodeJSON([]byte(`{"apiVersion":"labdns.dev/v1alpha1","kind":"LabDNS","metadata":{"name":"x"},"spec":{"nope":1}}`))
-	requireValidation(t, err, violationUnknownField)
+	_ = requireValidation(t, err, violationUnknownField)
 }
 
 func TestDecodeUnknownFieldEveryLevel(t *testing.T) {
@@ -106,16 +106,16 @@ spec:
 func TestDecodeRejectsTrailingDocuments(t *testing.T) {
 	yamlDoc := "apiVersion: labdns.dev/v1alpha1\nkind: LabDNS\nmetadata:\n  name: a\nspec: {}\n---\nkind: LabDNS\n"
 	_, err := DecodeYAML([]byte(yamlDoc))
-	requireValidation(t, err, violationInvalidValue)
+	_ = requireValidation(t, err, violationInvalidValue)
 
 	jsonDoc := `{"apiVersion":"labdns.dev/v1alpha1","kind":"LabDNS","metadata":{"name":"a"},"spec":{}}{"x":1}`
 	_, err = DecodeJSON([]byte(jsonDoc))
-	requireValidation(t, err, violationInvalidValue)
+	_ = requireValidation(t, err, violationInvalidValue)
 }
 
 func TestDecodeRejectsUnitlessDuration(t *testing.T) {
 	_, err := Decode([]byte("apiVersion: labdns.dev/v1alpha1\nkind: LabDNS\nmetadata:\n  name: x\nspec:\n  defaults:\n    ttl: 30\n"))
-	requireValidation(t, err, violationInvalidValue)
+	_ = requireValidation(t, err, violationInvalidValue)
 }
 
 func TestDecodeRejectsEmptyAndTooLarge(t *testing.T) {

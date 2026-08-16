@@ -18,8 +18,6 @@ func (s *Server) authenticate(r *http.Request) (auth.Actor, error) {
 	}, s.authn)
 }
 
-func bearerToken(h string) (string, bool) { return auth.BearerToken(h) }
-
 func isLoopback(remoteAddr string) bool { return auth.IsLoopback(remoteAddr) }
 
 func (s *Server) authorizeResource(actor auth.Actor, uri string) error {

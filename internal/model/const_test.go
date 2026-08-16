@@ -2,10 +2,11 @@ package model
 
 import (
 	"go/ast"
-	"go/parser"
 	"go/token"
 	"strconv"
 	"testing"
+
+	"github.com/hilather/go-lab-dns/internal/testutil/goparse"
 )
 
 func TestFirstGARRTypesLocked(t *testing.T) {
@@ -121,7 +122,7 @@ func assertClosedStringEnum[T ~string](t *testing.T, typeName string, all, want 
 func stringConstsOfType(t *testing.T, dir, typeName string) map[string]bool {
 	t.Helper()
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, dir, nil, 0)
+	pkgs, err := goparse.ParseDir(fset, dir, 0)
 	if err != nil {
 		t.Fatalf("parse %s: %v", dir, err)
 	}

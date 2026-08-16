@@ -367,7 +367,7 @@ Implementation contracts (not a substitute for the design docs):
 - [api/capabilities/v1.json](api/capabilities/v1.json) · [api/openapi/v1.json](api/openapi/v1.json) · [api/mcp/v1.json](api/mcp/v1.json)
 - [api/metrics/v1alpha1.json](api/metrics/v1alpha1.json) · [api/cli/help.txt](api/cli/help.txt) · [api/errors/v1.json](api/errors/v1.json)
 - [api/jsonschema/labdns.dev.v1alpha1.json](api/jsonschema/labdns.dev.v1alpha1.json) · [api/chaos/effects.json](api/chaos/effects.json)
-- [examples/labdns-deploy](examples/labdns-deploy/README.md) · [docs/releases/v1.0.0-rc.1.md](docs/releases/v1.0.0-rc.1.md) · [docs/releases/acceptance-evidence.md](docs/releases/acceptance-evidence.md)
+- [examples/labdns-deploy](examples/labdns-deploy/README.md) · [docs/releases/v1.0.0-rc.2.md](docs/releases/v1.0.0-rc.2.md) · [docs/releases/v1.0.0-rc.1.md](docs/releases/v1.0.0-rc.1.md) · [docs/releases/acceptance-evidence.md](docs/releases/acceptance-evidence.md)
 
 ---
 

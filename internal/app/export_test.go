@@ -99,5 +99,5 @@ func TestExportUnknownFormat(t *testing.T) {
 	path := copyFixture(t)
 	svc, _ := mustBoot(t, path)
 	_, err := svc.Export(context.Background(), actor(), ExportFormat("xml"))
-	requireCode(t, err, "validation_failed")
+	_ = requireCode(t, err, "validation_failed")
 }

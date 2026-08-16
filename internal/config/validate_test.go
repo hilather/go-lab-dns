@@ -43,7 +43,7 @@ func TestValidateTimeBucket(t *testing.T) {
 		Selector:    model.ChaosSelector{Mode: model.SelectorDeterministic, Probability: 1, TimeBucket: 500 * time.Millisecond},
 		Outcomes:    []model.ChaosOutcome{{ID: "o", Weight: 1, Actions: []model.ChaosAction{{Type: model.ActionDelay, Duration: time.Millisecond}}}},
 	}}
-	requireValidation(t, Validate(st), violationTimeBucket)
+	_ = requireValidation(t, Validate(st), violationTimeBucket)
 
 	st.Spec.Chaos.Policies[0].Selector.TimeBucket = time.Second
 	if err := Validate(st); err != nil {
@@ -73,7 +73,7 @@ spec:
           values: [a]
 `
 	_, err := Load([]byte(doc))
-	requireValidation(t, err, violationCNAMELoop)
+	_ = requireValidation(t, err, violationCNAMELoop)
 }
 
 func TestValidateRejectsUppercaseTransport(t *testing.T) {
@@ -87,13 +87,13 @@ func TestValidateRejectsUppercaseTransport(t *testing.T) {
 			Transport: "UDP",
 		}},
 	}}
-	requireValidation(t, Validate(st), violationInvalidTransport)
+	_ = requireValidation(t, Validate(st), violationInvalidTransport)
 }
 
 func TestValidateUnknownClientClosed(t *testing.T) {
 	st := minimalState(t)
 	st.Spec.Access.UnknownClient = "allow-forward"
-	requireValidation(t, Validate(st), violationInvalidValue)
+	_ = requireValidation(t, Validate(st), violationInvalidValue)
 }
 
 func TestValidateTransportClosedNoDoT(t *testing.T) {
@@ -107,7 +107,7 @@ func TestValidateTransportClosedNoDoT(t *testing.T) {
 			Transport: "dot",
 		}},
 	}}
-	requireValidation(t, Validate(st), violationInvalidTransport)
+	_ = requireValidation(t, Validate(st), violationInvalidTransport)
 }
 
 func TestValidateDoesNotMutate(t *testing.T) {
@@ -138,7 +138,7 @@ func TestValidateConflictingTransportActions(t *testing.T) {
 			},
 		}},
 	}}
-	requireValidation(t, Validate(st), violationConflict)
+	_ = requireValidation(t, Validate(st), violationConflict)
 }
 
 func TestValidateHighImpactRequiresExpiry(t *testing.T) {
@@ -152,7 +152,7 @@ func TestValidateHighImpactRequiresExpiry(t *testing.T) {
 		Selector:    model.ChaosSelector{Mode: model.SelectorDeterministic, Probability: 1},
 		Outcomes:    []model.ChaosOutcome{{ID: "o", Weight: 1, Actions: []model.ChaosAction{{Type: model.ActionDelay, Duration: time.Millisecond}}}},
 	}}
-	requireValidation(t, Validate(st), violationMissingExpiry)
+	_ = requireValidation(t, Validate(st), violationMissingExpiry)
 }
 
 func TestValidateAlternateAddressCIDR(t *testing.T) {
@@ -170,7 +170,7 @@ func TestValidateAlternateAddressCIDR(t *testing.T) {
 			Actions: []model.ChaosAction{{Type: model.ActionAlternate, Values: []string{"8.8.8.8"}}},
 		}},
 	}}
-	requireValidation(t, Validate(st), violationAltAddr)
+	_ = requireValidation(t, Validate(st), violationAltAddr)
 }
 
 func TestValidateDoesNotRequireClientGroups(t *testing.T) {

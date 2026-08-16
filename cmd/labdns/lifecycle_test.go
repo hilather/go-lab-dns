@@ -364,7 +364,7 @@ func exchangeUDPTimeout(addr string, payload []byte, d time.Duration) ([]byte, e
 	if err != nil {
 		return nil, err
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	_ = c.SetDeadline(time.Now().Add(d))
 	if _, err := c.Write(payload); err != nil {
 		return nil, err
@@ -388,7 +388,7 @@ func getJSON(t *testing.T, url string) map[string]any {
 			time.Sleep(20 * time.Millisecond)
 			continue
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		var out map[string]any
 		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 			t.Fatal(err)
@@ -405,7 +405,7 @@ func postJSON(t *testing.T, url, body string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	b, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("POST %s status=%d body=%s", url, resp.StatusCode, b)

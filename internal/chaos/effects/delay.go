@@ -73,7 +73,7 @@ func (s *Session) Sleep(ctx context.Context, plan chaos.ActionPlan, phase string
 		if a.Delay <= 0 || a.Skip {
 			continue
 		}
-		if a.Type != model.ActionDelay && !(a.Type == model.ActionUpstream && a.Phase == model.PhaseBeforeUpstream) {
+		if a.Type != model.ActionDelay && (a.Type != model.ActionUpstream || a.Phase != model.PhaseBeforeUpstream) {
 			continue
 		}
 		if phase != "" && a.Phase != phase {

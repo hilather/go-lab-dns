@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hilather/go-lab-dns/internal/testutil/goparse"
 )
 
 func TestMiekgDNSOnlyImportedHere(t *testing.T) {
@@ -48,7 +50,7 @@ func TestMiekgDNSOnlyImportedHere(t *testing.T) {
 
 func TestDnswireImportsOnlyModelAndMiekg(t *testing.T) {
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, ".", nil, parser.ImportsOnly)
+	pkgs, err := goparse.ParseDir(fset, ".", parser.ImportsOnly)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,9 +67,9 @@ func TestDnswireImportsOnlyModelAndMiekg(t *testing.T) {
 				if !strings.HasPrefix(path, "github.com/") && !strings.HasPrefix(path, "golang.org/") {
 					continue
 				}
-				switch {
-				case path == "github.com/miekg/dns":
-				case path == "github.com/hilather/go-lab-dns/internal/model":
+				switch path {
+				case "github.com/miekg/dns":
+				case "github.com/hilather/go-lab-dns/internal/model":
 				default:
 					t.Errorf("%s imports %q; dnswire production code may import only model and miekg/dns", filename, path)
 				}

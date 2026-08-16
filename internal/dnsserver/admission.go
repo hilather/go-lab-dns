@@ -50,12 +50,12 @@ func admit(req *dnswire.Request, parseErr error, maxQuestions int) admitDecision
 }
 
 func parseReason(err error) string {
-	switch {
-	case err == nil:
+	switch err {
+	case nil:
 		return "ok"
-	case err == dnswire.ErrEmpty:
+	case dnswire.ErrEmpty:
 		return "empty"
-	case err == dnswire.ErrShortHeader:
+	case dnswire.ErrShortHeader:
 		return "short"
 	default:
 		return "malformed"

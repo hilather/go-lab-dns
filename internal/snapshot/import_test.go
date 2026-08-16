@@ -5,16 +5,21 @@ import (
 	"go/token"
 	"strings"
 	"testing"
+
+	"github.com/hilather/go-lab-dns/internal/testutil/goparse"
 )
 
 func TestImportsOnlyStdlibAndModel(t *testing.T) {
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, ".", nil, parser.ImportsOnly)
+	pkgs, err := goparse.ParseDir(fset, ".", parser.ImportsOnly)
 	if err != nil {
 		t.Fatal(err)
 	}
 	allowedInternal := "github.com/hilather/go-lab-dns/internal/model"
-	allowedTestInternal := "github.com/hilather/go-lab-dns/internal/testutil"
+	allowedTestInternal := map[string]bool{
+		"github.com/hilather/go-lab-dns/internal/testutil":         true,
+		"github.com/hilather/go-lab-dns/internal/testutil/goparse": true,
+	}
 	forbiddenPref := []string{
 		"github.com/miekg/dns",
 		"github.com/modelcontextprotocol",
@@ -40,7 +45,7 @@ func TestImportsOnlyStdlibAndModel(t *testing.T) {
 				if path == allowedInternal {
 					continue
 				}
-				if testFile && path == allowedTestInternal {
+				if testFile && allowedTestInternal[path] {
 					continue
 				}
 				t.Errorf("%s imports %q; snapshot production code may import only model", filename, path)

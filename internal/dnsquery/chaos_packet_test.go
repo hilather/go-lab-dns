@@ -94,11 +94,7 @@ func TestPacketEDEPresent(t *testing.T) {
 	_, srv := startChaosServer(t, st)
 	q := packQuery(t, "ns.lab.example.", model.TypeA, true)
 	out := exchangeUDP(t, srv.UDPAddr(), q)
-	req, err := dnswire.Parse(out, model.TransportUDP, netip.Addr{})
-	if err != nil && !dnswire.IsMalformed(err) {
-		// Unpack as response via miekg through Encode tests; use UnpackUpstream + re-parse OPT.
-	}
-	_ = req
+	// Parse with UnpackUpstream (not Parse, which is request-side); OPT handling is checked below.
 	msg, err := dnswire.UnpackUpstream(out)
 	if err != nil {
 		t.Fatal(err)

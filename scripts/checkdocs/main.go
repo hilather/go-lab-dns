@@ -30,6 +30,7 @@ var RequiredRootDocs = []string{
 	"docs/14-release-engineering.md",
 	"docs/known-limitations.md",
 	"docs/releases/v1.0.0-rc.1.md",
+	"docs/releases/v1.0.0-rc.2.md",
 	"docs/releases/acceptance-evidence.md",
 	"docs/ci-failure-hardening/2026-08-15-cli-help-not-generated.md",
 	".github/CODEOWNERS",

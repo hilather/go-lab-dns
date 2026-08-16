@@ -5,6 +5,8 @@ import (
 	"go/token"
 	"strings"
 	"testing"
+
+	"github.com/hilather/go-lab-dns/internal/testutil/goparse"
 )
 
 func TestNoWireOrMCPOrInternalImports(t *testing.T) {
@@ -14,7 +16,7 @@ func TestNoWireOrMCPOrInternalImports(t *testing.T) {
 func assertNoForbiddenImports(t *testing.T, dir string) {
 	t.Helper()
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, dir, nil, parser.ImportsOnly)
+	pkgs, err := goparse.ParseDir(fset, dir, parser.ImportsOnly)
 	if err != nil {
 		t.Fatalf("parse %s: %v", dir, err)
 	}
@@ -29,12 +31,17 @@ func assertNoForbiddenImports(t *testing.T, dir string) {
 	}
 	for _, pkg := range pkgs {
 		for filename, f := range pkg.Files {
+			isTest := strings.HasSuffix(filename, "_test.go")
 			for _, imp := range f.Imports {
 				path := strings.Trim(imp.Path.Value, `"`)
 				for _, p := range forbidden {
 					if path == p || strings.HasPrefix(path, p+"/") {
 						t.Errorf("%s imports forbidden %q", filename, path)
 					}
+				}
+				if isTest && path == "github.com/hilather/go-lab-dns/internal/testutil/goparse" {
+					// Shared test-only helpers do not break production leaf purity.
+					continue
 				}
 				if strings.HasPrefix(path, "github.com/hilather/go-lab-dns/internal/") {
 					t.Errorf("%s imports internal package %q (model must stay leaf)", filename, path)

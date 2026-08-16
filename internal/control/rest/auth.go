@@ -23,6 +23,4 @@ func (s *Server) authenticate(r *http.Request, cap capabilities.Capability) (aut
 	}, s.authn)
 }
 
-func bearerToken(h string) (string, bool) { return auth.BearerToken(h) }
-
 func isLoopback(remoteAddr string) bool { return auth.IsLoopback(remoteAddr) }

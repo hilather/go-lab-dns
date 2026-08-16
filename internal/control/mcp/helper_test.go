@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
-	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -89,28 +87,6 @@ func newTestServerFixture(t *testing.T, name string) (*Server, *app.App) {
 	return s, svc
 }
 
-func doMCP(t *testing.T, h http.Handler, body string, hdr http.Header, remote string) *httptest.ResponseRecorder {
-	t.Helper()
-	req := httptest.NewRequest(http.MethodPost, DefaultPath, strings.NewReader(body))
-	req.RemoteAddr = remote
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json, text/event-stream")
-	req.Header.Set(headerProtocolVersion, ProtocolVersion)
-	for k, vs := range hdr {
-		for _, v := range vs {
-			req.Header.Set(k, v)
-		}
-	}
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	return rec
-}
-
-func doLoopbackMCP(t *testing.T, h http.Handler, body string) *httptest.ResponseRecorder {
-	t.Helper()
-	return doMCP(t, h, body, nil, "127.0.0.1:54321")
-}
-
 func rpcCall(id int, method string, params any) string {
 	p := map[string]any{
 		"jsonrpc": "2.0",
@@ -129,16 +105,6 @@ func rpcCall(id int, method string, params any) string {
 		panic(err)
 	}
 	return string(b)
-}
-
-func rpcParams(args map[string]any) map[string]any {
-	if args == nil {
-		args = map[string]any{}
-	}
-	return map[string]any{
-		"_meta":     map[string]any{"io.modelcontextprotocol/protocolVersion": ProtocolVersion},
-		"arguments": args,
-	}
 }
 
 func decodeRPC(t *testing.T, rec *httptest.ResponseRecorder) map[string]any {
@@ -236,13 +202,4 @@ func compactJSON(t *testing.T, v any) string {
 		return string(b)
 	}
 	return buf.String()
-}
-
-func mustRead(t *testing.T, r io.Reader) []byte {
-	t.Helper()
-	b, err := io.ReadAll(r)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return b
 }

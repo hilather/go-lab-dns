@@ -152,7 +152,7 @@ func TestNormalizeRejectsNonASCII(t *testing.T) {
 		},
 	}
 	_, err := Normalize(in)
-	requireValidation(t, err, violationNonASCII)
+	_ = requireValidation(t, err, violationNonASCII)
 }
 
 func TestNormalizeExpandsMXSRVAndUnderscoreOwners(t *testing.T) {

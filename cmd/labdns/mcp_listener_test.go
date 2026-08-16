@@ -45,7 +45,7 @@ func TestManagementServesMCPAlongsideREST(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("MCP discover status=%d body=%s", resp.StatusCode, raw)

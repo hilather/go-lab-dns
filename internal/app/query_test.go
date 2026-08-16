@@ -120,7 +120,7 @@ func TestListAndGetZonesRecords(t *testing.T) {
 		t.Fatalf("record=%+v", rec)
 	}
 	_, err = svc.GetZone(ctx, actor(), "missing")
-	requireCode(t, err, domainerr.CodeNotFound)
+	_ = requireCode(t, err, domainerr.CodeNotFound)
 }
 
 func TestResolveAndExplain(t *testing.T) {
@@ -221,7 +221,7 @@ func TestVersionSchemaDocsStatus(t *testing.T) {
 		t.Fatalf("docs err=%v", err)
 	}
 	_, err = svc.Docs(ctx, actor(), "missing")
-	requireCode(t, err, domainerr.CodeNotFound)
+	_ = requireCode(t, err, domainerr.CodeNotFound)
 }
 
 func TestAuditRing(t *testing.T) {

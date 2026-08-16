@@ -16,7 +16,7 @@ func TestChaosActivateDeactivateSimulate(t *testing.T) {
 	if _, err := svc.ActivateChaos(ctx, actor(), ActivationIn{PolicyID: "nope", ExpectedRevision: boot.Revision}); err == nil {
 		t.Fatal("missing policy")
 	} else {
-		requireCode(t, err, domainerr.CodeNotFound)
+		_ = requireCode(t, err, domainerr.CodeNotFound)
 	}
 	res, err := svc.ActivateChaos(ctx, actor(), ActivationIn{PolicyID: "slow-tools", ExpectedRevision: boot.Revision, Reason: "lab"})
 	if err != nil {
@@ -168,5 +168,5 @@ func TestListChaosPoliciesEmpty(t *testing.T) {
 		t.Fatalf("pols=%+v", pols)
 	}
 	_, err = svc.GetChaosPolicy(context.Background(), actor(), "nope")
-	requireCode(t, err, domainerr.CodeNotFound)
+	_ = requireCode(t, err, domainerr.CodeNotFound)
 }

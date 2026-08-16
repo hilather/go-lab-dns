@@ -8,8 +8,11 @@ import (
 func TestLimiterBurstThenRefill(t *testing.T) {
 	now := time.Date(2026, 8, 15, 12, 0, 0, 0, time.UTC)
 	l := NewLimiter(1, 2, func() time.Time { return now })
-	if !l.Allow("a") || !l.Allow("a") {
-		t.Fatal("burst")
+	if !l.Allow("a") {
+		t.Fatal("burst first")
+	}
+	if !l.Allow("a") {
+		t.Fatal("burst second")
 	}
 	if l.Allow("a") {
 		t.Fatal("over burst")

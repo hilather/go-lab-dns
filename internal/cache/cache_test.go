@@ -32,8 +32,9 @@ func TestPositiveAndNegativeTTLClamp(t *testing.T) {
 	if got.Result.Source != model.SourceCache {
 		t.Fatalf("source=%s", got.Result.Source)
 	}
-	if got.Original != "" && got.Original != model.SourceExact {
-		// Original is set by caller; we did not set it on Put
+	// Original is set by the caller; this Put did not set it, so Get must not invent one.
+	if got.Original != "" {
+		t.Fatalf("original=%s", got.Original)
 	}
 	clk.Advance(5 * time.Second)
 	if _, ok := c.Get(posKey, GetOpts{}); ok {
