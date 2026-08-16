@@ -3,6 +3,7 @@
 Status: Proposed normative quality gate
 Owners: All teams
 Last reviewed: 2026-08-15 (REL-001 release-diff and required CI)
+Last reviewed: 2026-08-15 (PERF-001 benches, soak, interop)
 
 ## Policy
 
@@ -104,6 +105,24 @@ Measure baseline and chaos-enabled overhead. Include:
 - Upstream outage.
 - Repeated state swaps.
 - 24-hour or longer soak before GA where infrastructure permits.
+
+#### PERF-001 harness
+
+| Surface | Location | CI |
+|---|---|---|
+| Path benches (exact, wildcard, negative, cache hit/miss, upstream, chaos triggered, chaos idle) | `benches` (`go test ./benches -bench=. -benchmem`) | compile + `TestHarnessPaths` only; numbers are not gates |
+| Max delayed concurrency, delay cancel leak | `internal/perf` | yes |
+| Soak of snapshot swaps + chaos activate/expiry | `internal/perf` `-soak` (default **2s**) | yes, short |
+| Flood / admission (random names, EDNS oversize, inflight, TCP cap) | `internal/perf` | yes |
+| Upstream outage + recovery | `internal/perf` | yes |
+| Emergency disable under load | `internal/perf` | yes |
+| Client fixtures | [`testdata/interop`](https://github.com/hilather/go-lab-dns/blob/main/testdata/interop) + `internal/interop` | yes (`dig` skipped if absent) |
+
+Pinned environment metadata (`goos`, `goarch`, `go version`, `NumCPU`, `GOMAXPROCS`, reference hardware class) is printed by `TestEnv` / `TestEnvMetadataPinned`. Reference class is **2 vCPU / 4 GiB** CI-runner or developer laptop.
+
+Long soak (pre-GA): `go test ./internal/perf -soak=30m` or `LABDNS_SOAK_DURATION=30m`. `make test-integration` runs the short suite (`./internal/interop ./internal/perf ./benches`, 90s timeout).
+
+Soak assertions: every wire answer is a complete old or new RRset (never mixed/partial), delay reservations return to zero, cache stays ≤ `maxEntries`, goroutine count does not grow without bound.
 
 ### Container and deployment tests
 

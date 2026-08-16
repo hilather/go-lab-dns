@@ -1,0 +1,96 @@
+{
+  "zone": "interop.lab.",
+  "notes": "PERF-001 client interoperability fixtures. Go wire + net.Resolver always run. dig is optional when present on PATH.",
+  "cases": [
+    {
+      "id": "exact-a",
+      "name": "ns1.interop.lab.",
+      "type": "A",
+      "wantRcode": "NOERROR",
+      "wantAA": true,
+      "wantAnswers": [{ "type": "A", "data": "10.42.0.53" }],
+      "wantTTL": 30,
+      "clients": ["go", "dig", "os"]
+    },
+    {
+      "id": "wildcard",
+      "name": "foo.tools.interop.lab.",
+      "type": "A",
+      "wantRcode": "NOERROR",
+      "wantAA": true,
+      "wantAnswers": [{ "type": "A", "data": "10.42.0.20" }],
+      "wantSource": "wildcard",
+      "clients": ["go", "dig", "os"]
+    },
+    {
+      "id": "nxdomain",
+      "name": "no-such.interop.lab.",
+      "type": "A",
+      "wantRcode": "NXDOMAIN",
+      "wantAA": true,
+      "wantSOA": true,
+      "clients": ["go", "dig", "os"]
+    },
+    {
+      "id": "nodata",
+      "name": "ns1.interop.lab.",
+      "type": "AAAA",
+      "wantRcode": "NOERROR",
+      "wantAA": true,
+      "wantAnswers": [],
+      "wantSOA": true,
+      "clients": ["go", "dig", "os"]
+    },
+    {
+      "id": "empty-nonterminal",
+      "name": "tools.interop.lab.",
+      "type": "A",
+      "wantRcode": "NOERROR",
+      "wantAA": true,
+      "wantAnswers": [],
+      "wantSOA": true,
+      "clients": ["go", "dig"]
+    },
+    {
+      "id": "cname",
+      "name": "grafana.tools.interop.lab.",
+      "type": "A",
+      "wantRcode": "NOERROR",
+      "wantCNAME": "gateway.interop.lab.",
+      "wantAnswers": [
+        { "type": "CNAME", "data": "gateway.interop.lab." },
+        { "type": "A", "data": "10.42.0.10" }
+      ],
+      "clients": ["go", "dig", "os"]
+    },
+    {
+      "id": "ttl",
+      "name": "ttl.interop.lab.",
+      "type": "A",
+      "wantRcode": "NOERROR",
+      "wantTTL": 7,
+      "wantAnswers": [{ "type": "A", "data": "192.0.2.7" }],
+      "clients": ["go", "dig"]
+    },
+    {
+      "id": "ede",
+      "name": "fail.interop.lab.",
+      "type": "A",
+      "wantRcode": "SERVFAIL",
+      "wantEDECode": 0,
+      "wantEDEText": "lab-injected",
+      "edns": true,
+      "clients": ["go", "dig"]
+    },
+    {
+      "id": "tc-tcp",
+      "name": "big.interop.lab.",
+      "type": "TXT",
+      "wantRcode": "NOERROR",
+      "wantTC": true,
+      "udpThenTCP": true,
+      "wantAnswers": [{ "type": "TXT", "data": "interop-fixture-payload-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }],
+      "clients": ["go", "dig", "os"]
+    }
+  ]
+}

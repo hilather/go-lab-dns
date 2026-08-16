@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: Deployment, Operations, Security
-Last reviewed: 2026-08-15 (DEP-001 CLI and hardened image)
+Last reviewed: 2026-08-15 (PERF-001 capacity notes)
 Related ADRs: 0003
 
 ## Goals
@@ -89,8 +89,27 @@ services:
 - Expose UDP and TCP port 53 through a service/load balancer that preserves required client identity or use node-local deployment.
 - Isolate management ports with NetworkPolicy.
 - Use a read-only root filesystem, seccomp, dropped capabilities, and a non-root security context.
-- Set CPU, memory, and ephemeral-storage limits.
+- Set CPU, memory, and ephemeral-storage limits. First-GA starting point on the PERF-001 reference class (**2 vCPU / 4 GiB**): `cpu: 500m` request / `2` limit, `memory: 256Mi` request / `1Gi` limit. Raise memory before raising `spec.cache.maxEntries` or `spec.chaos.safety.maxConcurrentDelayed`.
 - Use disruption budgets only after multi-instance desired-state behavior is defined.
+
+## Capacity planning and safe default limits
+
+These are the first-GA safe defaults. YAML may lower them; raising a chaos cap above the documented safety ceiling requires review.
+
+| Limit | Default | Owner | Notes |
+|---|---|---|---|
+| `spec.chaos.safety.maxConcurrentDelayed` | 2000 (pack sample) | chaos budgets | Extra delayed queries skip sleep and still answer. Tested by `TestMaxDelayedConcurrency`. |
+| `spec.chaos.safety.maxDelay` | 10s | chaos | Clamped per request. |
+| DNS `MaxInflight` | 1024 | `dnsserver` | Surplus UDP datagrams are dropped (no queue blow-up). |
+| DNS `MaxTCPConns` | 256 | `dnsserver` | Process-wide. |
+| DNS `MaxTCPPerIP` | 16 | `dnsserver` | Per client address. |
+| DNS `QueryTimeout` | 2s | `dnsserver` | Chaos delay may outlive this and still answer. |
+| Cache `maxEntries` | 10000 (pack sample) | `internal/cache` | LRU; namespaced by snapshot revision. |
+| Management `MaxConcurrent` | 256 | REST adapter | Control plane only. |
+
+In-process local exact/wildcard/negative lookups are expected well under 1 ms on the reference class (see `go test ./benches -bench=.`). Forwarded QPS is dominated by upstream RTT. Chaos configured but not triggered (`probability: 0`) must stay on the same order as the exact path.
+
+Do not run production with `maxConcurrentDelayed` unbounded (zero/negative is treated as unlimited by the budget table). Keep lab chaos expiry short.
 
 ## Startup and shutdown
 

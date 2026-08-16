@@ -5,6 +5,7 @@ Owners: Architecture, Release Engineering
 Last reviewed: 2026-08-15 (MCP-001 2026-07-28 pin)
 Last reviewed: 2026-08-15 (OBS-001 metrics catalog)
 Last reviewed: 2026-08-15 (REL-001 release-diff surfaces)
+Last reviewed: 2026-08-15 (PERF-001 interop matrix)
 
 ## Public compatibility surfaces
 
@@ -69,6 +70,18 @@ Security emergencies may require faster removal, with explicit notes.
 - Deterministic chaos golden vectors.
 - Metric and error catalog diffs.
 - `make test-config-compat` (positive and negative v1alpha1 fixtures).
+- Client interop fixtures ([`testdata/interop/cases.json`](https://github.com/hilather/go-lab-dns/blob/main/testdata/interop/cases.json)): exact A, RFC 4592 wildcard, NXDOMAIN, NODATA, empty non-terminal, CNAME chase, TTL, EDE (RFC 8914), UDP TC then TCP.
+
+### Client compatibility matrix (first GA)
+
+| Client | How it is run | Covered behaviors | Known gaps |
+|---|---|---|---|
+| Raw UDP/TCP (`internal/dnswire` + `internal/interop`) | always | All fixture rows | None |
+| `dig` | `TestInteropFixturesDig` when `dig` is on `PATH` | Same rows; `+ignore +notcp` isolates TC | BIND vs Knot `dig` presentation of EDE may differ; fixtures match text + status |
+| Go `net.Resolver` (`PreferGo: true`) | always | Exact, wildcard, NXDOMAIN, NODATA AAAA, CNAME follow, TXT via TCP retry | No TTL or EDE API; not glibc/`nscd` |
+| glibc / systemd-resolved / Windows | manual lab | Point at the same listener and compare to `cases.json` | Not in CI (would rewrite host resolver config) |
+
+New discovered client differences become additional `cases.json` rows, not one-off test logic.
 
 ## Open questions
 

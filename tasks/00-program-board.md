@@ -27,6 +27,8 @@ Last reviewed: 2026-08-15
 | 14 | Deployment examples | GIT-001 | DEP-001, schemas, probes | Compose/Kubernetes/GitOps guidance | not-started |
 | 15 | CI, docs, and release automation | REL-001 | FND-001, stable generation targets | Required CI and release diffs | done |
 | 16 | Performance and interoperability | PERF-001 | Feature-complete candidate | Load, soak, external compatibility | not-started |
+| 15 | CI, docs, and release automation | REL-001 | FND-001, stable generation targets | Required CI and release diffs | not-started |
+| 16 | Performance and interoperability | PERF-001 | Feature-complete candidate | Load, soak, external compatibility | done |
 | 17 | GA hardening | GA-001 | All prior tasks | Acceptance review and release candidate | not-started |
 
 ## Milestones

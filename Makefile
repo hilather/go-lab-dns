@@ -29,6 +29,8 @@ help:
 		'  security-scan       govulncheck' \
 		'  test-integration    unimplemented until later DNS/control-plane PRs' \
 		'  test-parity         REST/MCP capability parity and MCP goldens' \
+		'  test-integration    short interop + soak/flood/admission (CI-safe)' \
+		'  test-parity         unimplemented until API-001 / MCP-001' \
 		'  test-config-compat  positive+negative v1alpha1 config fixtures' \
 		'  test-container      build ghcr.io/hilather/labdns and check non-root/read-only/no-caps' \
 		'  test-changelog      fail if observable paths changed without CHANGELOG.md' \
@@ -64,8 +66,7 @@ security-scan:
 	$(GO) run $(GOVULNCHECK_MOD) ./...
 
 test-integration:
-	@echo 'unimplemented until DNS/control-plane PRs: integration tests' >&2
-	@exit 1
+	$(GO) test ./internal/interop ./internal/perf ./benches -count=1 -timeout=90s
 
 test-parity:
 	$(GO) test ./internal/capabilities ./internal/control/rest ./internal/control/mcp -count=1

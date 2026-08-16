@@ -84,7 +84,9 @@ make test-changelog
 
 `make test-container` builds `ghcr.io/hilather/labdns` and checks the non-root / read-only / no-caps contract (requires Docker).
 
-Targets that are not yet implemented fail closed (non-zero exit with an explicit `unimplemented` message) rather than succeeding as no-ops:
+`make test-integration` runs the short PERF-001 suite: client fixtures in [`testdata/interop`](https://github.com/hilather/go-lab-dns/blob/main/testdata/interop), soak/flood/admission in `internal/perf`, and the bench harness smoke in `benches`. Soak duration defaults to 2s; pass `go test ./internal/perf -soak=30m` or `LABDNS_SOAK_DURATION=30m` for the long run.
+
+`make test-parity` still fails closed until MCP lands:
 
 ```text
 make test-integration    # later DNS/control-plane PRs

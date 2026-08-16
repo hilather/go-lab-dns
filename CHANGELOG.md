@@ -32,6 +32,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Shared SEC-001 identity, RBAC, abuse limits, and audit in `internal/auth` and `internal/audit`. Role×capability matrix, resource-aware plan/apply, separate chaos design/activate/high-impact/emergency privileges, management and DNS query rate limits, Origin/CORS deny-all, secret redaction, and an in-memory audit ring with a best-effort external hook (no fail-closed durable sink).
 - Versioned metrics/events catalog (`labdns.dev/metrics/v1alpha1`) with a label allowlist, automated no-QNAME/no-client-IP checks, bounded export queues, structured JSON logs, optional sampled tracing, and a filled `app.Status` DTO (revisions, listeners, cache, upstreams, chaos, ready/degraded, warnings). Artifact: [api/metrics/v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/metrics/v1alpha1.json).
 - REL-001 release automation: `scripts/release-diff` compares OpenAPI, MCP manifest, config schema, capability table, metrics catalog, CLI help, error catalog, and chaos-effect catalog between two git refs. Tag notes live at `docs/releases/<tag>.md`. Generated CLI help: [api/cli/help.txt](https://github.com/hilather/go-lab-dns/blob/main/api/cli/help.txt). Generated error catalog: [api/errors/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/errors/v1.json).
+- PERF-001 baselines: Go benches in `benches` (exact / wildcard / negative / cache hit / cache miss / upstream / chaos triggered / chaos idle), CI-safe soak (`-soak`, default 2s), max delayed concurrency, flood/admission, and client interop fixtures under [`testdata/interop`](https://github.com/hilather/go-lab-dns/blob/main/testdata/interop).
 
 ### Changed
 
@@ -114,7 +115,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Compatibility and migration
 
-- None.
+- Client interop fixtures (`testdata/interop/cases.json`) cover `dig`, Go `net.Resolver` (PreferGo), and raw UDP/TCP for exact, wildcard, NXDOMAIN/NODATA, CNAME, TTL, EDE, and UDP TC→TCP. Discovered client differences land as new cases.
 
 ### Known limitations
 
@@ -136,4 +137,5 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - `labdns chaos emergency-disable --pid-file` is not implemented until DEP-001.
 - `make test-integration` and `make test-container` fail closed until later PRs. `make test-parity` runs the REST/MCP registry and adapter suites.
 - MCP adapter is not implemented; REST `/v1` is wired into `labdns serve`.
-- `make test-integration` and `make test-parity` fail closed until later PRs.
+- `make test-parity` fails closed until MCP-001.
+- Absolute QPS/latency numbers are recorded by benches, not gated in CI (hardware varies). Long soak is opt-in (`-soak=30m` / `LABDNS_SOAK_DURATION`).

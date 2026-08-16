@@ -1,0 +1,122 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: interop-lab
+
+spec:
+  listeners:
+    dns:
+      address: ":5353"
+      protocols: [udp, tcp]
+    management:
+      address: ":8080"
+
+  access:
+    clientGroups:
+      - id: local
+        cidrs: [127.0.0.0/8, "::1/128", "10.42.0.0/16"]
+        allowForward: true
+
+  defaults:
+    ttl: 30s
+    negativeTTL: 10s
+    cnameDepth: 8
+
+  zones:
+    - id: interop-zone
+      name: interop.lab.
+      mode: authoritative
+      soa:
+        primary: ns1.interop.lab.
+        administrator: hostmaster.interop.lab.
+        serial: auto
+        refresh: 1h
+        retry: 5m
+        expire: 24h
+        minimum: 10s
+      nameservers: [ns1.interop.lab.]
+      records:
+        - id: ns1-a
+          owner: ns1
+          type: A
+          values: [10.42.0.53]
+        - id: tools-wildcard-a
+          owner: "*.tools"
+          type: A
+          ttl: 30s
+          values: [10.42.0.20]
+        - id: grafana-cname
+          owner: grafana.tools
+          type: CNAME
+          values: [gateway.interop.lab.]
+        - id: gateway-a
+          owner: gateway
+          type: A
+          values: [10.42.0.10]
+        - id: ttl-a
+          owner: ttl
+          type: A
+          ttl: 7s
+          values: [192.0.2.7]
+        - id: fail-a
+          owner: fail
+          type: A
+          values: [192.0.2.8]
+          chaosPolicyRefs: [fail-ede]
+        - id: big-txt
+          owner: big
+          type: TXT
+          values: ["interop-fixture-payload-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+          chaosPolicyRefs: [big-tc]
+
+  cache:
+    enabled: true
+    maxEntries: 1024
+    minimumTTL: 1s
+    maximumTTL: 5m
+    maximumNegativeTTL: 1m
+
+  chaos:
+    enabled: true
+    safety:
+      maxDelay: 10s
+      maxConcurrentDelayed: 64
+      maxDropProbability: 0.5
+    policies:
+      - id: fail-ede
+        owner: perf-lab
+        reason: Interop EDE fixture
+        enabled: true
+        safetyClass: low
+        scope:
+          recordIds: [fail-a]
+        selector:
+          mode: deterministic
+          seed: interop-ede
+          probability: 1.0
+        outcomes:
+          - id: sf
+            weight: 1
+            actions:
+              - type: rcode
+                value: SERVFAIL
+                ede:
+                  code: 0
+                  text: lab-injected
+      - id: big-tc
+        owner: perf-lab
+        reason: Interop UDP TC then TCP fixture
+        enabled: true
+        safetyClass: low
+        scope:
+          recordIds: [big-txt]
+          transports: [udp]
+        selector:
+          mode: deterministic
+          seed: interop-tc
+          probability: 1.0
+        outcomes:
+          - id: tc
+            weight: 1
+            actions:
+              - type: truncate
