@@ -55,7 +55,9 @@ func TestSoakSwapsAndExpiry(t *testing.T) {
 	st.Spec.Chaos.Policies[1].ExpiresAt = &expired
 	lab := NewLab(t, Options{State: st, StartServer: true})
 	svc := app.New(app.Options{Store: lab.Store, Cache: lab.Cache, Engine: lab.Engine, Clock: lab.Clock})
-	actor := app.Actor{ID: "soak", Class: "token"}
+	actor := app.Actor{ID: "soak", Class: "token", Scopes: []string{
+		"dns.write", "dns.admin", "dns.chaos.write", "dns.chaos.activate", "dns.chaos.emergency",
+	}}
 
 	var (
 		queries      atomic.Int64
