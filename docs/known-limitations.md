@@ -1,6 +1,6 @@
 # Known limitations (first GA)
 
-Honest residual for the **1.0.0-rc.1** candidate. These are not defects hidden from the notes; they are out of first-GA scope, operator steps that this change does not perform, or documented bounds. See [docs/18-roadmap-and-non-goals.md](18-roadmap-and-non-goals.md) for deferred product work.
+Honest residual for the **1.0.0-rc.1** candidate. These are not defects hidden from the notes; they are out of first-GA scope, operator steps that this change does not perform, or documented bounds. See [docs/18-roadmap-and-non-goals.md](https://github.com/hilather/go-lab-dns/blob/main/docs/18-roadmap-and-non-goals.md) for deferred product work.
 
 Last reviewed: 2026-08-15
 
@@ -54,9 +54,10 @@ Last reviewed: 2026-08-15
 - Management resolve defaults to not consuming live chaos.
 - Absolute QPS / p99 numbers are recorded by benches, not gated in CI (hardware varies).
 - Default soak in CI is 2s. Long soak is opt-in (`-soak=30m` / `LABDNS_SOAK_DURATION`).
+- The 24-hour (or longer) pre-GA soak in [docs/10-testing-strategy.md](https://github.com/hilather/go-lab-dns/blob/main/docs/10-testing-strategy.md) was **not** executed on this candidate. Only the 2s CI soak ran; 30m remains optional.
 - glibc, systemd-resolved, and Windows resolver interop are manual lab checks against `testdata/interop/cases.json`. CI uses Go wire, optional `dig` when on `PATH`, and `net.Resolver` (`PreferGo`).
 - `dig` interop is skipped when `dig` is not installed (`TestInteropFixturesDig`).
 
 ## Explicit non-goals (unchanged)
 
-Full Internet recursion, public authoritative hosting, RFC 2136, AXFR/IXFR, DNSSEC signing, multi-replica runtime consensus, web UI, DHCP, client-facing DoH/DoQ, malformed-wire generation in-process, general network impairment, direct Git writes from the DNS process, and any internal database or hidden volume. See [docs/18-roadmap-and-non-goals.md](18-roadmap-and-non-goals.md).
+Full Internet recursion, public authoritative hosting, RFC 2136, AXFR/IXFR, DNSSEC signing, multi-replica runtime consensus, web UI, DHCP, client-facing DoH/DoQ, malformed-wire generation in-process, general network impairment, direct Git writes from the DNS process, and any internal database or hidden volume. See [docs/18-roadmap-and-non-goals.md](https://github.com/hilather/go-lab-dns/blob/main/docs/18-roadmap-and-non-goals.md).

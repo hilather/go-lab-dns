@@ -1,6 +1,6 @@
 # Product Acceptance Criteria
 
-Status: Accepted (1.0.0-rc.1 evidence attached)
+Status: Accepted pending tag-gate (1.0.0-rc.1 evidence attached)
 Owners: Product, Architecture, QA
 Last reviewed: 2026-08-15 (GA-001)
 

@@ -146,4 +146,5 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Durable audit remains an optional hook, never fail-closed. The GitOps template uses an all-zero digest placeholder until a released image is pinned.
 - `make test-integration` fails closed until PERF-001.
 - Durable list: [docs/known-limitations.md](https://github.com/hilather/go-lab-dns/blob/main/docs/known-limitations.md). Candidate notes: [docs/releases/v1.0.0-rc.1.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.1.md). Evidence: [docs/releases/acceptance-evidence.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/acceptance-evidence.md).
+- Absolute QPS/latency numbers are recorded by benches, not gated in CI (hardware varies). Long soak is opt-in (`-soak=30m` / `LABDNS_SOAK_DURATION`). The 24h pre-GA soak was not run.
 - First public candidate: no predecessor tag; no image digest; tag-gate CI and SBOM/provenance wait for a human tag.

@@ -1,6 +1,6 @@
 # GA acceptance evidence (1.0.0-rc.1)
 
-This index maps every criterion in [docs/19-acceptance-criteria.md](../19-acceptance-criteria.md) to the tests and commands that prove it. It is the GA-001 evidence artifact. It is **not** a substitute for running the commands on the candidate commit.
+This index maps every criterion in [docs/19-acceptance-criteria.md](https://github.com/hilather/go-lab-dns/blob/main/docs/19-acceptance-criteria.md) to the tests and commands that prove it. It is the GA-001 evidence artifact. It is **not** a substitute for running the commands on the candidate commit.
 
 **Candidate:** 1.0.0-rc.1 (untagged). A human creates the annotated tag only on an exact green commit. This change does not create a git tag or publish an image.
 
@@ -32,7 +32,7 @@ make release-diff FROM=<empty-tree> TO=HEAD NOTES=docs/releases/v1.0.0-rc.1.md
 
 Optional long soak (not the CI default): `go test ./internal/perf -soak=30m` or `LABDNS_SOAK_DURATION=30m`.
 
-Local evidence on this branch (2026-08-15): `gofmt`; `go test ./...`; `make test`; `make test-docs`; `make test-integration`; `make verify-generated`; notes-only validation of [v1.0.0-rc.1.md](v1.0.0-rc.1.md). Required GitHub Actions jobs must be green on the **tag** commit before a human tags. There is no CI bypass.
+Local evidence on this branch (2026-08-15): `gofmt`; `go test ./...`; `make test`; `make test-docs`; `make test-integration`; `make verify-generated`; notes-only validation of [v1.0.0-rc.1.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.1.md). Required GitHub Actions jobs must be green on the **tag** commit before a human tags. There is no CI bypass. The 24h pre-GA soak was not run.
 
 ---
 
@@ -58,8 +58,8 @@ Additional flag / refuse-forward matrix (pack `02`): `go test ./internal/dnsquer
 |---|---|
 | Fixed or uniform delay on exact or wildcard RRset | `go test ./internal/chaos/effects -run 'TestSleepFixedAndCancelReleasesBudget\|TestSleepFiresOnAdvance'`; `go test ./internal/chaos -run TestDecideRecordAndGlobal`; `internal/perf.TestMaxDelayedConcurrency` |
 | Delay cancellable and globally bounded | `TestSleepFixedAndCancelReleasesBudget`; `TestConcurrentDelayBudget`; `TestEmergencyCancelAllUnblocksDelays`; `TestDelayClampAndSimulateNoBudget`; `TestBudgetExhausted`; `internal/perf.TestDelayBudgetReleasedAfterCancel` |
-| Deterministic seeded decisions reproduce (`hash-v1`) | `go test ./internal/chaos -run 'TestHashV1BitForBitGoldens\|TestHashV1StableAcrossRestarts\|TestHashV1TimeBucketSameSecondAndNext'`; goldens [testdata/hash-v1/vectors.json](../../testdata/hash-v1/vectors.json) |
-| RCODE, NODATA, drop, TC, TCP close/reset, TTL, alternate, partial, ordering, flap, cache, upstream, rate | `go test ./internal/chaos/effects`; `TestRCodeNODATAAndErrors`; `TestDropWinsOverRCodeOnWire`; `TestHintMapping`; `TestTTLBoundariesAndNoOverflow`; `TestAlternateAllowlistAndCNAMELoop`; `TestPartialAnswerImmutability`; `TestCacheHooks`; `TestExchangeOpts`; `TestPressureRejectsOverCap`; `TestStartExpiryFlapEveryNth`; catalog [api/chaos/effects.json](../../api/chaos/effects.json) |
+| Deterministic seeded decisions reproduce (`hash-v1`) | `go test ./internal/chaos -run 'TestHashV1BitForBitGoldens\|TestHashV1StableAcrossRestarts\|TestHashV1TimeBucketSameSecondAndNext'`; goldens [testdata/hash-v1/vectors.json](https://github.com/hilather/go-lab-dns/blob/main/testdata/hash-v1/vectors.json) |
+| RCODE, NODATA, drop, TC, TCP close/reset, TTL, alternate, partial, ordering, flap, cache, upstream, rate | `go test ./internal/chaos/effects`; `TestRCodeNODATAAndErrors`; `TestDropWinsOverRCodeOnWire`; `TestHintMapping`; `TestTTLBoundariesAndNoOverflow`; `TestAlternateAllowlistAndCNAMELoop`; `TestPartialAnswerImmutability`; `TestCacheHooks`; `TestExchangeOpts`; `TestPressureRejectsOverCap`; `TestStartExpiryFlapEveryNth`; catalog [api/chaos/effects.json](https://github.com/hilather/go-lab-dns/blob/main/api/chaos/effects.json) |
 | Protected names and clients not affected | `go test ./internal/chaos -run TestProtectedNameAndExemptGroup`; `internal/auth.TestProtectedObjectsOrdinaryRoles` |
 | Emergency disable works during load | `go test ./internal/perf -run TestEmergencyDisableUnderLoad`; `internal/chaos.TestEmergencyDisableStampsStore`; `TestServeSignalsUSR1`; `cmd/labdns.TestSIGUSR1WorksWithManagementUnbound`; `internal/control/rest.TestPacketChaosThenRESTEmergency` |
 | Simulation never mutates live state or sleeps | `go test ./internal/chaos -run 'TestSimulateDoesNotSleep\|TestDelayClampAndSimulateNoBudget\|TestSimulateEvaluatesDisabledPolicy'` |
@@ -104,7 +104,7 @@ Three independent emergency controls: startup `--chaos-disable` / `LABDNS_CHAOS_
 | Chaos separate scopes, expiry, caps, emergency | `internal/auth.TestChaosPrivilegeSeparation`; `internal/config.TestValidateHighImpactRequiresExpiry`; `internal/chaos.TestCompileHighImpactCap`; emergency tests above |
 | No secret in export, logs, or public errors | `internal/auth.TestRedactJSON`; `TestRedactYAML`; `TestRedactOperationsAndState`; `internal/audit.TestRedactEventSecrets`; `internal/observability.TestLoggerRedactsQNAMEAndClient`; `TestRegistryRejectsQNAMEAndClientIP`; `examples/labdns-deploy.TestNoSecretsInTree` |
 
-Reporting path: [SECURITY.md](../../SECURITY.md) → GitHub private advisories on `hilather/go-lab-dns`.
+Reporting path: [SECURITY.md](https://github.com/hilather/go-lab-dns/blob/main/SECURITY.md) → GitHub private advisories on `hilather/go-lab-dns`.
 
 ---
 
@@ -113,9 +113,9 @@ Reporting path: [SECURITY.md](../../SECURITY.md) → GitHub private advisories o
 | Criterion | Evidence |
 |---|---|
 | Every area has regression tests | `go test ./...` (packages: model, config, resolver, forwarder, cache, compiler, snapshot, app, chaos, dnsquery, dnsserver, dnswire, rest, mcp, auth, audit, observability, capabilities, interop, perf, deploypolicy, examples, cmd, scripts) |
-| Race, fuzz smoke, integration, parity, container, docs, security CI | Required jobs in [docs/14-release-engineering.md](../14-release-engineering.md): `format lint unit race fuzz-smoke generated-file documentation security-scan container-test changelog parity config-compat`. Local: `make test-race`; `make test-fuzz-smoke`; `make test-integration`; `make test-parity`; `make test-docs`; `make test-container`; `make security-scan`. Race-sensitive: `internal/resolver.TestResolveConcurrentAndImmutable`; `internal/dnsquery.TestChaosRaceDecideAndSwap`; `internal/testutil.TestFakeClockConcurrentAdvanceAndNow` |
-| Load and soak targets met and documented | `make test-integration`; `go test ./internal/perf`; `go test ./benches`; methodology [docs/10-testing-strategy.md](../10-testing-strategy.md); capacity [docs/11-deployment.md](../11-deployment.md). Absolute QPS is recorded, not CI-gated — see [docs/known-limitations.md](../known-limitations.md) |
-| No known critical/high vuln without governance | `make security-scan` (govulncheck). No accepted high/critical at candidate time. Tag-time SBOM/provenance is an operator step ([docs/14-release-engineering.md](../14-release-engineering.md)) |
+| Race, fuzz smoke, integration, parity, container, docs, security CI | Required jobs in [docs/14-release-engineering.md](https://github.com/hilather/go-lab-dns/blob/main/docs/14-release-engineering.md): `format lint unit race fuzz-smoke generated-file documentation security-scan container-test changelog parity config-compat`. Local recorded on this SHA: `make test` / `test-docs` / `test-integration` / `verify-generated`. `make test-race`, `test-fuzz-smoke`, `test-container`, and `security-scan` remain for the tag-gate matrix. Race-sensitive unit tests exist: `internal/resolver.TestResolveConcurrentAndImmutable`; `internal/dnsquery.TestChaosRaceDecideAndSwap`; `internal/testutil.TestFakeClockConcurrentAdvanceAndNow` |
+| Load and soak targets met and documented | Short CI soak only: `make test-integration`; `go test ./internal/perf`; `go test ./benches`. Methodology [docs/10-testing-strategy.md](https://github.com/hilather/go-lab-dns/blob/main/docs/10-testing-strategy.md); capacity [docs/11-deployment.md](https://github.com/hilather/go-lab-dns/blob/main/docs/11-deployment.md). Absolute QPS is recorded, not CI-gated. The 24h pre-GA soak was **not** run — see [docs/known-limitations.md](https://github.com/hilather/go-lab-dns/blob/main/docs/known-limitations.md) |
+| No known critical/high vuln without governance | `make security-scan` (govulncheck) is the local command; it was **not** recorded on this SHA. No accepted high/critical at candidate time. Tag-time SBOM/provenance is an operator step ([docs/14-release-engineering.md](https://github.com/hilather/go-lab-dns/blob/main/docs/14-release-engineering.md)) |
 | Documentation matches implementation | `make test-docs`; `make verify-generated`; capability/docs table tests (`TestDocs05TableCoversFrozenTitles`, `TestDocs07ListsEveryResource`, `TestErrorMapMatchesDocs17Tables`); this index |
 
 ---
@@ -124,11 +124,11 @@ Reporting path: [SECURITY.md](../../SECURITY.md) → GitHub private advisories o
 
 | Criterion | Evidence |
 |---|---|
-| Release notes include all functionality differences from the previous tag | First candidate: notes [v1.0.0-rc.1.md](v1.0.0-rc.1.md) vs empty tree. `go run ./scripts/release-diff -notes-only -notes docs/releases/v1.0.0-rc.1.md`; after a clean commit, `make release-diff FROM=<empty-tree> TO=HEAD NOTES=docs/releases/v1.0.0-rc.1.md` |
+| Release notes include all functionality differences from the previous tag | First candidate: notes [v1.0.0-rc.1.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.1.md) vs empty tree. `go run ./scripts/release-diff -notes-only -notes docs/releases/v1.0.0-rc.1.md`; after a clean commit, `make release-diff FROM=<empty-tree> TO=HEAD NOTES=docs/releases/v1.0.0-rc.1.md` |
 | API, MCP, config, metrics, CLI, defaults, chaos action diffs reviewed | Public surfaces in `internal/releasecontract.PublicSurfaces`; checklist in the notes file (all boxes checked for first-GA introduction) |
 | All CI passes on the tagged commit | **Not yet.** No tag in this change. `tag-gate` in `.github/workflows/release.yml` refuses a tag unless required jobs succeeded on that SHA (`release-diff -require-ci`) |
-| Previous CI failure has a documented fix and hardening | [docs/ci-failure-hardening/2026-08-15-cli-help-not-generated.md](../ci-failure-hardening/2026-08-15-cli-help-not-generated.md); `scripts/checktargets.TestWorkflowsForbidBroadRetries` |
-| Deployment and rollback tested | `examples/labdns-deploy.TestRollbackRestoresPriorDesiredState`; `TestRecreationResetsRuntimeDrift`; `TestScriptsFailClosedAndNoBypass`; `TestComposeAndK8sIsolateManagementAndPinDigest`; runbooks [docs/13-operations-and-runbooks.md](../13-operations-and-runbooks.md) |
+| Previous CI failure has a documented fix and hardening | [docs/ci-failure-hardening/2026-08-15-cli-help-not-generated.md](https://github.com/hilather/go-lab-dns/blob/main/docs/ci-failure-hardening/2026-08-15-cli-help-not-generated.md); `scripts/checktargets.TestWorkflowsForbidBroadRetries` |
+| Deployment and rollback tested | `examples/labdns-deploy.TestRollbackRestoresPriorDesiredState`; `TestRecreationResetsRuntimeDrift`; `TestScriptsFailClosedAndNoBypass`; `TestComposeAndK8sIsolateManagementAndPinDigest`; runbooks [docs/13-operations-and-runbooks.md](https://github.com/hilather/go-lab-dns/blob/main/docs/13-operations-and-runbooks.md) |
 
 ---
 
@@ -149,7 +149,7 @@ A dedicated staging-lab operator drill is a **human tag-time** step. The followi
 
 ## Architectural invariants reviewed
 
-Reviewed against [docs/01-architecture.md](../01-architecture.md) and ADRs 0001–0007 on 2026-08-15:
+Reviewed against [docs/01-architecture.md](https://github.com/hilather/go-lab-dns/blob/main/docs/01-architecture.md) and ADRs 0001–0007 on 2026-08-15:
 
 | Invariant | Holds via |
 |---|---|
@@ -163,10 +163,10 @@ Reviewed against [docs/01-architecture.md](../01-architecture.md) and ADRs 0001�
 | MCP pinned to 2026-07-28 | `internal/buildinfo` + MCP protocol tests |
 | Required CI has no bypass | `scripts/checktargets`; release `tag-gate` |
 
-Open questions: first-GA decisions are frozen (Apache-2.0, module `github.com/hilather/go-lab-dns`, Go 1.26, image `ghcr.io/hilather/labdns`, MCP 2026-07-28 only, SIGUSR1 as emergency #3, overlay CNAME may terminate in a forwarded name). Remaining pack items are explicit follow-ons in [docs/known-limitations.md](../known-limitations.md) and [docs/18-roadmap-and-non-goals.md](../18-roadmap-and-non-goals.md).
+Open questions: first-GA decisions are frozen (Apache-2.0, module `github.com/hilather/go-lab-dns`, Go 1.26, image `ghcr.io/hilather/labdns`, MCP 2026-07-28 only, SIGUSR1 as emergency #3, overlay CNAME may terminate in a forwarded name). Remaining pack items are explicit follow-ons in [docs/known-limitations.md](https://github.com/hilather/go-lab-dns/blob/main/docs/known-limitations.md) and [docs/18-roadmap-and-non-goals.md](https://github.com/hilather/go-lab-dns/blob/main/docs/18-roadmap-and-non-goals.md).
 
 ---
 
 ## Program board
 
-All work packages FND-001 through GA-001 are **done** on this candidate. See [tasks/00-program-board.md](../../tasks/00-program-board.md). M5 *tag* remains a human step on a green commit.
+All work packages FND-001 through GA-001 are **done** on this candidate. See [tasks/00-program-board.md](https://github.com/hilather/go-lab-dns/blob/main/tasks/00-program-board.md). M5 *tag* remains a human step on a green commit.

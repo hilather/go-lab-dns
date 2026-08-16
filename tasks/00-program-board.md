@@ -1,6 +1,6 @@
 # Program Board
 
-Status: done (1.0.0-rc.1 candidate; human tags on a green commit)
+Status: done (1.0.0-rc.1 candidate; tag-gate pending)
 Last reviewed: 2026-08-15 (GA-001)
 
 ## Work packages
