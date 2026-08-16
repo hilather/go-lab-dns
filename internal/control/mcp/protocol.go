@@ -11,7 +11,14 @@ import (
 
 // validateProtocolVersion pins first GA to 2026-07-28. Older SDK revisions
 // still speak 2025-11-25; claiming them would violate ADR 0006.
-func validateProtocolVersion(r *http.Request) error {
+//
+// allowAny (Config.AllowAnyProtocolVersion) skips the pin: the header becomes
+// optional pre-negotiation and the SDK negotiates whichever version it
+// supports. Intended for gateways/clients on earlier SDK generations.
+func validateProtocolVersion(r *http.Request, allowAny bool) error {
+	if allowAny {
+		return nil
+	}
 	ver := strings.TrimSpace(r.Header.Get(headerProtocolVersion))
 	if ver == "" {
 		return domainerr.UnsupportedProtocolVersion("MCP-Protocol-Version is required; only " + ProtocolVersion + " is supported")

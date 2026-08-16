@@ -74,6 +74,11 @@ type Config struct {
 	RatePerSec float64
 	// RateBurst is the per-source burst. Zero uses the shared default.
 	RateBurst float64
+	// AllowAnyProtocolVersion relaxes the first-GA protocol pin (ADR 0006):
+	// the MCP-Protocol-Version header becomes optional and the SDK negotiates
+	// any version it supports. Off by default. Enable for clients on earlier
+	// SDK generations (e.g. MCP gateways) that cannot speak 2026-07-28.
+	AllowAnyProtocolVersion bool
 	// Auditor receives denied-authorization events when Service does not
 	// implement RecordAudit. *app.App records into the queryable ring.
 	Auditor audit.Sink
@@ -130,9 +135,13 @@ func New(cfg Config) (*Server, error) {
 		Title:   "LabDNS",
 		Version: info.Version,
 	}
+	instructions := "LabDNS control plane. Use typed tools; do not assume connection state. Protocol " + ProtocolVersion + " only."
+	if cfg.AllowAnyProtocolVersion {
+		instructions = "LabDNS control plane. Use typed tools; do not assume connection state."
+	}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	sdkSrv := sdk.NewServer(impl, &sdk.ServerOptions{
-		Instructions: "LabDNS control plane. Use typed tools; do not assume connection state. Protocol " + ProtocolVersion + " only.",
+		Instructions: instructions,
 		Logger:       logger,
 		Capabilities: &sdk.ServerCapabilities{
 			// Stateless first-GA: no list-changed push, no deprecated logging.
@@ -143,7 +152,9 @@ func New(cfg Config) (*Server, error) {
 		},
 		SchemaCache: sdk.NewSchemaCache(),
 	})
-	sdkSrv.AddReceivingMiddleware(pinProtocolMiddleware)
+	if !cfg.AllowAnyProtocolVersion {
+		sdkSrv.AddReceivingMiddleware(pinProtocolMiddleware)
+	}
 
 	s := &Server{
 		cfg:      cfg,
@@ -227,7 +238,7 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	if err := validateProtocolVersion(r); err != nil {
+	if err := validateProtocolVersion(r, s.cfg.AllowAnyProtocolVersion); err != nil {
 		writeRPC(w, http.StatusBadRequest, err)
 		return
 	}
