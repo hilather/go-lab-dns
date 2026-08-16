@@ -123,7 +123,7 @@ A commit or pull-request list may be appended but cannot replace curated notes. 
 | openapi | `api/openapi/v1.json` | yes |
 | mcp | `api/mcp/v1.json` | yes |
 | config-schema | `api/jsonschema/labdns.dev.v1alpha1.json` | no (source schema) |
-| capabilities | `api/capabilities/v1.json` | yes |
+| capabilities | `api/capabilities/v1.json` | yes (review token: Capability table; not the MCP box) |
 | metrics | `api/metrics/v1alpha1.json` | yes |
 | cli-help | `api/cli/help.txt` | yes |
 | error-catalog | `api/errors/v1.json` | yes |
@@ -161,7 +161,7 @@ N public-surface difference(s) require curated release notes
 
 JSON (`-json`): `{from,to,surfaces:[{id,path,title,status,fromSha256,toSha256}],notes?}`. `status` is `identical` | `changed` | `added` | `removed` | `missing-both`.
 
-A changed/added/removed surface is **accounted** when the notes mention its ID, title, or path, or check its review-box (`- [x] …`). Unaccounted diffs, missing headings, leftover placeholders, or unchecked boxes for changed surfaces fail the command (exit 1). `tag-gate` uploads `release-diff.txt` as an artifact (30 days).
+A changed/added/removed surface is **accounted** when the notes mention its ID, title, or path, or check its **unique** review-box (`- [x] …`). The MCP box does not cover a capability-table delta. Unaccounted diffs, missing headings, leftover placeholders, or unchecked boxes for changed surfaces fail the command (exit 1). The surface table is always written to **stdout** (including on notes failure) so `tee release-diff.txt` retains it. `tag-gate` uploads that file as an artifact (30 days).
 
 Any unaccounted functional difference blocks tagging.
 

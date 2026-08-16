@@ -106,7 +106,39 @@ func TestCIJobsPresent(t *testing.T) {
 		if strings.Contains(jobBody, "|| true") {
 			t.Errorf("required job %s must not ignore failures with || true", job)
 		}
+		if jobLevelIf.MatchString(jobBody) {
+			t.Errorf("required job %s must not have a job-level if: (skipped required jobs are a bypass)", job)
+		}
 	}
+	gotJobs := yamlJobIDs(text)
+	if len(gotJobs) != len(requiredCIJobs) {
+		t.Errorf("ci.yml jobs=%v want exactly RequiredCIJobs=%v", gotJobs, requiredCIJobs)
+	}
+	want := map[string]bool{}
+	for _, j := range requiredCIJobs {
+		want[j] = true
+	}
+	for _, j := range gotJobs {
+		if !want[j] {
+			t.Errorf("ci.yml has extra job %q; required CI must not grow optional jobs", j)
+		}
+	}
+}
+
+var jobLevelIf = regexp.MustCompile(`(?m)^    if:`)
+
+func yamlJobIDs(workflow string) []string {
+	i := strings.Index(workflow, "\njobs:")
+	if i < 0 {
+		return nil
+	}
+	rest := workflow[i+len("\njobs:"):]
+	re := regexp.MustCompile(`(?m)^  ([A-Za-z0-9_.-]+):`)
+	var out []string
+	for _, m := range re.FindAllStringSubmatch(rest, -1) {
+		out = append(out, m[1])
+	}
+	return out
 }
 
 func TestReleaseWorkflowGatesTags(t *testing.T) {

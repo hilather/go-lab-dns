@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -67,11 +69,11 @@ func TestRunDiffFailsOnDirtyWorktree(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "dirty.txt"), []byte("x\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	err := runDiff(root, "HEAD", "HEAD", "", false, false)
+	err := runDiff(root, "HEAD", "HEAD", "", false, false, io.Discard)
 	if err == nil || !strings.Contains(err.Error(), "dirty worktree") {
 		t.Fatalf("want dirty worktree, got %v", err)
 	}
-	if err := runDiff(root, "HEAD", "HEAD", "", false, true); err != nil {
+	if err := runDiff(root, "HEAD", "HEAD", "", false, true, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -88,15 +90,19 @@ func TestRunDiffFailsWhenCLIHelpUndocumented(t *testing.T) {
 	if err := os.WriteFile(notes, []byte(unaccountedNotes()), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	err := runDiff(root, base, "HEAD", notes, false, false)
+	var stdout bytes.Buffer
+	err := runDiff(root, base, "HEAD", notes, false, false, &stdout)
 	if err == nil || !strings.Contains(err.Error(), "cli-help") {
 		t.Fatalf("want undocumented cli-help, got %v", err)
+	}
+	if !strings.Contains(stdout.String(), "cli-help") || !strings.Contains(stdout.String(), "api/cli/help.txt") {
+		t.Fatalf("stdout must carry the surface table for tee; got %q", stdout.String())
 	}
 
 	if err := os.WriteFile(notes, []byte(accountedNotes()), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runDiff(root, base, "HEAD", notes, false, false); err != nil {
+	if err := runDiff(root, base, "HEAD", notes, false, false, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -178,6 +184,16 @@ func TestPreviousTagFallsBackToEmptyTree(t *testing.T) {
 	}
 	if tag != "v0.0.1" {
 		t.Fatalf("previous tag=%s", tag)
+	}
+}
+
+func TestNextLinkParsesGitHubPagination(t *testing.T) {
+	got := nextLink(`<https://api.github.com/resource?page=2>; rel="next", <https://api.github.com/resource?page=3>; rel="last"`)
+	if got != "https://api.github.com/resource?page=2" {
+		t.Fatalf("next=%q", got)
+	}
+	if nextLink("") != "" || nextLink(`<https://api.github.com/resource?page=3>; rel="last"`) != "" {
+		t.Fatal("expected empty when no rel=next")
 	}
 }
 

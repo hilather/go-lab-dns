@@ -74,6 +74,7 @@ Confirm that the generated differences below were reviewed and represented above
 
 - [ ] OpenAPI
 - [ ] MCP capability manifest and tool/resource schemas
+- [ ] Capability table
 - [ ] Configuration schema and defaults
 - [ ] CLI flags and environment variables
 - [ ] DNS record and chaos action support

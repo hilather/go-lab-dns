@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -78,12 +79,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "usage: release-diff [flags] FROM TO\n")
 		os.Exit(2)
 	}
-	if err := runDiff(root, args[0], args[1], *notesPath, *jsonOut, *allowDirty); err != nil {
+	if err := runDiff(root, args[0], args[1], *notesPath, *jsonOut, *allowDirty, os.Stdout); err != nil {
 		fatal(err)
 	}
 }
 
-func runDiff(root, from, to, notesPath string, jsonOut, allowDirty bool) error {
+func runDiff(root, from, to, notesPath string, jsonOut, allowDirty bool, stdout io.Writer) error {
 	if !allowDirty {
 		if err := rejectDirty(root); err != nil {
 			return err
@@ -94,6 +95,7 @@ func runDiff(root, from, to, notesPath string, jsonOut, allowDirty bool) error {
 	if err != nil {
 		return err
 	}
+	var notesErr error
 	if notesPath != "" {
 		body, err := os.ReadFile(notesPath)
 		if err != nil {
@@ -103,21 +105,23 @@ func runDiff(root, from, to, notesPath string, jsonOut, allowDirty bool) error {
 		nrep := releasecontract.ValidateNotes(string(body), changed)
 		report.Notes = &nrep
 		if nrep.Incomplete() {
-			if jsonOut {
-				_ = json.NewEncoder(os.Stdout).Encode(report)
-			} else {
-				fmt.Fprint(os.Stderr, report.Text())
-			}
-			return releasecontract.FormatNotesError(nrep)
+			notesErr = releasecontract.FormatNotesError(nrep)
 		}
 	}
+	// Always emit the surface table on stdout so `tee release-diff.txt`
+	// captures undocumented diffs on the failing tag-gate path.
 	if jsonOut {
-		enc := json.NewEncoder(os.Stdout)
+		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
-		return enc.Encode(report)
+		if err := enc.Encode(report); err != nil {
+			return err
+		}
+	} else {
+		if _, err := io.WriteString(stdout, report.Text()); err != nil {
+			return err
+		}
 	}
-	fmt.Print(report.Text())
-	return nil
+	return notesErr
 }
 
 func resolveFrom(root, from string) string {

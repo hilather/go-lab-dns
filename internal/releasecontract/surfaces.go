@@ -49,7 +49,7 @@ func PublicSurfaces() []Surface {
 			ID:          "capabilities",
 			Path:        "api/capabilities/v1.json",
 			Title:       "Capability table",
-			ReviewToken: "MCP capability manifest",
+			ReviewToken: "Capability table",
 			Generated:   true,
 		},
 		{

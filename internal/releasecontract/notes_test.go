@@ -19,6 +19,16 @@ func TestTemplateHeadingsMatchRequired(t *testing.T) {
 			t.Errorf("RELEASE-NOTES-TEMPLATE.md missing ## %s", h)
 		}
 	}
+	seen := map[string]string{}
+	for _, s := range PublicSurfaces() {
+		if !strings.Contains(text, s.ReviewToken) {
+			t.Errorf("RELEASE-NOTES-TEMPLATE.md missing review token %q (%s)", s.ReviewToken, s.ID)
+		}
+		if other, ok := seen[s.ReviewToken]; ok {
+			t.Errorf("ReviewToken %q is shared by %s and %s", s.ReviewToken, other, s.ID)
+		}
+		seen[s.ReviewToken] = s.ID
+	}
 }
 
 func TestValidateNotesRejectsTemplateAndMissingSections(t *testing.T) {
@@ -53,6 +63,32 @@ func TestValidateNotesAcceptsFilledNotes(t *testing.T) {
 	if r.Incomplete() {
 		t.Fatalf("filled notes rejected: %s", r.Error())
 	}
+}
+
+func TestValidateNotesCapabilitiesNotCoveredByMCPBox(t *testing.T) {
+	notes := filledNotes()
+	notes = strings.ReplaceAll(notes, "- [x] Capability table", "- [ ] Capability table")
+	r := ValidateNotes(notes, []Surface{{
+		ID: "capabilities", Path: "api/capabilities/v1.json", Title: "Capability table",
+		ReviewToken: "Capability table",
+	}})
+	if !r.Incomplete() {
+		t.Fatal("MCP box must not account for a capabilities-only delta")
+	}
+	if len(r.Unaccounted) == 0 && len(r.UncheckedReviews) == 0 {
+		t.Fatalf("expected unaccounted or unchecked capabilities, report=%s", r.Error())
+	}
+	for _, item := range r.Unaccounted {
+		if strings.Contains(item, "capabilities") {
+			return
+		}
+	}
+	for _, item := range r.UncheckedReviews {
+		if strings.Contains(item, "capabilities") {
+			return
+		}
+	}
+	t.Fatalf("report did not name capabilities: %s", r.Error())
 }
 
 func TestValidateNotesRequiresMentionOfChangedSurface(t *testing.T) {

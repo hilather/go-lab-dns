@@ -51,10 +51,12 @@ func TestGeneratedRelsCoverPublicSurfaces(t *testing.T) {
 
 func TestCheckFilesReportsEachStaleSurface(t *testing.T) {
 	dir := t.TempDir()
-	files := []artifact{
-		{rel: "testdata/generated/fixture.txt", body: []byte("fixture-want\n")},
-		{rel: "api/cli/help.txt", body: []byte("help-want\n")},
-		{rel: "api/errors/v1.json", body: []byte("{}\n")},
+	var files []artifact
+	for _, rel := range releasecontract.GeneratedRels() {
+		files = append(files, artifact{rel: rel, body: []byte("want-" + rel + "\n")})
+	}
+	if len(files) < 3 {
+		t.Fatalf("GeneratedRels()=%d, want every generated surface", len(files))
 	}
 	for _, f := range files {
 		path := filepath.Join(dir, filepath.FromSlash(f.rel))

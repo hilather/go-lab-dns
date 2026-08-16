@@ -3,40 +3,36 @@ package releasecontract
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // CheckRun is one GitHub check-run or workflow job result.
 type CheckRun struct {
-	Name       string
-	Status     string // queued, in_progress, completed
-	Conclusion string // success, failure, cancelled, skipped, ...
-	HeadSHA    string
+	Name        string    `json:"name"`
+	Status      string    `json:"status"`
+	Conclusion  string    `json:"conclusion"`
+	HeadSHA     string    `json:"headSha"`
+	CompletedAt time.Time `json:"completedAt,omitempty"`
 }
 
 // EvaluateChecks fails if any required job is missing, not successful, or
 // not recorded against wantSHA. A skipped or cancelled required job is a
 // failed gate — there is no administrative bypass.
 func EvaluateChecks(required []string, runs []CheckRun, wantSHA string) error {
-	byName := map[string][]CheckRun{}
-	for _, r := range runs {
-		for _, key := range checkNameKeys(r.Name) {
-			byName[key] = append(byName[key], r)
-		}
-	}
 	var problems []string
 	for _, name := range required {
-		hits := byName[name]
+		hits, wrongSHA := matchingRuns(runs, name, wantSHA)
 		if len(hits) == 0 {
-			problems = append(problems, name+": missing (required job did not run)")
+			if wrongSHA > 0 {
+				problems = append(problems, fmt.Sprintf("%s: head SHA != tag commit %s", name, wantSHA))
+			} else {
+				problems = append(problems, name+": missing (required job did not run)")
+			}
 			continue
 		}
 		best := latestCompleted(hits)
 		if best == nil {
 			problems = append(problems, name+": not completed (status="+hits[len(hits)-1].Status+")")
-			continue
-		}
-		if wantSHA != "" && best.HeadSHA != "" && best.HeadSHA != wantSHA {
-			problems = append(problems, fmt.Sprintf("%s: head SHA %s != tag commit %s", name, best.HeadSHA, wantSHA))
 			continue
 		}
 		if !strings.EqualFold(best.Status, "completed") || !strings.EqualFold(best.Conclusion, "success") {
@@ -49,15 +45,49 @@ func EvaluateChecks(required []string, runs []CheckRun, wantSHA string) error {
 	return nil
 }
 
+func matchingRuns(runs []CheckRun, name, wantSHA string) (hits []CheckRun, wrongSHA int) {
+	for _, r := range runs {
+		if !checkNameMatches(r.Name, name) {
+			continue
+		}
+		if wantSHA != "" && r.HeadSHA != "" && r.HeadSHA != wantSHA {
+			wrongSHA++
+			continue
+		}
+		hits = append(hits, r)
+	}
+	return hits, wrongSHA
+}
+
 func latestCompleted(runs []CheckRun) *CheckRun {
-	var last *CheckRun
+	var best *CheckRun
 	for i := range runs {
 		r := &runs[i]
-		if strings.EqualFold(r.Status, "completed") {
-			last = r
+		if !strings.EqualFold(r.Status, "completed") {
+			continue
+		}
+		if best == nil {
+			best = r
+			continue
+		}
+		switch {
+		case r.CompletedAt.After(best.CompletedAt):
+			best = r
+		case r.CompletedAt.Equal(best.CompletedAt):
+			// Equal or both zero: later in the filtered slice wins.
+			best = r
 		}
 	}
-	return last
+	return best
+}
+
+func checkNameMatches(got, want string) bool {
+	for _, key := range checkNameKeys(got) {
+		if key == want {
+			return true
+		}
+	}
+	return false
 }
 
 // checkNameKeys indexes a check-run by its API name and the suffix after

@@ -3,6 +3,7 @@ package releasecontract
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestEvaluateChecksRequiresSuccessOnExactSHA(t *testing.T) {
@@ -47,6 +48,15 @@ func TestEvaluateChecksRequiresSuccessOnExactSHA(t *testing.T) {
 	if err := EvaluateChecks(required, wrongSHA, sha); err == nil || !strings.Contains(err.Error(), "head SHA") {
 		t.Fatalf("want SHA mismatch, got %v", err)
 	}
+
+	// A success on another SHA must not satisfy the tag commit.
+	staleSuccess := []CheckRun{
+		{Name: "unit", Status: "completed", Conclusion: "success", HeadSHA: "other"},
+		{Name: "generated-file", Status: "completed", Conclusion: "success", HeadSHA: sha},
+	}
+	if err := EvaluateChecks(required, staleSuccess, sha); err == nil || !strings.Contains(err.Error(), "unit") {
+		t.Fatalf("want unit SHA mismatch, got %v", err)
+	}
 }
 
 func TestEvaluateChecksAcceptsWorkflowPrefixedNames(t *testing.T) {
@@ -60,13 +70,26 @@ func TestEvaluateChecksAcceptsWorkflowPrefixedNames(t *testing.T) {
 	}
 }
 
-func TestEvaluateChecksUsesLatestCompleted(t *testing.T) {
+func TestEvaluateChecksUsesNewestCompletedAt(t *testing.T) {
 	sha := "abc"
-	runs := []CheckRun{
-		{Name: "unit", Status: "completed", Conclusion: "failure", HeadSHA: sha},
-		{Name: "unit", Status: "completed", Conclusion: "success", HeadSHA: sha},
+	older := time.Date(2026, 8, 15, 12, 0, 0, 0, time.UTC)
+	newer := older.Add(time.Minute)
+
+	// Newer failure must win even when it appears first in the slice.
+	newerFail := []CheckRun{
+		{Name: "unit", Status: "completed", Conclusion: "failure", HeadSHA: sha, CompletedAt: newer},
+		{Name: "unit", Status: "completed", Conclusion: "success", HeadSHA: sha, CompletedAt: older},
 	}
-	if err := EvaluateChecks([]string{"unit"}, runs, sha); err != nil {
+	if err := EvaluateChecks([]string{"unit"}, newerFail, sha); err == nil {
+		t.Fatal("newer failure must fail the gate")
+	}
+
+	// Newer success must win even when an older failure is last in the slice.
+	newerOK := []CheckRun{
+		{Name: "unit", Status: "completed", Conclusion: "success", HeadSHA: sha, CompletedAt: newer},
+		{Name: "unit", Status: "completed", Conclusion: "failure", HeadSHA: sha, CompletedAt: older},
+	}
+	if err := EvaluateChecks([]string{"unit"}, newerOK, sha); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -10,9 +10,9 @@ Commit: REL-001 finalization (this change)
 
 CLI help is a documented public compatibility surface (`docs/14-release-engineering.md`, `AGENTS.md`). After DEP-001 landed `labdns` flags and `LABDNS_CHAOS_DISABLE`, `make generate` / `make verify-generated` still only treated `testdata/generated/fixture.txt` plus JSON catalogs as generated contracts. A CLI flag or environment-variable change left the worktree “clean” for `generated-file` CI and produced no artifact for `release-diff` to compare.
 
-Simulated by dirtying each generated surface, including `api/cli/help.txt`, and asserting `go run ./scripts/generate -check` fails and names the file. The same gap is reproduced in `scripts/release-diff` by changing only CLI help between two refs and omitting it from curated notes.
+Simulated by dirtying each `releasecontract.GeneratedRels()` path, including `api/cli/help.txt`, and asserting `checkFiles` fails and names the file. The same gap is reproduced in `scripts/release-diff` by changing only CLI help between two refs and omitting it from curated notes.
 
-Retained evidence: unit logs from `TestVerifyGeneratedFailsWhenEachSurfaceDirty` and `TestRunDiffFailsWhenCLIHelpUndocumented`.
+Retained evidence: unit logs from `TestCheckFilesReportsEachStaleSurface` and `TestRunDiffFailsWhenCLIHelpUndocumented`.
 
 ## Classification
 
@@ -47,7 +47,7 @@ The generated-file job and its regression test only covered the original FND-001
 - [ ] Narrow bounded retry for a proven external transient
 - [x] Documentation/runbook update
 
-`TestVerifyGeneratedFailsWhenEachSurfaceDirty` dirties every generated relative path, not only the fixture. `TestHelpMatchesGeneratedArtifact` requires `labdns help` to match `api/cli/help.txt`. `TestRunDiffFailsWhenCLIHelpUndocumented` is the tag-gate counterpart.
+`TestCheckFilesReportsEachStaleSurface` iterates `releasecontract.GeneratedRels()` (fixture plus every generated public surface) and dirties each path in a temp tree. `TestHelpMatchesGeneratedArtifact` requires `labdns help` to match `api/cli/help.txt`. `TestRunDiffFailsWhenCLIHelpUndocumented` is the tag-gate counterpart and asserts the surface table is written to stdout so `tee release-diff.txt` retains it.
 
 ## Why recurrence is less likely
 
