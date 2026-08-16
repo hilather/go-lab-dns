@@ -13,7 +13,7 @@ commands:
   serve --config PATH [--chaos-disable] [--dns-listen ADDR] [--management-listen ADDR|off] [--shutdown-timeout DUR] [--pid-file PATH]
   validate --config PATH
   canonicalize --config PATH [--format yaml|json]
-  verify --config PATH --probes PATH
+  verify --config PATH --probes PATH [--policies DIR] [--image REF|--image-env PATH] [--kustomize PATH] [--server HOST:PORT]
   query --name NAME [--type A] [--server HOST:PORT] [--transport udp|tcp]
   healthcheck --url URL
   chaos emergency-disable --pid-file PATH
