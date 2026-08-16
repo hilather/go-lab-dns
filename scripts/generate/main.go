@@ -1,6 +1,3 @@
-// Command generate writes testdata/generated/fixture.txt, api/capabilities/v1.json,
-// api/openapi/v1.json, and api/mcp/v1.json.
-// Command generate writes testdata/generated/fixture.txt, api/capabilities/v1.json, api/openapi/v1.json, and api/metrics/v1alpha1.json.
 // Command generate writes testdata/generated/fixture.txt and every generated
 // public surface listed in internal/releasecontract (OpenAPI, MCP, capabilities,
 // metrics, CLI help, error catalog).
@@ -39,26 +36,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "generate: %v\n", err)
 		os.Exit(1)
 	}
-	manifest, err := capabilities.RenderManifest()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "generate: manifest: %v\n", err)
-		os.Exit(1)
-	}
-	openapi, err := rest.RenderOpenAPI()
-		fmt.Fprintf(os.Stderr, "generate: openapi: %v\n", err)
-	mcpManifest, err := mcp.RenderManifest()
-		fmt.Fprintf(os.Stderr, "generate: mcp: %v\n", err)
-	metrics, err := observability.RenderCatalog()
-		fmt.Fprintf(os.Stderr, "generate: metrics: %v\n", err)
-	files := []struct {
-		rel  string
-		body []byte
-	}{
-		{filepath.Join("testdata", "generated", "fixture.txt"), []byte(got)},
-		{filepath.FromSlash(capabilities.ManifestRelPath), manifest},
-		{filepath.FromSlash(rest.OpenAPIRelPath), openapi},
-		{filepath.FromSlash(mcp.ManifestRelPath), mcpManifest},
-		{filepath.FromSlash(observability.CatalogRelPath), metrics},
 	if *check {
 		if err := checkFiles(root, files); err != nil {
 			fmt.Fprintf(os.Stderr, "generate: %v\n", err)
