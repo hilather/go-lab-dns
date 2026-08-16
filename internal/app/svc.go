@@ -60,10 +60,9 @@ type App struct {
 	engine        *chaos.Engine
 	bootstrapPath string
 	idemp         *idempCache
-	audit         *auditRing
+	audit         *audit.Fanout
 	healthSrc     HealthSource
 	metrics       *observability.Registry
-	audit         *audit.Fanout
 	// afterCompile runs after a successful compile, before Swap. Tests use
 	// it to interleave emergency disable with apply.
 	afterCompile func()
@@ -108,10 +107,9 @@ func New(opts Options) *App {
 		engine:        opts.Engine,
 		bootstrapPath: opts.BootstrapPath,
 		idemp:         newIdempCache(idempMax),
-		audit:         newAuditRing(auditMax),
+		audit:         audit.NewFanout(auditMax, opts.Auditor),
 		healthSrc:     opts.HealthSource,
 		metrics:       opts.Metrics,
-		audit:         audit.NewFanout(auditMax, opts.Auditor),
 	}
 }
 
