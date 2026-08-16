@@ -4,6 +4,7 @@ Status: Proposed
 Owners: Architecture, Release Engineering
 Last reviewed: 2026-08-15 (MCP-001 2026-07-28 pin)
 Last reviewed: 2026-08-15 (OBS-001 metrics catalog)
+Last reviewed: 2026-08-15 (REL-001 release-diff surfaces)
 
 ## Public compatibility surfaces
 
@@ -57,7 +58,7 @@ Security emergencies may require faster removal, with explicit notes.
 
 ## Schema diff policy
 
-Release CI classifies changes as additive, potentially breaking, or breaking. Human review confirms semantics. All differences appear in release notes.
+`scripts/release-diff` reports `added` / `removed` / `changed` / `identical` for every public surface between two refs. Human review confirms whether a `changed` file is additive, potentially breaking, or breaking. All differences appear in `docs/releases/<tag>.md`. An unaccounted surface blocks the tag.
 
 ## Testing strategy
 

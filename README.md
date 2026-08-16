@@ -73,10 +73,12 @@ make test-docs
 make test-fuzz-smoke
 make test-container
 make security-scan
+make test-changelog
 ```
 
 `make generate` writes `testdata/generated/fixture.txt` from `testdata/generated/source.txt` and `go.mod`, the frozen capability manifest to [`api/capabilities/v1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/capabilities/v1.json), OpenAPI 3.1 to [`api/openapi/v1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/openapi/v1.json), and the MCP manifest to [`api/mcp/v1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/mcp/v1.json). `make verify-generated` fails when any generated file is stale.
 `make generate` writes `testdata/generated/fixture.txt` from `testdata/generated/source.txt` and `go.mod`, the frozen capability manifest to [`api/capabilities/v1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/capabilities/v1.json), OpenAPI 3.1 to [`api/openapi/v1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/openapi/v1.json), and the metrics catalog to [`api/metrics/v1alpha1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/metrics/v1alpha1.json). `make verify-generated` fails when any generated file is stale.
+`make generate` writes `testdata/generated/fixture.txt` from `testdata/generated/source.txt` and `go.mod`, plus the generated public surfaces: [`api/capabilities/v1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/capabilities/v1.json), [`api/openapi/v1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/openapi/v1.json), [`api/mcp/v1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/mcp/v1.json), [`api/metrics/v1alpha1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/metrics/v1alpha1.json), [`api/cli/help.txt`](https://github.com/hilather/go-lab-dns/blob/main/api/cli/help.txt), and [`api/errors/v1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/errors/v1.json). `make verify-generated` fails when any generated file is stale.
 
 `make test-config-compat` runs the v1alpha1 positive and negative configuration fixtures under `testdata/config`.
 
@@ -106,5 +108,8 @@ The following GitHub Actions jobs are required and have no bypass path:
 - `documentation`
 - `security-scan`
 - `container-test` (builds `ghcr.io/hilather/labdns` and checks the hardened runtime contract)
+- `changelog`
+- `parity`
+- `config-compat`
 
-Local equivalents are the `make` targets above. Do not mark a required check optional to ship a change.
+Local equivalents are the `make` targets above. Do not mark a required check optional to ship a change. Tag creation is gated by the `Release` workflow (`tag-gate`); see [docs/14-release-engineering.md](https://github.com/hilather/go-lab-dns/blob/main/docs/14-release-engineering.md).

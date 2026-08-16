@@ -1,0 +1,12 @@
+usage: labdns <command>
+commands:
+  serve --config PATH [--chaos-disable] [--dns-listen ADDR] [--management-listen ADDR|off] [--shutdown-timeout DUR] [--pid-file PATH]
+  validate --config PATH
+  canonicalize --config PATH [--format yaml|json]
+  verify --config PATH --probes PATH
+  query --name NAME [--type A] [--server HOST:PORT] [--transport udp|tcp]
+  healthcheck --url URL
+  chaos emergency-disable --pid-file PATH
+  version
+env: LABDNS_CHAOS_DISABLE=1 inhibits chaos at startup (YAML/API cannot relax it).
+env: no environment variable raises chaos safety caps.

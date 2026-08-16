@@ -30,6 +30,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Production CLI: `serve`, `validate`, `canonicalize`, `verify`, `query`, `healthcheck`, `version`, and `chaos emergency-disable --pid-file`.
 - Hardened multi-stage image `ghcr.io/hilather/labdns` (scratch, UID 65532, Apache-2.0 OCI labels, no shell).
 - Shared SEC-001 identity, RBAC, abuse limits, and audit in `internal/auth` and `internal/audit`. Role×capability matrix, resource-aware plan/apply, separate chaos design/activate/high-impact/emergency privileges, management and DNS query rate limits, Origin/CORS deny-all, secret redaction, and an in-memory audit ring with a best-effort external hook (no fail-closed durable sink).
+- Versioned metrics/events catalog (`labdns.dev/metrics/v1alpha1`) with a label allowlist, automated no-QNAME/no-client-IP checks, bounded export queues, structured JSON logs, optional sampled tracing, and a filled `app.Status` DTO (revisions, listeners, cache, upstreams, chaos, ready/degraded, warnings). Artifact: [api/metrics/v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/metrics/v1alpha1.json).
+- REL-001 release automation: `scripts/release-diff` compares OpenAPI, MCP manifest, config schema, capability table, metrics catalog, CLI help, error catalog, and chaos-effect catalog between two git refs. Tag notes live at `docs/releases/<tag>.md`. Generated CLI help: [api/cli/help.txt](https://github.com/hilather/go-lab-dns/blob/main/api/cli/help.txt). Generated error catalog: [api/errors/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/errors/v1.json).
 
 ### Changed
 
@@ -102,6 +104,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Deployment and operations
 
+- Required CI jobs now include `changelog`, `parity`, and `config-compat` in addition to format/lint/unit/race/fuzz-smoke/generated-file/documentation/security-scan/container-test. The `Release` workflow `tag-gate` refuses a tag when notes are incomplete, public-surface diffs are undocumented, generated files are stale, or a required CI job did not succeed on the exact commit. There is no `continue-on-error` or unbounded retry. Operator checklist: [docs/14-release-engineering.md](https://github.com/hilather/go-lab-dns/blob/main/docs/14-release-engineering.md).
 - `labdns serve --config PATH` compiles bootstrap YAML, serves DNS on the configured listen address (default `:5353` UDP+TCP), and serves management HTTP on the configured address (default `:8080`). `--chaos-disable` / `LABDNS_CHAOS_DISABLE` arm a startup lock that YAML, reset, and emergency-enable cannot relax. `SIGTERM` is graceful (cancel delays, then listeners). `SIGUSR1` and `labdns chaos emergency-disable --pid-file` are the local runtime emergency path.
 - Runtime plan/apply/reset are process-local via `app.Service`. `expectedRevision` is required except privileged reset. Idempotency keys use a bounded in-memory LRU (default 256; `<=0` is not unlimited). Reset rereads the bootstrap mount and never writes it. Export is canonical YAML/JSON with no comments, plus bootstrap-to-runtime operations. Container recreation discards runtime drift.
 

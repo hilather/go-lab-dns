@@ -2,7 +2,7 @@
 
 Status: Proposed normative quality gate
 Owners: All teams
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-15 (REL-001 release-diff and required CI)
 
 ## Policy
 

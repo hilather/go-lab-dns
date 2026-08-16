@@ -1,0 +1,104 @@
+# LabDNS tag gate (REL-001).
+#
+# Required job: tag-gate. A release tag is refused when generated files are
+# stale, release notes are incomplete, public-surface diffs are undocumented,
+# or any required CI job did not succeed on the exact tag commit.
+#
+# No continue-on-error, no broad retries, no administrative bypass.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git tag (vX.Y.Z) or commit to gate
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.event.inputs.ref || github.ref }}
+  cancel-in-progress: false
+
+env:
+  GOTOOLCHAIN: local
+  GOPROXY: https://proxy.golang.org,direct
+
+jobs:
+  tag-gate:
+    name: tag-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+
+      - name: Record exact commit
+        id: rev
+        run: |
+          set -euo pipefail
+          sha="$(git rev-parse HEAD)"
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+          echo "tag_commit=${sha}"
+
+      - name: Reject dirty worktree
+        run: git diff --exit-code && git diff --cached --exit-code
+
+      - name: Verify generated files
+        run: make verify-generated
+
+      - name: Resolve previous tag and notes path
+        id: gate
+        run: |
+          set -euo pipefail
+          ref="${{ github.event.inputs.ref || github.ref_name }}"
+          ref="${ref#refs/tags/}"
+          notes="docs/releases/${ref}.md"
+          if [ ! -f "${notes}" ]; then
+            echo "missing release notes ${notes}" >&2
+            exit 1
+          fi
+          prev="$(go run ./scripts/release-diff -previous-tag)"
+          echo "ref=${ref}" >> "$GITHUB_OUTPUT"
+          echo "notes=${notes}" >> "$GITHUB_OUTPUT"
+          echo "prev=${prev}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate release notes headings
+        run: go run ./scripts/release-diff -notes-only -notes "${{ steps.gate.outputs.notes }}"
+
+      - name: Public-surface diff
+        run: |
+          set -euo pipefail
+          go run ./scripts/release-diff \
+            -notes "${{ steps.gate.outputs.notes }}" \
+            "${{ steps.gate.outputs.prev }}" HEAD \
+            | tee release-diff.txt
+
+      - name: Require green CI on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_SHA: ${{ steps.rev.outputs.sha }}
+        run: go run ./scripts/release-diff -require-ci
+
+      - name: Upload release-diff report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-diff
+          path: release-diff.txt
+          if-no-files-found: ignore
+          retention-days: 30

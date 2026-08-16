@@ -49,9 +49,12 @@
 
 - `api/capabilities/v1.json`
 - `api/openapi/v1.json`
+- `api/mcp/v1.json`
 - `api/metrics/v1alpha1.json`
-- `api/jsonschema/labdns.dev.v1alpha1.json`
-- `api/chaos/effects.json`
+- `api/cli/help.txt`
+- `api/errors/v1.json`
+- `api/jsonschema/labdns.dev.v1alpha1.json` (source schema; compared by release-diff)
+- `api/chaos/effects.json` (source catalog; compared by release-diff)
 
 ## Agent task plans
 

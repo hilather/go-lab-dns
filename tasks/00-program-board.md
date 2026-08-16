@@ -25,7 +25,7 @@ Last reviewed: 2026-08-15
 | 12 | Observability | OBS-001 | Stable component interfaces | Metrics, logs, health, tracing | not-started |
 | 13 | CLI and container | DEP-001 | Runnable server | CLI, image, graceful lifecycle | done |
 | 14 | Deployment examples | GIT-001 | DEP-001, schemas, probes | Compose/Kubernetes/GitOps guidance | not-started |
-| 15 | CI, docs, and release automation | REL-001 | FND-001, stable generation targets | Required CI and release diffs | not-started |
+| 15 | CI, docs, and release automation | REL-001 | FND-001, stable generation targets | Required CI and release diffs | done |
 | 16 | Performance and interoperability | PERF-001 | Feature-complete candidate | Load, soak, external compatibility | not-started |
 | 17 | GA hardening | GA-001 | All prior tasks | Acceptance review and release candidate | not-started |
 

@@ -35,7 +35,11 @@
 # Release engineering
 /docs/14-release-engineering.md @hilather
 /docs/15-documentation-governance.md @hilather
+/docs/ci-failure-hardening/ @hilather
 /CHANGELOG.md @hilather
 /RELEASE-NOTES-TEMPLATE.md @hilather
 /.github/ @hilather
 /Makefile @hilather
+/scripts/release-diff/ @hilather
+/scripts/checkchangelog/ @hilather
+/internal/releasecontract/ @hilather

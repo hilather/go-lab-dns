@@ -44,6 +44,22 @@ func TestHelp(t *testing.T) {
 	}
 }
 
+func TestHelpMatchesGeneratedArtifact(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := runContext(context.Background(), []string{"labdns", "help"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit %d stderr=%q", code, stderr.String())
+	}
+	path := filepath.Join(repoRoot(t), "api", "cli", "help.txt")
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stdout.String() != string(want) {
+		t.Fatalf("labdns help drifted from %s", path)
+	}
+}
+
 func TestUnknownCommand(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := runContext(context.Background(), []string{"labdns", "not-a-command"}, &stdout, &stderr)

@@ -41,3 +41,57 @@ func TestCheckReportsMissingAndBroken(t *testing.T) {
 		t.Fatalf("error = %v", err)
 	}
 }
+
+func TestCheckReportsMissingMetadata(t *testing.T) {
+	dir := t.TempDir()
+	for _, rel := range RequiredRootDocs {
+		path := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		body := "# x\n"
+		if rel == "docs/01-architecture.md" {
+			body = "# System Architecture\n\nNo metadata.\n"
+		} else if strings.HasPrefix(rel, "docs/") && strings.HasSuffix(rel, ".md") {
+			body = "# x\n\nStatus: Proposed\nOwners: Test\nLast reviewed: 2026-08-15\n"
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Satisfy numbered-doc walk for 01 only; others aren't created under docs/NN.
+	if err := Check(dir); err == nil {
+		t.Fatal("expected missing metadata")
+	} else if !strings.Contains(err.Error(), "documentation metadata missing") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestCheckReportsInvalidExampleYAML(t *testing.T) {
+	dir := t.TempDir()
+	for _, rel := range RequiredRootDocs {
+		path := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		body := "# x\n"
+		if strings.HasPrefix(rel, "docs/") && strings.HasSuffix(rel, ".md") && !strings.Contains(rel, "implementation") {
+			body = "# x\n\nStatus: Proposed\nOwners: Test\nLast reviewed: 2026-08-15\n"
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ex := filepath.Join(dir, "examples", "bad.yaml")
+	if err := os.MkdirAll(filepath.Dir(ex), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(ex, []byte("\tservices:\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := Check(dir); err == nil {
+		t.Fatal("expected invalid example")
+	} else if !strings.Contains(err.Error(), "invalid example YAML") {
+		t.Fatalf("error = %v", err)
+	}
+}

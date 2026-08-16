@@ -10,7 +10,7 @@ GOLANGCI_LINT_MOD ?= github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GO
 
 .PHONY: help format lint generate verify-generated test test-race test-fuzz-smoke \
 	test-integration test-parity test-config-compat test-docs test-container \
-	security-scan
+	security-scan test-changelog release-diff
 
 help:
 	@printf '%s\n' \
@@ -20,15 +20,19 @@ help:
 		'  generate            write testdata/generated/fixture.txt, api/capabilities/v1.json, api/openapi/v1.json, and api/mcp/v1.json' \
 		'  generate            write testdata/generated/fixture.txt, api/capabilities/v1.json, api/openapi/v1.json, and api/metrics/v1alpha1.json' \
 		'  verify-generated    fail if generate would change the fixture' \
+		'  generate            write fixture + generated public surfaces (OpenAPI, MCP, capabilities, metrics, CLI help, errors)' \
+		'  verify-generated    fail if generate would change any generated file' \
 		'  test                go test ./...' \
 		'  test-race           go test -race ./...' \
 		'  test-fuzz-smoke     execute the buildinfo and dnswire seed corpora' \
-		'  test-docs           required documents and internal markdown links' \
+		'  test-docs           required documents, metadata, links, and example YAML' \
 		'  security-scan       govulncheck' \
 		'  test-integration    unimplemented until later DNS/control-plane PRs' \
 		'  test-parity         REST/MCP capability parity and MCP goldens' \
 		'  test-config-compat  positive+negative v1alpha1 config fixtures' \
-		'  test-container      build ghcr.io/hilather/labdns and check non-root/read-only/no-caps'
+		'  test-container      build ghcr.io/hilather/labdns and check non-root/read-only/no-caps' \
+		'  test-changelog      fail if observable paths changed without CHANGELOG.md' \
+		'  release-diff        compare public surfaces: make release-diff FROM=prev TO=HEAD NOTES=docs/releases/vX.Y.Z.md'
 
 format:
 	$(GO) fmt ./...
@@ -71,3 +75,14 @@ test-config-compat:
 
 test-container:
 	bash scripts/test-container.sh
+
+test-changelog:
+	$(GO) run ./scripts/checkchangelog
+
+# FROM and TO are git refs. NOTES is optional and required for a tag gate.
+FROM ?=
+TO ?= HEAD
+NOTES ?=
+release-diff:
+	@test -n "$(FROM)" || (echo 'release-diff: FROM is required (previous tag or empty-tree SHA)' >&2; exit 1)
+	$(GO) run ./scripts/release-diff $(if $(NOTES),-notes $(NOTES),) $(FROM) $(TO)

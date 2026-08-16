@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/hilather/go-lab-dns/internal/releasecontract"
 )
 
 // Required by AGENTS.md. Each must be a real check or an explicit unimplemented failure.
@@ -25,6 +27,8 @@ var requiredTargets = []string{
 	"test-docs",
 	"test-container",
 	"security-scan",
+	"test-changelog",
+	"release-diff",
 }
 
 var unimplementedTargets = []string{
@@ -42,17 +46,7 @@ type unimplementedCIJob struct {
 	Phrase string
 }
 
-var requiredCIJobs = []string{
-	"format",
-	"lint",
-	"unit",
-	"race",
-	"fuzz-smoke",
-	"generated-file",
-	"documentation",
-	"security-scan",
-	"container-test",
-}
+var requiredCIJobs = releasecontract.RequiredCIJobs()
 
 var targetHeader = regexp.MustCompile(`(?m)^([A-Za-z0-9_.-]+):`)
 
@@ -101,6 +95,73 @@ func TestCIJobsPresent(t *testing.T) {
 	for _, job := range requiredCIJobs {
 		if !strings.Contains(text, "\n  "+job+":") {
 			t.Errorf("CI workflow missing job %q", job)
+		}
+		jobBody, ok := yamlJobBody(text, job)
+		if !ok {
+			continue
+		}
+		if strings.Contains(jobBody, "continue-on-error:") {
+			t.Errorf("required job %s must not set continue-on-error", job)
+		}
+		if strings.Contains(jobBody, "|| true") {
+			t.Errorf("required job %s must not ignore failures with || true", job)
+		}
+	}
+}
+
+func TestReleaseWorkflowGatesTags(t *testing.T) {
+	root := mustRoot(t)
+	body, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "release.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(body)
+	for _, want := range []string{
+		"name: Release",
+		"tag-gate:",
+		"./scripts/release-diff",
+		"-require-ci",
+		"-notes",
+		"fetch-depth: 0",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("release workflow missing %q", want)
+		}
+	}
+	if strings.Contains(text, "continue-on-error:") {
+		t.Error("release workflow must not set continue-on-error")
+	}
+	job, ok := yamlJobBody(text, "tag-gate")
+	if !ok {
+		t.Fatal("missing tag-gate job")
+	}
+	if strings.Contains(job, "|| true") {
+		t.Error("tag-gate must not ignore failures")
+	}
+}
+
+func TestWorkflowsForbidBroadRetries(t *testing.T) {
+	root := mustRoot(t)
+	dir := filepath.Join(root, ".github", "workflows")
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	retry := regexp.MustCompile(`(?i)(max-attempts|retry-on|retry:)\s*:`)
+	for _, e := range ents {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".yml") && !strings.HasSuffix(e.Name(), ".yaml") {
+			continue
+		}
+		body, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := string(body)
+		if retry.MatchString(text) {
+			t.Errorf("%s defines a retry policy; only a documented bounded external transient is allowed", e.Name())
+		}
+		if strings.Contains(text, "continue-on-error: true") {
+			t.Errorf("%s sets continue-on-error: true", e.Name())
 		}
 	}
 }

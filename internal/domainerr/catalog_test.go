@@ -36,6 +36,32 @@ var documentedCodes = []Code{
 	"internal_error",
 }
 
+func TestRenderCatalogMatchesCodes(t *testing.T) {
+	raw, err := RenderCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc CatalogDoc
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if doc.APIVersion != "labdns.dev/errors/v1" {
+		t.Fatalf("apiVersion=%q", doc.APIVersion)
+	}
+	got := Codes()
+	if len(doc.Codes) != len(got) {
+		t.Fatalf("rendered %d codes, catalog %d", len(doc.Codes), len(got))
+	}
+	for i, e := range doc.Codes {
+		if e.Code != string(got[i]) {
+			t.Fatalf("codes[%d]=%q want %q", i, e.Code, got[i])
+		}
+		if e.Retryable != Retryable(got[i]) {
+			t.Fatalf("%s retryable=%v", e.Code, e.Retryable)
+		}
+	}
+}
+
 func TestCatalogMatchesDocsAndConstants(t *testing.T) {
 	got := Codes()
 	if len(got) != len(documentedCodes) {

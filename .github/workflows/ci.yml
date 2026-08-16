@@ -1,7 +1,11 @@
 # LabDNS continuous integration (FND-001).
 #
 # Required jobs: format, lint, unit, race, fuzz-smoke, generated-file,
-# documentation, security-scan, container-test.
+# documentation, security-scan, container-test, changelog, parity,
+# config-compat.
+#
+# There is no optional or bypassable job. Tag creation is gated by
+# .github/workflows/release.yml (tag-gate).
 #
 # container-test builds ghcr.io/hilather/labdns and checks the hardened
 # runtime contract (non-root, read-only, no capabilities).
@@ -153,3 +157,53 @@ jobs:
           go-version: "1.26.x"
       - name: Container contract
         run: make test-container
+
+  changelog:
+    name: changelog
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: Changelog entry
+        run: make test-changelog
+
+  parity:
+    name: parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: REST/MCP parity
+        run: make test-parity | tee parity.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: parity-logs
+          path: parity.log
+          retention-days: 14
+
+  config-compat:
+    name: config-compat
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - name: Config compatibility
+        run: make test-config-compat | tee config-compat.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: config-compat-logs
+          path: config-compat.log
+          retention-days: 14

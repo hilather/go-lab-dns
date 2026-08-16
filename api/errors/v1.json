@@ -1,0 +1,78 @@
+{
+  "apiVersion": "labdns.dev/errors/v1",
+  "generatedBy": "scripts/generate; DO NOT EDIT.",
+  "codes": [
+    {
+      "code": "validation_failed",
+      "retryable": false
+    },
+    {
+      "code": "revision_conflict",
+      "retryable": true
+    },
+    {
+      "code": "idempotency_conflict",
+      "retryable": false
+    },
+    {
+      "code": "not_found",
+      "retryable": false
+    },
+    {
+      "code": "method_not_allowed",
+      "retryable": false
+    },
+    {
+      "code": "already_exists",
+      "retryable": false
+    },
+    {
+      "code": "forbidden",
+      "retryable": false
+    },
+    {
+      "code": "unauthenticated",
+      "retryable": false
+    },
+    {
+      "code": "rate_limited",
+      "retryable": true
+    },
+    {
+      "code": "protected_object",
+      "retryable": false
+    },
+    {
+      "code": "chaos_disabled",
+      "retryable": false
+    },
+    {
+      "code": "chaos_budget_exceeded",
+      "retryable": true
+    },
+    {
+      "code": "policy_expired",
+      "retryable": false
+    },
+    {
+      "code": "unsupported_capability",
+      "retryable": false
+    },
+    {
+      "code": "unsupported_protocol_version",
+      "retryable": false
+    },
+    {
+      "code": "upstream_unavailable",
+      "retryable": true
+    },
+    {
+      "code": "resolution_failed",
+      "retryable": true
+    },
+    {
+      "code": "internal_error",
+      "retryable": true
+    }
+  ]
+}

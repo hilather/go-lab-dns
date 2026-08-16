@@ -2,7 +2,7 @@
 
 Status: Proposed normative maintenance policy
 Owners: All maintainers
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-15 (REL-001 docs gates)
 
 ## Policy
 
@@ -47,13 +47,17 @@ Related ADRs
 
 ## Automated checks
 
-- Markdown lint.
+Required CI job `documentation` runs `make test-docs` (`scripts/checkdocs`):
+
+- Required root and workflow files exist (including `.github/workflows/release.yml`).
 - Internal-link validation.
-- Required metadata validation.
-- Code and config example tests.
-- Generated reference freshness.
-- No references to removed capabilities.
-- Release-note completeness checks on tags.
+- Required metadata (`Status`, `Last reviewed`, and `Owners` unless `Status: Informational`) on numbered `docs/NN-*.md`.
+- Example YAML under `examples/` rejects empty files and tab indents.
+- Generated reference freshness is `make verify-generated` (job `generated-file`).
+- Changelog entry for observable pull requests (`make test-changelog`).
+- Release-note completeness and undocumented public-surface diffs (`scripts/release-diff` on tags).
+
+Stale generated OpenAPI, MCP, capabilities, metrics, CLI help, or error catalogs fail `generated-file`. Broken links or missing metadata fail `documentation`.
 
 ## Documentation ownership
 

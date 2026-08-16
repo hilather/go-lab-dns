@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -26,9 +27,12 @@ var RequiredRootDocs = []string{
 	"go.mod",
 	"docs/01-architecture.md",
 	"docs/implementation-design.md",
+	"docs/14-release-engineering.md",
+	"docs/ci-failure-hardening/2026-08-15-cli-help-not-generated.md",
 	".github/CODEOWNERS",
 	".github/pull_request_template.md",
 	".github/workflows/ci.yml",
+	".github/workflows/release.yml",
 }
 
 var mdLink = regexp.MustCompile(`\[[^\]]*\]\(([^)]+)\)`)
@@ -104,6 +108,118 @@ func Check(root string) error {
 	}
 	if len(broken) > 0 {
 		return fmt.Errorf("broken markdown links:\n  %s", strings.Join(broken, "\n  "))
+	}
+	if err := checkMetadata(root); err != nil {
+		return err
+	}
+	return checkExampleYAML(root)
+}
+
+var numberedDoc = regexp.MustCompile(`^docs/[0-9]{2}-.+\.md$`)
+
+func checkMetadata(root string) error {
+	var missing []string
+	err := filepath.WalkDir(filepath.Join(root, "docs"), func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if d.Name() == "adr" || d.Name() == "ci-failure-hardening" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		rel = filepath.ToSlash(rel)
+		if !numberedDoc.MatchString(rel) {
+			return nil
+		}
+		body, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		text := string(body)
+		if !hasMeta(text, "Status:") {
+			missing = append(missing, rel+": Status")
+		}
+		if !hasMeta(text, "Last reviewed:") {
+			missing = append(missing, rel+": Last reviewed")
+		}
+		if !strings.Contains(text, "Status: Informational") && !hasMeta(text, "Owners:") {
+			missing = append(missing, rel+": Owners")
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("documentation metadata missing:\n  %s", strings.Join(missing, "\n  "))
+	}
+	return nil
+}
+
+func hasMeta(text, key string) bool {
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), key) {
+			return true
+		}
+	}
+	return false
+}
+
+func checkExampleYAML(root string) error {
+	var broken []string
+	roots := []string{
+		filepath.Join(root, "examples"),
+	}
+	for _, dir := range roots {
+		if _, err := os.Stat(dir); err != nil {
+			continue
+		}
+		err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+			if !strings.HasSuffix(path, ".yaml") && !strings.HasSuffix(path, ".yml") {
+				return nil
+			}
+			body, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			if err := yamlLooksStructured(body); err != nil {
+				rel, _ := filepath.Rel(root, path)
+				broken = append(broken, fmt.Sprintf("%s: %v", rel, err))
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+	if len(broken) > 0 {
+		return fmt.Errorf("invalid example YAML:\n  %s", strings.Join(broken, "\n  "))
+	}
+	return nil
+}
+
+// yamlLooksStructured rejects empty files and tabs-as-indent, which have
+// already caused operator-facing compose examples to fail closed.
+func yamlLooksStructured(body []byte) error {
+	if len(bytes.TrimSpace(body)) == 0 {
+		return fmt.Errorf("empty file")
+	}
+	for i, line := range strings.Split(string(body), "\n") {
+		if strings.HasPrefix(line, "\t") {
+			return fmt.Errorf("line %d uses a tab indent", i+1)
+		}
 	}
 	return nil
 }

@@ -130,6 +130,7 @@ make test-config-compat
 make test-docs
 make test-container
 make security-scan
+make test-changelog
 ```
 
 If a target does not yet exist, the task that first needs it must add it rather than silently omitting the check.
