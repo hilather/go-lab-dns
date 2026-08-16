@@ -67,7 +67,7 @@ jobs:
           go-version: "1.26.6"
       - name: Unit tests
         run: make test | tee unit.log
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: unit-logs
@@ -85,7 +85,7 @@ jobs:
           go-version: "1.26.6"
       - name: Race tests
         run: make test-race | tee race.log
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: race-logs
@@ -103,7 +103,7 @@ jobs:
           go-version: "1.26.6"
       - name: Fuzz smoke
         run: make test-fuzz-smoke | tee fuzz-smoke.log
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: fuzz-smoke-logs
@@ -183,7 +183,7 @@ jobs:
           go-version: "1.26.6"
       - name: REST/MCP parity
         run: make test-parity | tee parity.log
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: parity-logs
@@ -201,7 +201,7 @@ jobs:
           go-version: "1.26.6"
       - name: Config compatibility
         run: make test-config-compat | tee config-compat.log
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: config-compat-logs
