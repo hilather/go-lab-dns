@@ -10,7 +10,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Changed
 
-- None.
+- Pin CI and the image build toolchain to Go **1.26.6** (govulncheck on 1.26.5 reports GO-2026-6218 / 6090 / 6089 / 5972 / 5026, all fixed in 1.26.6). Bump `golang.org/x/net` to v0.55.0 (GO-2026-5026).
 
 ### Fixed
 

@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.x"
+          go-version: "1.26.6"
       - name: Format
         run: make format
       - name: Tree must stay clean
@@ -52,7 +52,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.x"
+          go-version: "1.26.6"
       - name: Lint
         run: make lint
 
@@ -64,7 +64,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.x"
+          go-version: "1.26.6"
       - name: Unit tests
         run: make test | tee unit.log
       - uses: actions/upload-artifact@v4
@@ -82,7 +82,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.x"
+          go-version: "1.26.6"
       - name: Race tests
         run: make test-race | tee race.log
       - uses: actions/upload-artifact@v4
@@ -100,7 +100,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.x"
+          go-version: "1.26.6"
       - name: Fuzz smoke
         run: make test-fuzz-smoke | tee fuzz-smoke.log
       - uses: actions/upload-artifact@v4
@@ -118,7 +118,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.x"
+          go-version: "1.26.6"
       - name: Verify generated files
         run: make verify-generated
 
@@ -130,7 +130,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.x"
+          go-version: "1.26.6"
       - name: Documentation checks
         run: make test-docs
 
@@ -142,7 +142,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.x"
+          go-version: "1.26.6"
       - name: Vulnerability scan
         run: make security-scan
 
@@ -154,7 +154,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.x"
+          go-version: "1.26.6"
       - name: Container contract
         run: make test-container
 
@@ -168,7 +168,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.x"
+          go-version: "1.26.6"
       - name: Changelog entry
         run: make test-changelog
 
@@ -180,7 +180,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.x"
+          go-version: "1.26.6"
       - name: REST/MCP parity
         run: make test-parity | tee parity.log
       - uses: actions/upload-artifact@v4
@@ -198,7 +198,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.x"
+          go-version: "1.26.6"
       - name: Config compatibility
         run: make test-config-compat | tee config-compat.log
       - uses: actions/upload-artifact@v4

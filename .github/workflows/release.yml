@@ -45,7 +45,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26.x"
+          go-version: "1.26.6"
 
       - name: Record exact commit
         id: rev
