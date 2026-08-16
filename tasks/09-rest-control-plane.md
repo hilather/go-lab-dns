@@ -1,6 +1,6 @@
 # API-001: REST Control Plane
 
-Status: implemented
+Status: done
 Recommended owner: REST/API agent
 Dependencies: STA-001 and stable capability registry contract
 Exclusive ownership: `internal/control/rest`, OpenAPI binding/generation

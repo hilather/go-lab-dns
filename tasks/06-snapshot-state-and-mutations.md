@@ -1,6 +1,6 @@
 # STA-001: Snapshot State and Mutations
 
-Status: in-progress (STA-001 slice B: plan/apply/export/reset in `internal/app`; REST/MCP still later)
+Status: done
 Recommended owner: Application/state agent
 Dependencies: CFG-001 and resolver/forwarder compile interfaces
 Exclusive ownership: `internal/snapshot` orchestration helpers, state compiler orchestration, `internal/app` mutation core

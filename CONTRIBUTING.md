@@ -6,7 +6,7 @@
 - `make lint` runs `go vet` and golangci-lint v2.12.2.
 - `make security-scan` runs `golang.org/x/vuln/cmd/govulncheck@v1.1.4`.
 
-See the [Build and test](https://github.com/hilather/go-lab-dns/blob/main/README.md) section of the README for the required Make targets. Local equivalents of every required CI job also include `make test-changelog`, `make test-parity`, and `make test-config-compat`. Compare public surfaces with `make release-diff FROM=<prev> TO=HEAD`. Tag notes live at `docs/releases/<tag>.md`; see [docs/14-release-engineering.md](https://github.com/hilather/go-lab-dns/blob/main/docs/14-release-engineering.md).
+See the [Build and test](https://github.com/hilather/go-lab-dns/blob/main/README.md) section of the README for the required Make targets. Local equivalents of every required CI job also include `make test-changelog`, `make test-parity`, and `make test-config-compat`. Compare public surfaces with `make release-diff FROM=<prev> TO=HEAD`. Tag notes live at `docs/releases/<tag>.md`. The 1.0.0-rc.1 candidate notes are [docs/releases/v1.0.0-rc.1.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.1.md); see [docs/14-release-engineering.md](https://github.com/hilather/go-lab-dns/blob/main/docs/14-release-engineering.md).
 
 ## Development workflow
 

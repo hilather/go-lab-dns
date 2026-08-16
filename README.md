@@ -1,7 +1,7 @@
 # LabDNS Architecture and Agent Work Pack
 
 Status: Proposed baseline
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-15 (GA-001 1.0.0-rc.1 candidate)
 Primary implementation language: Go
 
 LabDNS is a container-first DNS override, wildcard, forwarding, and controlled chaos service for laboratories. It is designed for infrastructure-as-a-service deployment, ephemeral runtime state, Git-controlled desired state, and equal control through REST and MCP.
@@ -89,6 +89,12 @@ make test-changelog
 `make test-parity` still fails closed until MCP lands:
 A copyable GitOps tree (Compose, Kubernetes, digest pin, bearer secret refs, probes) lives at [`examples/labdns-deploy`](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md). See [docs/12-deployment-repository.md](https://github.com/hilather/go-lab-dns/blob/main/docs/12-deployment-repository.md).
 Targets that are not yet implemented fail closed (non-zero exit with an explicit `unimplemented` message) rather than succeeding as no-ops:
+GA-001 candidate artifacts (no tag in-tree):
+
+- Acceptance evidence: [`docs/releases/acceptance-evidence.md`](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/acceptance-evidence.md)
+- Curated notes: [`docs/releases/v1.0.0-rc.1.md`](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.1.md)
+- Residual: [`docs/known-limitations.md`](https://github.com/hilather/go-lab-dns/blob/main/docs/known-limitations.md)
+- Security reporting: [`SECURITY.md`](https://github.com/hilather/go-lab-dns/blob/main/SECURITY.md) (GitHub private advisories)
 
 ```text
 make test-integration    # later DNS/control-plane PRs

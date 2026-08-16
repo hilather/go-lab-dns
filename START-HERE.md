@@ -31,3 +31,5 @@ A task is not done until:
 - All affected documentation is current.
 - No CI check is ignored, bypassed, or marked optional to get a merge.
 - User-visible and operator-visible changes are recorded for release notes.
+
+GA-001 (1.0.0-rc.1 candidate) is complete on the program board. Do not create a git tag from an agent change. Evidence: `docs/releases/acceptance-evidence.md`. Notes: `docs/releases/v1.0.0-rc.1.md`. Residual: `docs/known-limitations.md`.

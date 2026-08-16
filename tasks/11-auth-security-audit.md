@@ -1,6 +1,6 @@
 # SEC-001: Authentication, Authorization, Security Limits, and Audit
 
-Status: implemented
+Status: done
 Recommended owner: Security agent
 Dependencies: DNS admission, REST/MCP adapter hooks, application capabilities
 Exclusive ownership: `internal/auth`, `internal/audit`, security policy enforcement

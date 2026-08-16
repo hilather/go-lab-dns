@@ -205,6 +205,19 @@ func TestCompareRejectsUnknownRef(t *testing.T) {
 	}
 }
 
+func TestCandidateNotesComplete(t *testing.T) {
+	root := mustRoot(t)
+	body, err := os.ReadFile(filepath.Join(root, "docs", "releases", "v1.0.0-rc.1.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// First public candidate: every surface is new versus the empty tree.
+	rep := releasecontract.ValidateNotes(string(body), releasecontract.PublicSurfaces())
+	if err := releasecontract.FormatNotesError(rep); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestCompareAgainstEmptyTreeReportsAdds(t *testing.T) {
 	root := initRepo(t)
 	writeSurface(t, root, "openapi", "{}\n")

@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: Product, Architecture
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-15 (GA-001 1.0.0-rc.1 candidate)
 
 ## Phase 0: contracts first
 
@@ -54,6 +54,8 @@ Last reviewed: 2026-08-15
 - Runbook exercises.
 - Compatibility and migration tooling.
 - Complete release notes and GA acceptance review.
+
+**1.0.0-rc.1 candidate (2026-08-15):** evidence in [docs/releases/acceptance-evidence.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/acceptance-evidence.md); notes in [docs/releases/v1.0.0-rc.1.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.1.md). The annotated GA tag is a human step on a green commit. Residual: [docs/known-limitations.md](https://github.com/hilather/go-lab-dns/blob/main/docs/known-limitations.md).
 
 ## Deferred
 

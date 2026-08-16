@@ -1,6 +1,6 @@
 # MCP-001: MCP Control Plane
 
-Status: complete
+Status: done
 Recommended owner: MCP agent
 Dependencies: STA-001, stable capability registry, API-001 parity fixtures may proceed in parallel after contract freeze
 Exclusive ownership: `internal/control/mcp`, MCP manifests and conformance fixtures

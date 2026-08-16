@@ -1,6 +1,6 @@
 # DNS-001: DNS Wire Server
 
-Status: complete
+Status: done
 Recommended owner: DNS transport agent
 Dependencies: FND-001 and agreed query/response model interfaces from CFG-001
 Exclusive ownership: `internal/dnswire`, `internal/dnsserver`

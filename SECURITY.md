@@ -8,6 +8,20 @@ LabDNS is a privileged network service. A DNS listener can become an amplificati
 
 Report security vulnerabilities through [GitHub private vulnerability reporting](https://github.com/hilather/go-lab-dns/security/advisories/new) on [`hilather/go-lab-dns`](https://github.com/hilather/go-lab-dns). Do not file vulnerabilities in the public issue tracker before coordinated disclosure.
 
+Include, when possible: affected version or commit, deployment mode (container flags, management bind, auth profile), a minimal reproduction, and impact (open resolver, chaos bypass, secret leak, privilege escalation). Do not attach live tokens or production configs.
+
+We will acknowledge the report, assess severity, and coordinate a fix and disclosure window. Do not request a CVE assignment in a public issue.
+
+## Supported versions
+
+| Version | Supported |
+|---|---|
+| 1.0.0-rc.1 candidate (untagged `main` / this SHA) | Yes — first public candidate |
+| Pre-release development binaries (`dev` ldflags) | Best-effort until the first annotated tag |
+| Any unreleased fork or modified image | No |
+
+After a human tags `v1.0.0` (or `v1.0.0-rc.1`), that tag is the supported line. There is no predecessor application version.
+
 ## Minimum security requirements
 
 - DNS recursion and forwarding are restricted to configured client networks.

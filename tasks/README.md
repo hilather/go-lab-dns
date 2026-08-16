@@ -1,7 +1,7 @@
 # Agent Task Plan
 
 Status: Proposed
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-15 (GA-001; all work packages done)
 
 This directory divides the initial LabDNS implementation into reviewable work packages. Task files are implementation contracts, not substitutes for normative design documents.
 

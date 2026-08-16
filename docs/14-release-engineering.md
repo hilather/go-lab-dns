@@ -2,7 +2,7 @@
 
 Status: Normative release gate (REL-001)
 Owners: Release Engineering, All maintainers
-Last reviewed: 2026-08-15 (REL-001 finalization)
+Last reviewed: 2026-08-15 (GA-001 1.0.0-rc.1 candidate)
 
 ## Goals
 
@@ -41,7 +41,7 @@ make test-parity
 make test-config-compat
 ```
 
-`make test-integration` remains fail-closed (`unimplemented`) until PERF/interop work; it is **not** a required GitHub job.
+`make test-integration` runs the short PERF-001 suite (`internal/interop`, `internal/perf`, `benches`; default soak 2s). It is **not** a required GitHub job; local and `test-integration` remain fail-closed with no bypass.
 
 Required GitHub job IDs (SoT: `internal/releasecontract.RequiredCIJobs`):
 
@@ -69,8 +69,8 @@ No administrative bypass is permitted for a required failed check. A skipped or 
 
 ### Operator checklist
 
-1. Land the release-candidate commit on `main` with required CI green.
-2. Write `docs/releases/vX.Y.Z.md` from `RELEASE-NOTES-TEMPLATE.md`.
+1. Land the release-candidate commit on `main` with required CI green. GA-001 attached [docs/releases/acceptance-evidence.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/acceptance-evidence.md) and candidate notes [docs/releases/v1.0.0-rc.1.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.1.md). **Do not tag from an agent change;** a human tags the exact green SHA.
+2. Write `docs/releases/vX.Y.Z.md` from `RELEASE-NOTES-TEMPLATE.md` (or copy `docs/releases/v1.0.0-rc.1.md` for `v1.0.0-rc.1`).
 3. Run `make verify-generated` and `make release-diff FROM=<prev> TO=HEAD NOTES=docs/releases/vX.Y.Z.md` locally (`<prev>` is the previous `v*` tag, or the empty-tree SHA from `go run ./scripts/release-diff -print-empty-tree` for the first tag).
 4. Freeze `CHANGELOG.md` Unreleased into `## vX.Y.Z — YYYY-MM-DD`.
 5. Create an annotated tag on the **exact** green SHA (`git tag -a vX.Y.Z <sha>`). Do not retag a different commit.

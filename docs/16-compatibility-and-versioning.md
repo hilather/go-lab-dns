@@ -6,6 +6,7 @@ Last reviewed: 2026-08-15 (MCP-001 2026-07-28 pin)
 Last reviewed: 2026-08-15 (OBS-001 metrics catalog)
 Last reviewed: 2026-08-15 (REL-001 release-diff surfaces)
 Last reviewed: 2026-08-15 (PERF-001 interop matrix)
+Last reviewed: 2026-08-15 (GA-001 known limitations)
 
 ## Public compatibility surfaces
 
@@ -86,3 +87,5 @@ New discovered client differences become additional `cases.json` rows, not one-o
 ## Open questions
 
 Resolved for first GA: only `labdns.dev/v1alpha1` is supported. A later `v1beta1`/`v1` must land as a `Migrator` plus old-fixture tests; do not reinterpret v1alpha1 fields in place.
+
+Durable residual (no predecessor tag, unpublished digest, interop gaps, first-GA exclusions): [docs/known-limitations.md](https://github.com/hilather/go-lab-dns/blob/main/docs/known-limitations.md).

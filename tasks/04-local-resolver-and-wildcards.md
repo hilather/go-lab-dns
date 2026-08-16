@@ -1,6 +1,6 @@
 # RES-001: Local Resolver and Wildcards
 
-Status: complete
+Status: done
 Recommended owner: DNS semantics agent
 Dependencies: CFG-001, DNS-001
 Exclusive ownership: `internal/resolver/**` including `compile.go`, `internal/snapshot/zone_index.go`

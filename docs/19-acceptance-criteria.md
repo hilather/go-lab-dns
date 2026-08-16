@@ -1,8 +1,10 @@
 # Product Acceptance Criteria
 
-Status: Proposed
+Status: Accepted (1.0.0-rc.1 evidence attached)
 Owners: Product, Architecture, QA
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-15 (GA-001)
+
+Evidence index for this candidate: [docs/releases/acceptance-evidence.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/acceptance-evidence.md). Residual: [docs/known-limitations.md](https://github.com/hilather/go-lab-dns/blob/main/docs/known-limitations.md). Tag is a human step on a green commit.
 
 ## Functional DNS
 

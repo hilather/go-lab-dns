@@ -2,7 +2,7 @@
 
 Status: Implemented (SEC-001)
 Owners: Security, DNS, Control Plane
-Last reviewed: 2026-08-15 (DEP-001 non-root image)
+Last reviewed: 2026-08-15 (GA-001; reporting remains GitHub private advisories)
 Related ADRs: 0003, 0004, 0005, 0007
 
 ## Goals

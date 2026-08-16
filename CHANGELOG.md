@@ -6,6 +6,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Added
 
+- GA-001 1.0.0-rc.1 candidate: acceptance evidence index, curated release notes, known limitations, and security-reporting details. Program board FND-001–GA-001 marked done. **No git tag and no image publish** in this change.
 - Initial architecture and implementation plan.
 - Repository foundation: Apache-2.0 license, Go 1.26 module `github.com/hilather/go-lab-dns`, package tree, Makefile, and fail-closed CI skeleton.
 - Canonical domain types in `internal/model`: `State`/`Spec`, zones, records, forwarding, chaos policies, `Operation`/`Target`, and `Query`/`Result`.
@@ -144,3 +145,5 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Absolute QPS/latency numbers are recorded by benches, not gated in CI (hardware varies). Long soak is opt-in (`-soak=30m` / `LABDNS_SOAK_DURATION`).
 - Durable audit remains an optional hook, never fail-closed. The GitOps template uses an all-zero digest placeholder until a released image is pinned.
 - `make test-integration` fails closed until PERF-001.
+- Durable list: [docs/known-limitations.md](https://github.com/hilather/go-lab-dns/blob/main/docs/known-limitations.md). Candidate notes: [docs/releases/v1.0.0-rc.1.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.1.md). Evidence: [docs/releases/acceptance-evidence.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/acceptance-evidence.md).
+- First public candidate: no predecessor tag; no image digest; tag-gate CI and SBOM/provenance wait for a human tag.

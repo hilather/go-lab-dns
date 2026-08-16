@@ -6,9 +6,12 @@
 - `START-HERE.md`: onboarding and definition of done.
 - `AGENTS.md`: mandatory repository instructions.
 - `CONTRIBUTING.md`: contribution workflow.
-- `SECURITY.md`: top-level security policy.
+- `SECURITY.md`: top-level security policy (GitHub private advisories).
 - `CHANGELOG.md`: curated unreleased and release history.
 - `RELEASE-NOTES-TEMPLATE.md`: complete between-tag functionality-difference template.
+- `docs/known-limitations.md`: honest first-GA residual.
+- `docs/releases/v1.0.0-rc.1.md`: curated 1.0.0-rc.1 candidate notes (no tag in this change).
+- `docs/releases/acceptance-evidence.md`: docs/19 criterion → test/command index.
 - `CI-FAILURE-HARDENING-TEMPLATE.md`: root-cause and pipeline-hardening record.
 
 ## Design documents

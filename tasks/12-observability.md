@@ -1,6 +1,6 @@
 # OBS-001: Observability and Health
 
-Status: complete
+Status: done
 Recommended owner: Observability agent
 Dependencies: stable component interfaces
 Exclusive ownership: `internal/observability`, metrics catalog, health status aggregation

@@ -1,6 +1,6 @@
 # FWD-001: Forwarding and Cache
 
-Status: in-progress (FWD-001 data plane; AccessIndex/bootstrap serve is STA-001 slice A)
+Status: done
 Recommended owner: DNS forwarding agent
 Dependencies: CFG-001, DNS-001, RES-001 interfaces
 Exclusive ownership: `internal/forwarder`, `internal/cache`
@@ -36,7 +36,7 @@ Implement suffix-specific upstream forwarding, UDP/TCP exchanges, health-aware f
 - [x] Upstream cancellation and leak tests.
 - [x] Health strategy deterministic tests with fake clock.
 - [x] Packet-level integration tests with controlled fake upstreams.
-- [ ] Regression tests for each forwarding/cache defect.
+- [x] Regression tests for each forwarding/cache defect.
 
 ## Documentation updates
 
