@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -18,6 +19,7 @@ import (
 	"github.com/hilather/go-lab-dns/internal/chaos"
 	"github.com/hilather/go-lab-dns/internal/compiler"
 	"github.com/hilather/go-lab-dns/internal/config"
+	mcpctl "github.com/hilather/go-lab-dns/internal/control/mcp"
 	"github.com/hilather/go-lab-dns/internal/control/rest"
 	"github.com/hilather/go-lab-dns/internal/dnsquery"
 	"github.com/hilather/go-lab-dns/internal/dnsserver"
@@ -41,6 +43,7 @@ type serveFlags struct {
 type serveRuntime struct {
 	dns     *dnsserver.Server
 	mgmt    *rest.Server
+	mcp     *mcpctl.Server
 	mgmtLn  net.Listener
 	store   *snapshot.Store
 	engine  *chaos.Engine
@@ -190,7 +193,24 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 	}
 
 	if !mgmtOff {
-		mgmt, err := rest.New(rest.Config{Addr: mgmtAddr, Service: svc, Auth: authn})
+		// The MCP Streamable HTTP adapter shares the management listener with
+		// REST: same address, same bearer policy, mounted at listeners
+		// management.mcpPath (default /mcp).
+		mcpSrv, err := mcpctl.New(mcpctl.Config{Service: svc, Auth: authn})
+		if err != nil {
+			_ = rt.Shutdown(context.Background())
+			return nil, err
+		}
+		mcpPath := snap.Listeners.MCPPath
+		if mcpPath == "" {
+			mcpPath = mcpctl.DefaultPath
+		}
+		mgmt, err := rest.New(rest.Config{
+			Addr:    mgmtAddr,
+			Service: svc,
+			Auth:    authn,
+			Mounts:  map[string]http.Handler{mcpPath: mcpSrv.Handler()},
+		})
 		if err != nil {
 			_ = rt.Shutdown(context.Background())
 			return nil, err
@@ -201,6 +221,7 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 			return nil, fmt.Errorf("management listen %s: %w", mgmtAddr, err)
 		}
 		rt.mgmt = mgmt
+		rt.mcp = mcpSrv
 		rt.mgmtLn = ln
 		go func() { _ = mgmt.Serve(ln) }()
 	}
@@ -226,6 +247,10 @@ func (r *serveRuntime) Shutdown(ctx context.Context) error {
 		r.engine.CancelDelays()
 	}
 	var first error
+	if r.mcp != nil {
+		r.mcp.Close()
+		r.mcp = nil
+	}
 	if r.mgmt != nil {
 		if err := r.mgmt.Shutdown(ctx); err != nil && first == nil {
 			first = err

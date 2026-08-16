@@ -94,6 +94,11 @@ type Config struct {
 	Logger *observability.Logger
 	// Tracer is optional sampled capability tracing. Nil disables.
 	Tracer *observability.Tracer
+	// Mounts are additional handlers served on the management listener ahead
+	// of REST routing (http.ServeMux patterns, e.g. the MCP Streamable HTTP
+	// adapter at /mcp). Mounted handlers own their auth, CORS, and limits;
+	// paths must not overlap RESTPath routes.
+	Mounts map[string]http.Handler
 }
 
 // Server is the stdlib net/http management listener.
@@ -102,6 +107,7 @@ type Server struct {
 	svc      app.Service
 	authn    Authenticator
 	routes   []compiledRoute
+	handler  http.Handler
 	maxBody  int64
 	timeout  time.Duration
 	inflight chan struct{}
@@ -146,12 +152,22 @@ func New(cfg Config) (*Server, error) {
 		tracer:   cfg.Tracer,
 		rate:     auth.ManagementLimiter(cfg.RatePerSec, cfg.RateBurst, nil),
 	}
+	s.handler = http.HandlerFunc(s.serveHTTP)
+	if len(cfg.Mounts) > 0 {
+		mux := http.NewServeMux()
+		for path, h := range cfg.Mounts {
+			mux.Handle(path, h)
+		}
+		mux.Handle("/", http.HandlerFunc(s.serveHTTP))
+		s.handler = mux
+	}
 	return s, nil
 }
 
-// Handler returns the management mux. Safe for httptest.NewServer / ServeHTTP.
+// Handler returns the management mux (REST routes plus any configured
+// Mounts). Safe for httptest.NewServer / ServeHTTP.
 func (s *Server) Handler() http.Handler {
-	return http.HandlerFunc(s.serveHTTP)
+	return s.handler
 }
 
 // ListenAndServe binds Addr (default :8080) and serves until Shutdown.
