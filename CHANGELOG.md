@@ -10,6 +10,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Changed
 
+- Add a cinematic README header image (`docs/assets/header.jpg`) and a 1280×640 social card (`docs/assets/social.jpg`).
+- Rewrite the root README as an operator-facing product page: YAML bootstrap, CLI validate/serve, REST and MCP state-loading APIs, and a complete documentation map that links every architecture doc, ADR, and task list. Remove leftover agent-pack wording.
 - Pin CI and the image build toolchain to Go **1.26.6** (govulncheck on 1.26.5 reports GO-2026-6218 / 6090 / 6089 / 5972 / 5026, all fixed in 1.26.6). Bump `golang.org/x/net` to v0.55.0 (GO-2026-5026).
 - `golangci-lint` uses `govet` only until a dedicated pass re-enables the v2 standard preset (errcheck/unused/staticcheck on stack leftovers).
 - Tag-gate writes `release-diff.txt` under `${{ runner.temp }}` so `tee` does not dirty the worktree (`release-diff` fail-closes on untracked files).
