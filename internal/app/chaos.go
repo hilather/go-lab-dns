@@ -5,6 +5,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/hilather/go-lab-dns/internal/audit"
+	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/chaos"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
 	"github.com/hilather/go-lab-dns/internal/model"
@@ -237,6 +239,10 @@ func (s *App) setEmergency(ctx context.Context, actor Actor, in EmergencyIn, off
 	if err := s.requireCtx(ctx); err != nil {
 		return nil, err
 	}
+	if err := auth.AuthorizeEmergency(actor, !off); err != nil {
+		s.recordDenied(ctx, actor, cap, err)
+		return nil, err
+	}
 	prev, err := s.active()
 	if err != nil {
 		return nil, err
@@ -256,13 +262,15 @@ func (s *App) setEmergency(ctx context.Context, actor Actor, in EmergencyIn, off
 		Applied:    true,
 		Generation: next.Generation,
 	}
-	res.AuditEventID = s.audit.append(AuditEvent{
+	res.AuditEventID = s.recordAudit(ctx, audit.Event{
 		Time:       s.clock.Now(),
 		ActorID:    actor.ID,
+		ActorClass: actor.Class,
 		Capability: cap,
 		Reason:     in.Reason,
 		Revision:   next.Revision,
 		Previous:   revisionOf(prev),
+		Result:     audit.ResultOK,
 	})
 	return cloneApply(res), nil
 }

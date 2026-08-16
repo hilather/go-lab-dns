@@ -24,6 +24,7 @@ type Server struct {
 	tcp net.Listener
 
 	inflight chan struct{}
+	qps      *queryLimiter
 
 	mu      sync.Mutex
 	ipCount map[netip.Addr]int
@@ -49,6 +50,7 @@ func New(cfg Config) (*Server, error) {
 		ctx:      ctx,
 		cancel:   cancel,
 		inflight: make(chan struct{}, cfg.MaxInflight),
+		qps:      newQueryLimiter(cfg.QueryRatePerSec, cfg.QueryBurst, nil),
 		ipCount:  make(map[netip.Addr]int),
 		conns:    make(map[net.Conn]struct{}),
 	}, nil
@@ -148,6 +150,14 @@ func (s *Server) TCPAddr() net.Addr {
 		return nil
 	}
 	return s.tcp.Addr()
+}
+
+func (s *Server) allowQuery(ip netip.Addr) bool {
+	key := "unknown"
+	if ip.IsValid() {
+		key = ip.String()
+	}
+	return s.qps.allow(key)
 }
 
 func (s *Server) acquireInflight() bool {

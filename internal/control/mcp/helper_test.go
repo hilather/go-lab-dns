@@ -82,7 +82,7 @@ func newTestServer(t *testing.T) (*Server, *app.App) {
 func newTestServerFixture(t *testing.T, name string) (*Server, *app.App) {
 	t.Helper()
 	svc := mustBoot(t, copyNamedFixture(t, name))
-	s, err := New(Config{Service: svc})
+	s, err := New(Config{Service: svc, RatePerSec: -1})
 	if err != nil {
 		t.Fatal(err)
 	}

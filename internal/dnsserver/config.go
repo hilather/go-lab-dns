@@ -54,6 +54,12 @@ type Config struct {
 	MaxHold           time.Duration
 	ShutdownTimeout   time.Duration
 
+	// QueryRatePerSec is the per-source DNS QPS on top of MaxInflight.
+	// Zero uses the first-GA default (256). Negative disables the bucket.
+	QueryRatePerSec float64
+	// QueryBurst is the per-source burst. Zero uses 512.
+	QueryBurst float64
+
 	// AcquireSnapshot may attach a snapshot handle to ctx after admission.
 	// Transport does not load or inspect snapshots.
 	AcquireSnapshot func(ctx context.Context) context.Context

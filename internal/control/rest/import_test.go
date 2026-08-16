@@ -22,6 +22,14 @@ func TestRESTImportDAG(t *testing.T) {
 		"github.com/hilather/go-lab-dns/internal/domainerr":     true,
 		"github.com/hilather/go-lab-dns/internal/model":         true,
 		"github.com/hilather/go-lab-dns/internal/observability": true,
+		"github.com/hilather/go-lab-dns/internal/app":          true,
+		"github.com/hilather/go-lab-dns/internal/audit":        true,
+		"github.com/hilather/go-lab-dns/internal/auth":         true,
+		"github.com/hilather/go-lab-dns/internal/buildinfo":    true,
+		"github.com/hilather/go-lab-dns/internal/capabilities": true,
+		"github.com/hilather/go-lab-dns/internal/config":       true,
+		"github.com/hilather/go-lab-dns/internal/domainerr":    true,
+		"github.com/hilather/go-lab-dns/internal/model":        true,
 	}
 	forbiddenPref := []string{
 		"github.com/miekg/dns",

@@ -29,6 +29,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Versioned metrics/events catalog (`labdns.dev/metrics/v1alpha1`) with a label allowlist, automated no-QNAME/no-client-IP checks, bounded export queues, structured JSON logs, optional sampled tracing, and a filled `app.Status` DTO (revisions, listeners, cache, upstreams, chaos, ready/degraded, warnings). Artifact: [api/metrics/v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/metrics/v1alpha1.json).
 - Production CLI: `serve`, `validate`, `canonicalize`, `verify`, `query`, `healthcheck`, `version`, and `chaos emergency-disable --pid-file`.
 - Hardened multi-stage image `ghcr.io/hilather/labdns` (scratch, UID 65532, Apache-2.0 OCI labels, no shell).
+- Shared SEC-001 identity, RBAC, abuse limits, and audit in `internal/auth` and `internal/audit`. Role×capability matrix, resource-aware plan/apply, separate chaos design/activate/high-impact/emergency privileges, management and DNS query rate limits, Origin/CORS deny-all, secret redaction, and an in-memory audit ring with a best-effort external hook (no fail-closed durable sink).
 
 ### Changed
 
@@ -45,6 +46,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 ### Security
 
 - Data-plane refuse-forward: unmatched clients are not an open recursive resolver. Local answers still serve.
+- Management: loopback unauthenticated (`dev-loopback-unauth`); remote bearer required. Shared REST/MCP authorization. Protected objects and safety caps require administrator. Secrets are redacted from export, diffs, and audit payloads.
+- DNS per-source query rate limit (default 256/s, burst 512) on top of existing inflight/TCP caps. Management default 32/s burst 64 plus 256 concurrent requests.
 
 ### DNS behavior
 
@@ -126,6 +129,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - `make test-integration`, `make test-parity`, `make test-config-compat`, and `make test-container` fail closed until later PRs.
 - `labdns serve` does not yet bind the management listener (REST `/v1` + MCP `/mcp`); DEP-001 wires `rest.Server` and `mcp.Server`.
 - Full SEC-001 RBAC is not implemented; MCP uses the same loopback-unauth / remote-bearer stub as REST.
+- GitOps/Compose/Kubernetes bearer examples land in GIT-001. Durable audit remains an optional hook, never fail-closed.
+- `labdns chaos emergency-disable --pid-file` is not implemented until DEP-001.
 - `make test-integration` and `make test-container` fail closed until later PRs. `make test-parity` runs the REST/MCP registry and adapter suites.
 - MCP adapter is not implemented; REST `/v1` is wired into `labdns serve`.
 - `make test-integration` and `make test-parity` fail closed until later PRs.

@@ -8,7 +8,7 @@ type Metrics interface {
 	// IncParse counts a parse outcome: "ok", "malformed", "empty", "short", "oversize".
 	IncParse(result string)
 	// IncAdmission counts an admission decision. result is "ok" or a reason
-	// ("opcode", "qdcount", "class", "qtype", "edns-version", "qr", "inflight").
+	// ("opcode", "qdcount", "class", "qtype", "edns-version", "qr", "inflight", "rate").
 	// rcode is the DNS mnemonic or "" when the packet is dropped.
 	IncAdmission(result, rcode string)
 	// IncResponse counts a finished query. action is TransportHint.String().

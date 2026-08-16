@@ -1,6 +1,6 @@
 # Security Architecture
 
-Status: Proposed
+Status: Implemented (SEC-001)
 Owners: Security, DNS, Control Plane
 Last reviewed: 2026-08-15 (DEP-001 non-root image)
 Related ADRs: 0003, 0004, 0005, 0007
@@ -36,7 +36,7 @@ Related ADRs: 0003, 0004, 0005, 0007
 
 ### First-GA DNS listener defaults
 
-First-GA DNS listener numeric defaults (DNS-001; YAML overrides land with CFG/STA): max UDP 4096, max TCP message 65535, one question, EDNS UDP clamp 4096 / advertise 1232, TCP idle 10s, read/write 2s, connection max-age 30s, query timeout 2s, 256 TCP connections (16 per source IP), 1024 in-flight queries, hold-then-close cap 1s. Oversized UDP is dropped; oversized TCP is closed. Rate limits beyond these caps are SEC-001.
+First-GA DNS listener numeric defaults (DNS-001; YAML overrides land with CFG/STA): max UDP 4096, max TCP message 65535, one question, EDNS UDP clamp 4096 / advertise 1232, TCP idle 10s, read/write 2s, connection max-age 30s, query timeout 2s, 256 TCP connections (16 per source IP), 1024 in-flight queries, hold-then-close cap 1s. Oversized UDP is dropped; oversized TCP is closed. Per-source query token buckets (default 256/s, burst 512) sit on top of those caps. Refuse-forward for unknown clients shipped with CFG/FWD and is not re-specified here.
 
 ## Management-plane controls
 
@@ -45,9 +45,37 @@ First-GA DNS listener numeric defaults (DNS-001; YAML overrides land with CFG/ST
 - Workload identity, mTLS, OAuth-compatible bearer tokens, or reverse-proxy identity as a deployment choice.
 - Shared auth middleware for REST and MCP.
 - Resource-aware RBAC.
-- Origin validation for MCP Streamable HTTP and browser-reachable REST. MCP `/mcp` rejects a present non-loopback Origin unless it is on the adapter allowlist (DNS-rebinding default-deny). Missing Origin is allowed for official SDK/curl clients. Full RBAC is SEC-001.
-- Strict body, header, rate, and timeout limits.
-- No permissive CORS by default.
+- Origin validation for MCP Streamable HTTP and browser-reachable REST. A present non-loopback Origin is rejected unless it is on the adapter allowlist (DNS-rebinding default-deny). Missing Origin is allowed for official SDK/curl clients.
+- Strict body, header, rate, and timeout limits. Management default is 32 requests/s per source (burst 64) plus a 256-wide concurrency gate.
+- No permissive CORS by default: OPTIONS is 403 and no `Access-Control-Allow-*` headers are emitted.
+
+### First-GA auth profiles
+
+| Profile | Loopback (`127.0.0.1` / `::1`) | Non-loopback |
+|---|---|---|
+| `dev-loopback-unauth` (default) | Unauthenticated, treated as administrator | Bearer token required |
+| `bearer` | Same loopback exception (Q-AUTH) | Bearer token required; `secretRef` must resolve to at least one token |
+
+`bearer` tokens are loaded from `spec.management.auth.secretRef` (a file: one token, or JSON `{"tokens":[{"token","id","role","scopes"}]}`). Unknown tokens fail closed. `X-Forwarded-For` is not trusted.
+
+### Scope catalog
+
+Frozen spellings (adapters must not invent synonyms):
+
+```text
+dns.read
+dns.write
+dns.admin
+dns.forwarders.read
+dns.forwarders.write
+dns.chaos.read
+dns.chaos.write
+dns.chaos.activate
+dns.chaos.emergency
+dns.audit.read
+```
+
+`dns.admin` satisfies every scope. Plan/apply/validate are resource-aware: the change set, not the catalog `dns.write` row, decides which write family is required.
 
 ## Chaos privilege separation
 
@@ -63,6 +91,19 @@ Suggested roles:
 - Administrator: reset state and manage protected policy.
 
 Creation and activation are separate capabilities so a policy can be reviewed before it becomes live.
+
+| Role | Scopes |
+|---|---|
+| Viewer | `dns.read`, `dns.forwarders.read`, `dns.chaos.read` |
+| DNS editor | `dns.read`, `dns.write` |
+| Forwarder operator | `dns.read`, `dns.forwarders.read`, `dns.forwarders.write` |
+| Chaos designer | `dns.read`, `dns.chaos.read`, `dns.chaos.write` (disabled policies only) |
+| Chaos operator | `dns.read`, `dns.chaos.read`, `dns.chaos.activate` (low/medium) |
+| Chaos admin | chaos read/write/activate/emergency (high-impact activate + emergency enable) |
+| Emergency operator | `dns.read`, `dns.chaos.read`, `dns.chaos.emergency` (disable only) |
+| Administrator | all scopes, including protected-object and safety-cap mutation |
+
+High-impact (`safetyClass: high`) activation requires chaos-admin (activate **and** emergency) or administrator. Emergency enable uses the same split so an emergency-only operator cannot re-enable.
 
 ## Protected objects
 
@@ -92,7 +133,7 @@ Audit every mutation, activation, deactivation, reset, emergency action, rejecte
 - Normalized redacted diff.
 - Result and stable error code.
 
-Audit delivery failure cannot block DNS but may block high-impact management writes if deployment policy requires durable audit confirmation.
+Audit delivery failure cannot block DNS. First GA does **not** fail-close management writes on an external sink (Q-AUDIT): the in-memory ring is the process-local record; an optional hook is best-effort and its errors are counted. Retention is the ring bound (default 128 events, newest kept).
 
 ## Supply chain
 

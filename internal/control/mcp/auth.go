@@ -1,51 +1,84 @@
 package mcp
 
 import (
-	"net"
+	"context"
 	"net/http"
-	"net/netip"
 	"strings"
 
+	"github.com/hilather/go-lab-dns/internal/audit"
 	"github.com/hilather/go-lab-dns/internal/auth"
+	"github.com/hilather/go-lab-dns/internal/capabilities"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
 )
 
 func (s *Server) authenticate(r *http.Request) (auth.Actor, error) {
-	if tok, ok := bearerToken(r.Header.Get(headerAuthorization)); ok {
-		if s.authn != nil {
-			return s.authn.Authenticate(r.Context(), tok)
+	return auth.Identify(r.Context(), auth.IdentifyIn{
+		RemoteAddr:    r.RemoteAddr,
+		Authorization: r.Header.Get(headerAuthorization),
+	}, s.authn)
+}
+
+func bearerToken(h string) (string, bool) { return auth.BearerToken(h) }
+
+func isLoopback(remoteAddr string) bool { return auth.IsLoopback(remoteAddr) }
+
+func (s *Server) authorizeResource(actor auth.Actor, uri string) error {
+	cap, ok := capabilities.LookupResource(uri)
+	if !ok {
+		// Templates (zones/{id}) are not exact matches; fall back to prefix.
+		switch {
+		case strings.HasPrefix(uri, "labdns://zones/"):
+			cap, ok = capabilities.Lookup(capabilities.Zones)
+		case strings.HasPrefix(uri, "labdns://records/"):
+			cap, ok = capabilities.Lookup(capabilities.Records)
+		case strings.HasPrefix(uri, "labdns://chaos/policies/"):
+			cap, ok = capabilities.Lookup(capabilities.ChaosPolicies)
 		}
-		return auth.Actor{ID: "bearer", Class: "token"}, nil
+		if !ok {
+			return nil
+		}
 	}
-	if isLoopback(r.RemoteAddr) {
-		return auth.Actor{ID: "loopback", Class: "loopback"}, nil
+	if err := auth.AuthorizeCapability(actor, cap.RequiredScopes, string(cap.ID)); err != nil {
+		s.auditDenied(actor, string(cap.ID), err)
+		return err
 	}
-	return auth.Actor{}, domainerr.Unauthenticated("authentication required")
+	return nil
 }
 
-func bearerToken(h string) (string, bool) {
-	if !strings.HasPrefix(h, "Bearer ") && !strings.HasPrefix(strings.ToLower(h), "bearer ") {
-		return "", false
+func (s *Server) authorizeTool(actor auth.Actor, name string) error {
+	caps := capabilities.LookupTool(name)
+	if len(caps) == 0 {
+		return nil
 	}
-	i := strings.IndexByte(h, ' ')
-	if i < 0 {
-		return "", false
+	cap := caps[0]
+	if err := auth.AuthorizeCapability(actor, cap.RequiredScopes, string(cap.ID)); err != nil {
+		s.auditDenied(actor, string(cap.ID), err)
+		return err
 	}
-	tok := strings.TrimSpace(h[i+1:])
-	if tok == "" {
-		return "", false
+	if cap.ID == capabilities.ChaosEmergency {
+		enable := name == "dns_chaos_emergency_enable"
+		if err := auth.AuthorizeEmergency(actor, enable); err != nil {
+			s.auditDenied(actor, string(cap.ID), err)
+			return err
+		}
 	}
-	return tok, true
+	return nil
 }
 
-func isLoopback(remoteAddr string) bool {
-	host := remoteAddr
-	if h, _, err := net.SplitHostPort(remoteAddr); err == nil {
-		host = h
+func (s *Server) auditDenied(actor auth.Actor, cap string, err error) {
+	if s.auditor == nil {
+		return
 	}
-	addr, err := netip.ParseAddr(host)
-	if err != nil {
-		return false
+	code := ""
+	if de, ok := domainerr.As(err); ok {
+		code = string(de.Code)
 	}
-	return addr.IsLoopback()
+	s.auditor.Emit(context.Background(), audit.Event{
+		ActorID:    actor.ID,
+		ActorClass: actor.Class,
+		Transport:  "mcp",
+		Capability: cap,
+		Result:     audit.ResultDenied,
+		ErrorCode:  code,
+	})
 }

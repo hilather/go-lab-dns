@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/hilather/go-lab-dns/internal/audit"
 	"github.com/hilather/go-lab-dns/internal/cache"
 	"github.com/hilather/go-lab-dns/internal/chaos"
 	"github.com/hilather/go-lab-dns/internal/compiler"
@@ -45,6 +46,8 @@ type Options struct {
 	HealthSource HealthSource
 	// Metrics is optional control-plane / status scrape instrumentation.
 	Metrics *observability.Registry
+	// Auditor is an optional external sink. Delivery failure never fail-closes.
+	Auditor audit.Sink
 }
 
 // App is the process-local Service implementation.
@@ -60,6 +63,7 @@ type App struct {
 	audit         *auditRing
 	healthSrc     HealthSource
 	metrics       *observability.Registry
+	audit         *audit.Fanout
 	// afterCompile runs after a successful compile, before Swap. Tests use
 	// it to interleave emergency disable with apply.
 	afterCompile func()
@@ -107,6 +111,7 @@ func New(opts Options) *App {
 		audit:         newAuditRing(auditMax),
 		healthSrc:     opts.HealthSource,
 		metrics:       opts.Metrics,
+		audit:         audit.NewFanout(auditMax, opts.Auditor),
 	}
 }
 

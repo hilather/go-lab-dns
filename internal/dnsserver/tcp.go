@@ -152,6 +152,10 @@ func (s *Server) serveTCPConn(raw net.Conn, ip netip.Addr) {
 }
 
 func (s *Server) serveOneTCPQuery(conn *leftoverConn, ip netip.Addr, body []byte, remainingAge time.Duration) (payload []byte, hint TransportHint, rcode model.RCode, hold time.Duration, ok bool) {
+	if !s.allowQuery(ip) {
+		s.cfg.Metrics.IncAdmission("rate", "")
+		return nil, HintDrop, "", 0, false
+	}
 	if !s.acquireInflight() {
 		s.cfg.Metrics.IncAdmission("inflight", "")
 		return nil, HintDrop, "", 0, false

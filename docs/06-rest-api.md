@@ -21,7 +21,7 @@ Related ADRs: 0004
 - Request bodies default to a 1 MiB cap; handlers also enforce a request deadline and a concurrent-request admission cap.
 - Management listener default address is `:8080` (`rest.DefaultAddr`). The listener is not public by default.
 - OpenAPI 3.1 is generated from the capability registry and `model.Spec` at [api/openapi/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/openapi/v1.json) (`make generate`).
-- Authentication (Q-AUTH): unauthenticated access is allowed only from `127.0.0.1` and `::1`. Non-loopback peers require `Authorization: Bearer`. Health live/ready skip auth so process probes work. `X-Forwarded-For` is not trusted. No permissive CORS headers are emitted.
+- Authentication (Q-AUTH): unauthenticated access is allowed only from `127.0.0.1` and `::1` under `dev-loopback-unauth`. Non-loopback peers require `Authorization: Bearer`. Health live/ready skip auth so process probes work. `X-Forwarded-For` is not trusted. Shared RBAC lives in `internal/auth` (same decision as MCP). No permissive CORS headers are emitted; a present non-loopback `Origin` is 403 unless allowlisted.
 
 ## Endpoints
 
@@ -151,7 +151,7 @@ The adapter is `internal/control/rest`. Routes are compiled from `capabilities.A
 
 | Concern | Behavior |
 |---|---|
-| Auth | Loopback unauthenticated; remote bearer required. `Authenticator` hook is the SEC-001 seam. |
+| Auth | Loopback unauthenticated (`dev-loopback-unauth`); remote bearer required. `auth.Policy` / `Authenticator` is the shared identity hook. Capability + resource scopes are enforced. |
 | Pagination | Opaque `cursor` + `limit` query parameters on zone, record, and audit lists. |
 | Timeouts | Per-request context deadline (default 30s). `ListenAndServe` also sets read/write/header timeouts. |
 | Request ID | `X-Request-ID` is accepted or generated and echoed; problem `instance` is `urn:labdns:request:<id>`. |

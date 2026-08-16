@@ -359,7 +359,11 @@ func addTool[In any](s *Server, name, desc string, mutating, idempotent bool, h 
 		if err := ctx.Err(); err != nil {
 			return toolErrorResult(canceledError(err)), nil, nil
 		}
-		out, err := h(ctx, actorFrom(ctx), in)
+		actor := auth.LocalOrStdio(actorFrom(ctx))
+		if err := s.authorizeTool(actor, name); err != nil {
+			return toolErrorResult(err), nil, nil
+		}
+		out, err := h(ctx, actor, in)
 		if err != nil {
 			// Expected domain failures stay on the tool result so agents see
 			// data.code without tearing down the Streamable HTTP request.

@@ -5,6 +5,7 @@ import (
 	"net/netip"
 	"time"
 
+	"github.com/hilather/go-lab-dns/internal/audit"
 	"github.com/hilather/go-lab-dns/internal/buildinfo"
 	"github.com/hilather/go-lab-dns/internal/model"
 )
@@ -173,7 +174,7 @@ type ChaosImpact struct {
 	ExpiresAt *time.Time
 }
 
-// AuthDecision is a placeholder until SEC-001. Allowed is always true here.
+// AuthDecision is the authorization outcome recorded on a plan.
 type AuthDecision struct {
 	Allowed bool
 	Scopes  []string
@@ -310,14 +311,5 @@ type AuditList struct {
 	Events []AuditEvent
 }
 
-// AuditEvent is one mutation or emergency record. The ring is process-local.
-type AuditEvent struct {
-	ID         string
-	Time       time.Time
-	ActorID    string
-	Capability string
-	Reason     string
-	Ticket     string
-	Revision   model.Revision
-	Previous   model.Revision
-}
+// AuditEvent is one mutation or security record (in-memory ring + optional hook).
+type AuditEvent = audit.Event

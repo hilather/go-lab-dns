@@ -8,8 +8,7 @@ import (
 	"github.com/hilather/go-lab-dns/internal/model"
 )
 
-// Actor is the authenticated caller. Authorization is not enforced in this
-// slice; the field is recorded on audit events for later SEC-001.
+// Actor is the authenticated caller. Authorization uses internal/auth.
 type Actor = auth.Actor
 
 // Service is the full HTTP-less capability surface. REST and MCP must call

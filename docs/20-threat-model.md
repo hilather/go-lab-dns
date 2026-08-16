@@ -1,6 +1,6 @@
 # Threat Model
 
-Status: Proposed
+Status: Implemented (SEC-001 regression coverage)
 Owners: Security
 Last reviewed: 2026-08-15
 

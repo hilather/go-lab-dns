@@ -252,11 +252,15 @@ type auditEventJSON struct {
 	ID         string `json:"id"`
 	Time       string `json:"time"`
 	ActorID    string `json:"actorId,omitempty"`
+	ActorClass string `json:"actorClass,omitempty"`
+	Transport  string `json:"transport,omitempty"`
 	Capability string `json:"capability,omitempty"`
 	Reason     string `json:"reason,omitempty"`
 	Ticket     string `json:"ticket,omitempty"`
 	Revision   string `json:"revision,omitempty"`
 	Previous   string `json:"previous,omitempty"`
+	Result     string `json:"result,omitempty"`
+	ErrorCode  string `json:"errorCode,omitempty"`
 }
 
 func fromVersion(info *buildinfo.Info) versionResponse {
@@ -461,8 +465,10 @@ func fromAuditEvent(e *app.AuditEvent) auditEventJSON {
 		return auditEventJSON{}
 	}
 	return auditEventJSON{
-		ID: e.ID, Time: rfc3339(e.Time), ActorID: e.ActorID, Capability: e.Capability,
+		ID: e.ID, Time: rfc3339(e.Time), ActorID: e.ActorID, ActorClass: e.ActorClass,
+		Transport: e.Transport, Capability: e.Capability,
 		Reason: e.Reason, Ticket: e.Ticket, Revision: string(e.Revision), Previous: string(e.Previous),
+		Result: e.Result, ErrorCode: e.ErrorCode,
 	}
 }
 

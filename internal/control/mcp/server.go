@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/hilather/go-lab-dns/internal/app"
+	"github.com/hilather/go-lab-dns/internal/audit"
 	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/buildinfo"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
@@ -37,7 +38,7 @@ const (
 	// DefaultRequestTimeout is the per-request handler deadline.
 	DefaultRequestTimeout = 30 * time.Second
 
-	// DefaultMaxConcurrent is a coarse in-process admission cap until SEC-001.
+	// DefaultMaxConcurrent is the in-process overlapping-request cap.
 	DefaultMaxConcurrent = 256
 
 	headerProtocolVersion = "Mcp-Protocol-Version"
@@ -63,11 +64,18 @@ func (f AuthenticatorFunc) Authenticate(ctx context.Context, token string) (auth
 type Config struct {
 	// Service is required. Handlers call it and do not mutate snapshots.
 	Service app.Service
-	// Auth validates bearer tokens. Nil accepts any non-empty token (dev stub).
+	// Auth validates bearer tokens. Nil accepts any non-empty token as administrator.
 	Auth Authenticator
 	// AllowedOrigins are extra Origins accepted besides loopback. Empty denies
 	// every non-loopback Origin (DNS-rebinding default-deny).
 	AllowedOrigins []string
+	// RatePerSec is the per-source management QPS. Zero uses the shared default.
+	// Negative disables the token bucket (concurrency cap still applies).
+	RatePerSec float64
+	// RateBurst is the per-source burst. Zero uses the shared default.
+	RateBurst float64
+	// Auditor receives denied-authorization events. Nil uses a process-local ring.
+	Auditor audit.Sink
 	// MaxBodyBytes caps decoded request bodies. Non-positive uses DefaultMaxBodyBytes.
 	MaxBodyBytes int64
 	// RequestTimeout is the handler context deadline. Non-positive uses DefaultRequestTimeout.
@@ -86,6 +94,8 @@ type Server struct {
 	maxBody  int64
 	timeout  time.Duration
 	inflight chan struct{}
+	rate     *auth.Limiter
+	auditor  *audit.Fanout
 	closed   atomic.Bool
 }
 
@@ -143,6 +153,8 @@ func New(cfg Config) (*Server, error) {
 		maxBody:  maxBody,
 		timeout:  timeout,
 		inflight: make(chan struct{}, n),
+		rate:     auth.ManagementLimiter(cfg.RatePerSec, cfg.RateBurst, nil),
+		auditor:  audit.NewFanout(0, cfg.Auditor),
 	}
 	s.registerTools()
 	s.registerResources()
@@ -194,6 +206,10 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		defer func() { <-s.inflight }()
 	default:
 		writeRPC(w, http.StatusTooManyRequests, domainerr.RateLimited("too many concurrent management requests"))
+		return
+	}
+	if err := s.rate.AllowErr(auth.RateKey(r.RemoteAddr)); err != nil {
+		writeRPC(w, http.StatusTooManyRequests, err)
 		return
 	}
 

@@ -74,10 +74,13 @@ func (s *Server) readResource(ctx context.Context, req *sdk.ReadResourceRequest)
 	if err := ctx.Err(); err != nil {
 		return nil, rpcError(domainerr.Internal("request canceled"))
 	}
-	actor := actorFrom(ctx)
+	actor := auth.LocalOrStdio(actorFrom(ctx))
 	uri := ""
 	if req != nil && req.Params != nil {
 		uri = req.Params.URI
+	}
+	if err := s.authorizeResource(actor, uri); err != nil {
+		return nil, rpcError(err)
 	}
 	body, mime, err := s.resourceBody(ctx, actor, uri)
 	if err != nil {

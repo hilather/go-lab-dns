@@ -103,5 +103,5 @@ func requireCode(t *testing.T, err error, code domainerr.Code) *domainerr.Error 
 }
 
 func actor() Actor {
-	return Actor{ID: "test", Class: "token"}
+	return Actor{ID: "test", Class: "token", Role: "administrator"}
 }

@@ -207,7 +207,7 @@ MCP protocol versions, tool names, schemas, resource URIs, and result/error stru
 - Protocol **2026-07-28 only**. The Streamable HTTP handler requires `Mcp-Protocol-Version: 2026-07-28` and rejects every other value with `unsupported_protocol_version`.
 - Official SDK `github.com/modelcontextprotocol/go-sdk v1.7.0`. Stateless Streamable HTTP (`Stateless=true`) is required for this protocol revision.
 - Origin: missing Origin is allowed (SDK/curl). A present Origin must be loopback (`http://127.0.0.1`, `http://localhost`, `http://[::1]`) or on `AllowedOrigins`; otherwise 403 `forbidden`.
-- Auth matches REST until SEC-001: loopback may omit a bearer; remote peers need `Authorization: Bearer`.
+- Auth matches REST (SEC-001): loopback may omit a bearer under `dev-loopback-unauth`; remote peers need `Authorization: Bearer`. Tools and resources use the same `internal/auth` capability and resource checks as REST.
 - Stdio: `Server.RunStdio` is a developer adapter; logs go to stderr. Not required in the production image.
 
 ## Open questions

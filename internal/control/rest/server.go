@@ -7,11 +7,13 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/hilather/go-lab-dns/internal/app"
+	"github.com/hilather/go-lab-dns/internal/audit"
 	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/capabilities"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
@@ -37,7 +39,7 @@ const (
 	// DefaultWriteTimeout bounds the response write (docs can be large).
 	DefaultWriteTimeout = 60 * time.Second
 
-	// DefaultMaxConcurrent is a coarse in-process admission cap until SEC-001.
+	// DefaultMaxConcurrent is the in-process overlapping-request cap.
 	DefaultMaxConcurrent = 256
 
 	headerRequestID   = "X-Request-ID"
@@ -57,8 +59,18 @@ type Config struct {
 	Addr string
 	// Service is required. Handlers call it and do not mutate snapshots.
 	Service app.Service
-	// Auth validates bearer tokens. Nil accepts any non-empty token (dev stub).
+	// Auth validates bearer tokens. Nil accepts any non-empty token as administrator.
 	Auth Authenticator
+	// AllowedOrigins are extra Origins accepted besides loopback. Empty denies
+	// every non-loopback Origin (CORS/DNS-rebinding default-deny).
+	AllowedOrigins []string
+	// RatePerSec is the per-source management QPS. Zero uses auth.DefaultMgmtRatePerSec.
+	// Negative disables the token bucket (concurrency cap still applies).
+	RatePerSec float64
+	// RateBurst is the per-source burst. Zero uses auth.DefaultMgmtBurst.
+	RateBurst float64
+	// Auditor receives denied-authorization events. Nil uses a process-local ring.
+	Auditor audit.Sink
 	// Live overrides liveness. Nil is always live while the process serves.
 	Live func() bool
 	// Ready overrides readiness. Nil is app.Status.Ready (revision present
@@ -94,6 +106,8 @@ type Server struct {
 	metrics  *observability.Registry
 	logger   *observability.Logger
 	tracer   *observability.Tracer
+	rate     *auth.Limiter
+	auditor  *audit.Fanout
 
 	mu     sync.Mutex
 	http   *http.Server
@@ -129,6 +143,8 @@ func New(cfg Config) (*Server, error) {
 		metrics:  cfg.Metrics,
 		logger:   cfg.Logger,
 		tracer:   cfg.Tracer,
+		rate:     auth.ManagementLimiter(cfg.RatePerSec, cfg.RateBurst, nil),
+		auditor:  audit.NewFanout(0, cfg.Auditor),
 	}
 	return s, nil
 }
@@ -242,9 +258,14 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	r = r.WithContext(ctx)
 	instance := requestURNPrefix + reqID
 
-	// Never advertise a permissive CORS policy.
+	// Deny-all CORS: never emit allow-* headers.
+	auth.ApplyCORS(w.Header())
+	if err := auth.CheckOrigin(r.Header.Get("Origin"), s.cfg.AllowedOrigins); err != nil {
+		s.writeProblem(w, r, instance, err)
+		return
+	}
 	if r.Method == http.MethodOptions {
-		s.writeProblem(w, r, instance, domainerr.NotFound("not found"))
+		s.writeProblem(w, r, instance, domainerr.Forbidden("CORS is disabled"))
 		return
 	}
 
@@ -281,6 +302,13 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !isHealthCap(rt.cap) {
+		if err := s.rate.AllowErr(auth.RateKey(r.RemoteAddr)); err != nil {
+			s.writeProblem(w, r, instance, err)
+			return
+		}
+	}
+
 	actor, err := s.authenticate(r, rt.cap)
 	if err != nil {
 		if s.metrics != nil {
@@ -298,6 +326,19 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		s.writeProblem(w, r, instance, err)
 		return
 	}
+	if err := auth.AuthorizeCapability(actor, rt.cap.RequiredScopes, string(rt.cap.ID)); err != nil {
+		s.auditDenied(r, actor, string(rt.cap.ID), err)
+		s.writeProblem(w, r, instance, err)
+		return
+	}
+	if rt.cap.ID == capabilities.ChaosEmergency {
+		enable := strings.HasSuffix(rt.path, ":emergency-enable")
+		if err := auth.AuthorizeEmergency(actor, enable); err != nil {
+			s.auditDenied(r, actor, string(rt.cap.ID), err)
+			s.writeProblem(w, r, instance, err)
+			return
+		}
+	}
 
 	sw := &statusWriter{ResponseWriter: w, code: http.StatusOK}
 	start := time.Now()
@@ -312,6 +353,29 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	s.dispatch(sw, r, instance, actor, rt, params)
 	s.observe(rt, sw.code, time.Since(start), reqID)
+}
+
+func isHealthCap(cap capabilities.Capability) bool {
+	return cap.ID == capabilities.HealthLive || cap.ID == capabilities.HealthReady
+}
+
+func (s *Server) auditDenied(r *http.Request, actor auth.Actor, cap string, err error) {
+	if s.auditor == nil {
+		return
+	}
+	code := ""
+	if de, ok := domainerr.As(err); ok {
+		code = string(de.Code)
+	}
+	s.auditor.Emit(r.Context(), audit.Event{
+		Time:       time.Now().UTC(),
+		ActorID:    actor.ID,
+		ActorClass: actor.Class,
+		Transport:  "rest",
+		Capability: cap,
+		Result:     audit.ResultDenied,
+		ErrorCode:  code,
+	})
 }
 
 func requestID(r *http.Request) string {

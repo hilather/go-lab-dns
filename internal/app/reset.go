@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 
+	"github.com/hilather/go-lab-dns/internal/audit"
+	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/compiler"
 	"github.com/hilather/go-lab-dns/internal/config"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
@@ -18,6 +20,10 @@ import (
 func (s *App) Reset(ctx context.Context, actor Actor, in ResetIn) (*ApplyResult, error) {
 	if err := s.requireCtx(ctx); err != nil {
 		return nil, err
+	}
+	if !actor.HasScope(auth.ScopeDNSAdmin) {
+		s.recordDenied(ctx, actor, "dns_state_reset", domainerr.Forbidden("missing scope "+auth.ScopeDNSAdmin))
+		return nil, domainerr.Forbidden("missing scope " + auth.ScopeDNSAdmin)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -61,14 +67,17 @@ func (s *App) Reset(ctx context.Context, actor Actor, in ResetIn) (*ApplyResult,
 		Applied:    true,
 		Generation: next.Generation,
 	}
-	res.AuditEventID = s.audit.append(AuditEvent{
+	res.AuditEventID = s.recordAudit(ctx, audit.Event{
 		Time:       s.clock.Now(),
 		ActorID:    actor.ID,
+		ActorClass: actor.Class,
 		Capability: "dns_state_reset",
 		Reason:     in.Reason,
 		Ticket:     in.Ticket,
 		Revision:   next.Revision,
 		Previous:   revisionOf(displaced),
+		Result:     audit.ResultOK,
+		Diff:       toAuditDiff(diff),
 	})
 	return cloneApply(res), nil
 }

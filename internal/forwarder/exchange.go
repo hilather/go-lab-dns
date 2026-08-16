@@ -57,6 +57,10 @@ type Runtime struct {
 	idSeq  atomic.Uint32
 
 	pick *picker
+
+	// MaxInflight caps concurrent Exchange calls. Zero uses 256.
+	MaxInflight int
+	slots       chan struct{}
 }
 
 // NewRuntime returns a Runtime. Nil clock/rand/dial use system defaults.
@@ -73,13 +77,16 @@ func NewRuntime(clk testutil.Clock, rng testutil.Rand, h *Health, dial DialFunc)
 	if dial == nil {
 		dial = defaultDial
 	}
-	return &Runtime{
-		Clock:  clk,
-		Rand:   rng,
-		Health: h,
-		Dial:   dial,
-		pick:   newPicker(rng, h),
+	rt := &Runtime{
+		Clock:       clk,
+		Rand:        rng,
+		Health:      h,
+		Dial:        dial,
+		pick:        newPicker(rng, h),
+		MaxInflight: 256,
 	}
+	rt.slots = make(chan struct{}, rt.MaxInflight)
+	return rt
 }
 
 func defaultDial(ctx context.Context, network, address string) (net.Conn, error) {
@@ -105,6 +112,14 @@ func (rt *Runtime) ExchangeOpts(ctx context.Context, snap *snapshot.Snapshot, q 
 	}
 	if snap == nil {
 		return model.Result{}, ErrNilSnapshot
+	}
+	if rt != nil && rt.slots != nil {
+		select {
+		case rt.slots <- struct{}{}:
+			defer func() { <-rt.slots }()
+		case <-ctx.Done():
+			return model.Result{}, ctx.Err()
+		}
 	}
 	if rt == nil {
 		rt = NewRuntime(nil, nil, nil, nil)

@@ -27,6 +27,10 @@ func (s *Server) serveUDP() {
 		pkt := make([]byte, n)
 		copy(pkt, buf[:n])
 		peer := addr
+		if !s.allowQuery(peerFromAddr(addr)) {
+			s.cfg.Metrics.IncAdmission("rate", "")
+			continue
+		}
 		if !s.acquireInflight() {
 			s.cfg.Metrics.IncAdmission("inflight", "")
 			continue

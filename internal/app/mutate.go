@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 
+	"github.com/hilather/go-lab-dns/internal/audit"
+	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
 	"github.com/hilather/go-lab-dns/internal/model"
 	"github.com/hilather/go-lab-dns/internal/snapshot"
@@ -30,7 +32,12 @@ func (s *App) Plan(ctx context.Context, actor Actor, in ChangeIn) (*Plan, error)
 }
 
 func (s *App) planLocked(ctx context.Context, actor Actor, in ChangeIn) (*Plan, error) {
-	_ = actor
+	if snap, err := s.active(); err == nil {
+		if err := auth.AuthorizeChange(actor, in.Operations, snap.Canonical); err != nil {
+			s.recordDenied(ctx, actor, "dns_change_plan", err)
+			return nil, err
+		}
+	}
 	fp, err := fingerprintChange(in)
 	if err != nil {
 		return nil, err
@@ -61,6 +68,12 @@ func (s *App) Apply(ctx context.Context, actor Actor, in ChangeIn) (*ApplyResult
 }
 
 func (s *App) applyLocked(ctx context.Context, actor Actor, in ChangeIn) (*ApplyResult, error) {
+	if snap, err := s.active(); err == nil {
+		if err := auth.AuthorizeChange(actor, in.Operations, snap.Canonical); err != nil {
+			s.recordDenied(ctx, actor, "dns_change_apply", err)
+			return nil, err
+		}
+	}
 	fp, err := fingerprintChange(in)
 	if err != nil {
 		return nil, err
@@ -85,14 +98,17 @@ func (s *App) applyLocked(ctx context.Context, actor Actor, in ChangeIn) (*Apply
 		Applied:    true,
 		Generation: cand.next.Generation,
 	}
-	res.AuditEventID = s.audit.append(AuditEvent{
+	res.AuditEventID = s.recordAudit(ctx, audit.Event{
 		Time:       s.clock.Now(),
 		ActorID:    actor.ID,
+		ActorClass: actor.Class,
 		Capability: "dns_change_apply",
 		Reason:     in.Reason,
 		Ticket:     in.Ticket,
 		Revision:   cand.next.Revision,
 		Previous:   revisionOf(prev),
+		Result:     audit.ResultOK,
+		Diff:       toAuditDiff(cand.diff),
 	})
 	s.idemp.storeApply(in.IdempotencyKey, fp, res)
 	return cloneApply(res), nil
@@ -106,7 +122,10 @@ func (s *App) Validate(ctx context.Context, actor Actor, in ValidateIn) (*Plan, 
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	_ = actor
+	if err := auth.AuthorizeChange(actor, in.Operations, nil); err != nil && len(in.Operations) > 0 {
+		s.recordDenied(ctx, actor, "dns_state_validate", err)
+		return nil, err
+	}
 	var base *model.State
 	var prev *snapshot.Snapshot
 	if in.State != nil {
@@ -229,15 +248,44 @@ func (s *App) planFrom(c *candidate) *Plan {
 	} else if c.prev != nil {
 		boot = c.prev.BootstrapRevision
 	}
-	return &Plan{
+	scopes := auth.RequiredPermissions(c.ops, c.base)
+	p := &Plan{
 		PreviousRevision:  prevRev,
 		CandidateRevision: c.next.Revision,
 		Drifted:           c.next.Revision != boot,
 		Diff:              c.diff,
 		Impact:            c.impact,
 		Operations:        append([]model.Operation(nil), c.ops...),
-		Auth:              AuthDecision{Allowed: true, Scopes: []string{"dns.write"}},
+		Auth:              AuthDecision{Allowed: true, Scopes: scopes},
 	}
+	p.Impact.RequiredPermissions = scopes
+	return p
+}
+
+func (s *App) recordDenied(ctx context.Context, actor Actor, cap string, err error) {
+	code := ""
+	if de, ok := domainerr.As(err); ok {
+		code = string(de.Code)
+	}
+	s.recordAudit(ctx, audit.Event{
+		Time:       s.clock.Now(),
+		ActorID:    actor.ID,
+		ActorClass: actor.Class,
+		Capability: cap,
+		Result:     audit.ResultDenied,
+		ErrorCode:  code,
+	})
+}
+
+func toAuditDiff(in []DiffEntry) []audit.RedactedEntry {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]audit.RedactedEntry, len(in))
+	for i, d := range in {
+		out[i] = audit.RedactedEntry{Path: d.Path, Op: d.Op, Before: d.Before, After: d.After}
+	}
+	return out
 }
 
 func (s *App) forgetIdempOnConflict(key string, err error) {

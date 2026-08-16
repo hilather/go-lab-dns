@@ -5,6 +5,7 @@ import (
 	"context"
 	"sort"
 
+	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/config"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
 	"github.com/hilather/go-lab-dns/internal/model"
@@ -54,12 +55,12 @@ func (s *App) Export(ctx context.Context, actor Actor, format ExportFormat) (*Ex
 	}
 	return &Export{
 		Format:             format,
-		Body:               append([]byte(nil), body...),
+		Body:               auth.RedactBytes(append([]byte(nil), body...)),
 		Revision:           snap.Revision,
 		BootstrapRevision:  snap.BootstrapRevision,
 		Drifted:            drifted(snap),
 		BootstrapToRuntime: ops,
-		HumanDiff:          human,
+		HumanDiff:          auth.RedactString(human),
 		DeploymentGuidance: deploymentGuidance,
 	}, nil
 }
