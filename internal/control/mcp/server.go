@@ -74,7 +74,8 @@ type Config struct {
 	RatePerSec float64
 	// RateBurst is the per-source burst. Zero uses the shared default.
 	RateBurst float64
-	// Auditor receives denied-authorization events. Nil uses a process-local ring.
+	// Auditor receives denied-authorization events when Service does not
+	// implement RecordAudit. *app.App records into the queryable ring.
 	Auditor audit.Sink
 	// MaxBodyBytes caps decoded request bodies. Non-positive uses DefaultMaxBodyBytes.
 	MaxBodyBytes int64
@@ -95,7 +96,6 @@ type Server struct {
 	timeout  time.Duration
 	inflight chan struct{}
 	rate     *auth.Limiter
-	auditor  *audit.Fanout
 	closed   atomic.Bool
 }
 
@@ -154,7 +154,6 @@ func New(cfg Config) (*Server, error) {
 		timeout:  timeout,
 		inflight: make(chan struct{}, n),
 		rate:     auth.ManagementLimiter(cfg.RatePerSec, cfg.RateBurst, nil),
-		auditor:  audit.NewFanout(0, cfg.Auditor),
 	}
 	s.registerTools()
 	s.registerResources()
@@ -235,6 +234,7 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 
 	actor, err := s.authenticate(r)
 	if err != nil {
+		s.auditDenied(actor, "authenticate", err)
 		status := http.StatusUnauthorized
 		if de, ok := domainerr.As(err); ok && de.Code == domainerr.CodeForbidden {
 			status = http.StatusForbidden

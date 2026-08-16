@@ -10,6 +10,8 @@ type Sink interface {
 	Emit(ctx context.Context, ev Event) error
 }
 
+var _ Sink = (*Fanout)(nil)
+
 // SinkFunc adapts a function to Sink.
 type SinkFunc func(ctx context.Context, ev Event) error
 
@@ -31,8 +33,8 @@ func NewFanout(max int, hook Sink) *Fanout {
 	return &Fanout{Ring: NewRing(max), Hook: hook}
 }
 
-// Emit redacts, stores, and best-effort delivers ev. Always succeeds.
-func (f *Fanout) Emit(ctx context.Context, ev Event) Event {
+// Record redacts, stores, and best-effort delivers ev. Always succeeds.
+func (f *Fanout) Record(ctx context.Context, ev Event) Event {
 	if f == nil {
 		return ev
 	}
@@ -46,6 +48,12 @@ func (f *Fanout) Emit(ctx context.Context, ev Event) Event {
 		}
 	}
 	return ev
+}
+
+// Emit implements Sink. Hook delivery failure is swallowed (Q-AUDIT).
+func (f *Fanout) Emit(ctx context.Context, ev Event) error {
+	f.Record(ctx, ev)
+	return nil
 }
 
 // DeliveryFailures is the number of hook errors since process start.

@@ -169,6 +169,47 @@ func TestChaosPrivilegeSeparation(t *testing.T) {
 	if err := AuthorizeEmergency(admin, true); err != nil {
 		t.Fatalf("chaos admin enable: %v", err)
 	}
+
+	// Operator cannot rewrite policy bodies via TargetChaosPolicy (typed
+	// activation is the only enable path they have).
+	rewriteLow := model.Operation{
+		Op:     model.OpUpdate,
+		Target: model.Target{Kind: model.TargetChaosPolicy, ID: "p1"},
+		Value:  []byte(`{"id":"p1","enabled":true,"safetyClass":"low","outcomes":[{"id":"x"}]}`),
+	}
+	if err := AuthorizeChange(operator, []model.Operation{rewriteLow}, st); err == nil {
+		t.Fatal("operator rewrote live policy body")
+	}
+	downgrade := model.Operation{
+		Op:     model.OpUpdate,
+		Target: model.Target{Kind: model.TargetChaosPolicy, ID: "p2"},
+		Value:  []byte(`{"id":"p2","enabled":true,"safetyClass":"low"}`),
+	}
+	if err := AuthorizeChange(operator, []model.Operation{downgrade}, st); err == nil {
+		t.Fatal("operator downgraded high policy and enabled it")
+	}
+
+	// Designer cannot disable or replace an already-enabled policy.
+	st.Spec.Chaos.Policies[0].Enabled = true
+	disable := model.Operation{
+		Op:     model.OpUpdate,
+		Target: model.Target{Kind: model.TargetChaosPolicy, ID: "p1"},
+		Value:  []byte(`{"id":"p1","enabled":false,"safetyClass":"low"}`),
+	}
+	if err := AuthorizeChange(designer, []model.Operation{disable}, st); err == nil {
+		t.Fatal("designer disabled live policy")
+	}
+	omitEnabled := model.Operation{
+		Op:     model.OpUpdate,
+		Target: model.Target{Kind: model.TargetChaosPolicy, ID: "p1"},
+		Value:  []byte(`{"id":"p1","safetyClass":"low","reason":"tweak"}`),
+	}
+	if err := AuthorizeChange(designer, []model.Operation{omitEnabled}, st); err == nil {
+		t.Fatal("designer replaced enabled policy with omitted enabled")
+	}
+	if err := AuthorizeChange(admin, []model.Operation{disable}, st); err != nil {
+		t.Fatalf("chaos admin disable via design write: %v", err)
+	}
 }
 
 func TestProtectedObjectsOrdinaryRoles(t *testing.T) {
@@ -215,6 +256,43 @@ func TestProtectedObjectsOrdinaryRoles(t *testing.T) {
 	}
 	if err := AuthorizeChange(adm, []model.Operation{moveUp}, st); err != nil {
 		t.Fatalf("admin upstream: %v", err)
+	}
+
+	rewritePool := model.Operation{
+		Op:     model.OpUpdate,
+		Target: model.Target{Kind: model.TargetUpstreamPool, ID: "p"},
+		Value:  []byte(`{"id":"p","strategy":"ordered","upstreams":[{"id":"u1","endpoint":"198.51.100.53:53","transport":"udp"}]}`),
+	}
+	if err := AuthorizeChange(fwd, []model.Operation{rewritePool}, st); err == nil {
+		t.Fatal("forwarder rewrote pool endpoints")
+	} else if de, ok := domainerr.As(err); !ok || de.Code != domainerr.CodeProtectedObject {
+		t.Fatalf("want protected_object, got %v", err)
+	}
+	dropUpstream := model.Operation{
+		Op:     model.OpUpdate,
+		Target: model.Target{Kind: model.TargetUpstreamPool, ID: "p"},
+		Value:  []byte(`{"id":"p","strategy":"ordered","upstreams":[]}`),
+	}
+	if err := AuthorizeChange(fwd, []model.Operation{dropUpstream}, st); err == nil {
+		t.Fatal("forwarder dropped existing upstreams via pool replace")
+	}
+	removePool := model.Operation{
+		Op:     model.OpRemove,
+		Target: model.Target{Kind: model.TargetUpstreamPool, ID: "p"},
+	}
+	if err := AuthorizeChange(fwd, []model.Operation{removePool}, st); err == nil {
+		t.Fatal("forwarder removed pool with existing endpoints")
+	}
+	addOnly := model.Operation{
+		Op:     model.OpUpdate,
+		Target: model.Target{Kind: model.TargetUpstreamPool, ID: "p"},
+		Value:  []byte(`{"id":"p","strategy":"ordered","upstreams":[{"id":"u1","endpoint":"192.0.2.53:53"},{"id":"u2","endpoint":"192.0.2.54:53"}]}`),
+	}
+	if err := AuthorizeChange(fwd, []model.Operation{addOnly}, st); err != nil {
+		t.Fatalf("forwarder adding an upstream should be allowed: %v", err)
+	}
+	if err := AuthorizeChange(adm, []model.Operation{rewritePool}, st); err != nil {
+		t.Fatalf("admin pool rewrite: %v", err)
 	}
 
 	safety := model.Operation{

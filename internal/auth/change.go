@@ -59,6 +59,9 @@ func authorizeOp(actor Actor, op model.Operation, current *model.State, prot Pro
 		if !actor.HasScope(ScopeForwardersWrite) {
 			return domainerr.Forbidden("missing scope " + ScopeForwardersWrite)
 		}
+		if !admin && poolEndpointChanges(op, current) {
+			return denyProtected("upstream endpoints require administrator")
+		}
 		return nil
 	case model.TargetUpstream:
 		if !actor.HasScope(ScopeForwardersWrite) {
@@ -98,39 +101,47 @@ func authorizeChaosPolicy(actor Actor, op model.Operation, current *model.State)
 		return err
 	}
 	prev := findChaos(current, model.PolicyID(op.Target.ID))
-	enabled := false
-	class := model.SafetyClassLow
-	if hasVal {
-		enabled = pol.Enabled
-		class = pol.SafetyClass
-	}
-	if prev != nil && !hasVal {
-		class = prev.SafetyClass
+	// Design path always: operators activate via TargetChaosActivation only.
+	if !actor.HasScope(ScopeChaosWrite) {
+		return domainerr.Forbidden("missing scope " + ScopeChaosWrite)
 	}
 	if op.Op == model.OpRemove {
-		if !actor.HasScope(ScopeChaosWrite) {
-			return domainerr.Forbidden("missing scope " + ScopeChaosWrite)
-		}
 		if prev != nil && prev.Enabled && !actor.HasScope(ScopeChaosActivate) {
 			return domainerr.Forbidden("removing an active policy requires " + ScopeChaosActivate)
 		}
 		return nil
 	}
-	if enabled {
-		if err := authorizeActivation(actor, class); err != nil {
-			return err
-		}
-		// Creating an enabled policy also needs design privilege unless this
-		// is a pure activation of an existing object (use TargetChaosActivation).
-		if prev == nil && !actor.HasScope(ScopeChaosWrite) {
-			return domainerr.Forbidden("missing scope " + ScopeChaosWrite)
-		}
+	enabled := hasVal && pol.Enabled
+	// Mutating or disabling a live policy is an activation privilege.
+	if prev != nil && prev.Enabled && !actor.HasScope(ScopeChaosActivate) {
+		return domainerr.Forbidden("changing an active policy requires " + ScopeChaosActivate)
+	}
+	if !enabled {
 		return nil
 	}
-	if !actor.HasScope(ScopeChaosWrite) {
-		return domainerr.Forbidden("missing scope " + ScopeChaosWrite)
+	class := pol.SafetyClass
+	if prev != nil {
+		class = stricterClass(prev.SafetyClass, class)
 	}
-	return nil
+	return authorizeActivation(actor, class)
+}
+
+func stricterClass(a, b model.SafetyClass) model.SafetyClass {
+	if classRank(b) > classRank(a) {
+		return b
+	}
+	return a
+}
+
+func classRank(c model.SafetyClass) int {
+	switch c {
+	case model.SafetyClassHigh, model.SafetyClassUnsafeDeferred:
+		return 2
+	case model.SafetyClassMedium:
+		return 1
+	default:
+		return 0
+	}
 }
 
 func authorizeChaosActivation(actor Actor, op model.Operation, current *model.State) error {
@@ -190,6 +201,19 @@ func findChaos(st *model.State, id model.PolicyID) *model.ChaosPolicy {
 	return nil
 }
 
+func findPool(st *model.State, id model.PoolID) *model.UpstreamPool {
+	if st == nil || id == "" {
+		return nil
+	}
+	for i := range st.Spec.Forwarding.Pools {
+		if st.Spec.Forwarding.Pools[i].ID == id {
+			p := st.Spec.Forwarding.Pools[i]
+			return &p
+		}
+	}
+	return nil
+}
+
 func findUpstream(st *model.State, id model.UpstreamID) *model.Upstream {
 	if st == nil || id == "" {
 		return nil
@@ -221,6 +245,34 @@ func upstreamEndpointChanges(op model.Operation, current *model.State) bool {
 		return true
 	}
 	return next.Endpoint != "" && next.Endpoint != prev.Endpoint
+}
+
+func poolEndpointChanges(op model.Operation, current *model.State) bool {
+	prev := findPool(current, model.PoolID(op.Target.ID))
+	if prev == nil {
+		return false
+	}
+	if op.Op == model.OpRemove {
+		return len(prev.Upstreams) > 0
+	}
+	if len(bytes.TrimSpace(op.Value)) == 0 {
+		return false
+	}
+	var next model.UpstreamPool
+	if err := json.Unmarshal(op.Value, &next); err != nil {
+		return true
+	}
+	nextByID := make(map[model.UpstreamID]model.Upstream, len(next.Upstreams))
+	for _, u := range next.Upstreams {
+		nextByID[u.ID] = u
+	}
+	for _, u := range prev.Upstreams {
+		n, ok := nextByID[u.ID]
+		if !ok || n.Endpoint != u.Endpoint {
+			return true
+		}
+	}
+	return false
 }
 
 func zoneTouchesProtected(op model.Operation, prot Protected) bool {
@@ -269,17 +321,37 @@ func scopesForOp(op model.Operation, current *model.State) []string {
 	switch op.Target.Kind {
 	case model.TargetZone, model.TargetRecord:
 		return []string{ScopeDNSWrite}
-	case model.TargetForwardingPolicy, model.TargetUpstreamPool, model.TargetUpstream:
+	case model.TargetForwardingPolicy:
+		return []string{ScopeForwardersWrite}
+	case model.TargetUpstreamPool:
+		if poolEndpointChanges(op, current) {
+			return []string{ScopeForwardersWrite, ScopeDNSAdmin}
+		}
+		return []string{ScopeForwardersWrite}
+	case model.TargetUpstream:
+		if upstreamEndpointChanges(op, current) {
+			return []string{ScopeForwardersWrite, ScopeDNSAdmin}
+		}
 		return []string{ScopeForwardersWrite}
 	case model.TargetChaosPolicy:
+		need := []string{ScopeChaosWrite}
 		pol, has, _ := decodeChaosPolicy(op)
-		if has && pol.Enabled {
-			if pol.SafetyClass == model.SafetyClassHigh {
-				return []string{ScopeChaosWrite, ScopeChaosActivate, ScopeChaosEmergency}
-			}
-			return []string{ScopeChaosWrite, ScopeChaosActivate}
+		prev := findChaos(current, model.PolicyID(op.Target.ID))
+		enabled := has && pol.Enabled
+		if (prev != nil && prev.Enabled) || enabled {
+			need = append(need, ScopeChaosActivate)
 		}
-		return []string{ScopeChaosWrite}
+		class := model.SafetyClassLow
+		if has {
+			class = pol.SafetyClass
+		}
+		if prev != nil {
+			class = stricterClass(prev.SafetyClass, class)
+		}
+		if enabled && class == model.SafetyClassHigh {
+			need = append(need, ScopeChaosEmergency)
+		}
+		return need
 	case model.TargetChaosActivation:
 		prev := findChaos(current, model.PolicyID(op.Target.ID))
 		if prev != nil && prev.SafetyClass == model.SafetyClassHigh {

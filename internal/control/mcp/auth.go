@@ -66,14 +66,11 @@ func (s *Server) authorizeTool(actor auth.Actor, name string) error {
 }
 
 func (s *Server) auditDenied(actor auth.Actor, cap string, err error) {
-	if s.auditor == nil {
-		return
-	}
 	code := ""
 	if de, ok := domainerr.As(err); ok {
 		code = string(de.Code)
 	}
-	s.auditor.Emit(context.Background(), audit.Event{
+	s.emitAudit(context.Background(), audit.Event{
 		ActorID:    actor.ID,
 		ActorClass: actor.Class,
 		Transport:  "mcp",
@@ -81,4 +78,18 @@ func (s *Server) auditDenied(actor auth.Actor, cap string, err error) {
 		Result:     audit.ResultDenied,
 		ErrorCode:  code,
 	})
+}
+
+type auditRecorder interface {
+	RecordAudit(context.Context, audit.Event) string
+}
+
+func (s *Server) emitAudit(ctx context.Context, ev audit.Event) {
+	if rec, ok := s.svc.(auditRecorder); ok {
+		rec.RecordAudit(ctx, ev)
+		return
+	}
+	if s.cfg.Auditor != nil {
+		_ = s.cfg.Auditor.Emit(ctx, ev)
+	}
 }

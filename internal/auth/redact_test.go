@@ -3,6 +3,8 @@ package auth
 import (
 	"bytes"
 	"testing"
+
+	"github.com/hilather/go-lab-dns/internal/model"
 )
 
 func TestRedactJSON(t *testing.T) {
@@ -21,6 +23,23 @@ func TestRedactYAML(t *testing.T) {
 	got := RedactBytes(in)
 	if bytes.Contains(got, []byte("/run/secrets/token")) {
 		t.Fatalf("leaked: %s", got)
+	}
+}
+
+func TestRedactOperationsAndState(t *testing.T) {
+	ops := RedactOperations([]model.Operation{{
+		Op:     model.OpUpdate,
+		Target: model.Target{Kind: model.TargetManagement},
+		Value:  []byte(`{"auth":{"profile":"bearer","secretRef":"/run/secrets/token"}}`),
+	}})
+	if bytes.Contains(ops[0].Value, []byte("/run/secrets/token")) {
+		t.Fatalf("op leaked: %s", ops[0].Value)
+	}
+	st := &model.State{}
+	st.Spec.Management.Auth.SecretRef = "/run/secrets/token"
+	got := RedactState(st)
+	if got.Spec.Management.Auth.SecretRef != Redacted {
+		t.Fatalf("state secretRef=%q", got.Spec.Management.Auth.SecretRef)
 	}
 }
 

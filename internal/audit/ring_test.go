@@ -31,7 +31,7 @@ func TestFanoutHookFailureDoesNotFailClosed(t *testing.T) {
 	f := NewFanout(8, SinkFunc(func(context.Context, Event) error {
 		return errors.New("sink down")
 	}))
-	ev := f.Emit(context.Background(), Event{
+	ev := f.Record(context.Background(), Event{
 		Time:   time.Date(2026, 8, 15, 0, 0, 0, 0, time.UTC),
 		Reason: "ok", Result: ResultOK, Revision: model.Revision("sha256:x"),
 	})

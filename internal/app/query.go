@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/cache"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
 	"github.com/hilather/go-lab-dns/internal/model"
@@ -34,7 +35,7 @@ func (s *App) GetState(ctx context.Context, actor Actor) (*StateView, error) {
 		Generation:        snap.Generation,
 		Drifted:           drifted(snap),
 		LoadedAt:          snap.CompiledAt,
-		Canonical:         copied,
+		Canonical:         auth.RedactState(copied),
 	}, nil
 }
 

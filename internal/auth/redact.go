@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"strings"
+
+	"github.com/hilather/go-lab-dns/internal/model"
 )
 
 // Redacted is the placeholder substituted for secret material.
@@ -103,6 +105,37 @@ func RedactString(s string) string {
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+// RedactState copies st with secret-valued fields replaced.
+func RedactState(st *model.State) *model.State {
+	if st == nil {
+		return nil
+	}
+	raw, err := json.Marshal(st)
+	if err != nil {
+		return st
+	}
+	var out model.State
+	if err := json.Unmarshal(RedactJSON(raw), &out); err != nil {
+		return st
+	}
+	return &out
+}
+
+// RedactOperations copies ops with secret-valued JSON replaced.
+func RedactOperations(ops []model.Operation) []model.Operation {
+	if ops == nil {
+		return nil
+	}
+	out := make([]model.Operation, len(ops))
+	for i, op := range ops {
+		out[i] = op
+		if len(op.Value) > 0 {
+			out[i].Value = RedactJSON(op.Value)
+		}
+	}
+	return out
 }
 
 // LooksLikeSecret is a conservative detector for accidental token echo.

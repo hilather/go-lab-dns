@@ -59,7 +59,7 @@ func (s *App) Export(ctx context.Context, actor Actor, format ExportFormat) (*Ex
 		Revision:           snap.Revision,
 		BootstrapRevision:  snap.BootstrapRevision,
 		Drifted:            drifted(snap),
-		BootstrapToRuntime: ops,
+		BootstrapToRuntime: auth.RedactOperations(ops),
 		HumanDiff:          auth.RedactString(human),
 		DeploymentGuidance: deploymentGuidance,
 	}, nil

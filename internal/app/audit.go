@@ -7,6 +7,19 @@ import (
 	"github.com/hilather/go-lab-dns/internal/domainerr"
 )
 
+// RecordAudit stores a mutation or security event on the queryable ring.
+func (s *App) RecordAudit(ctx context.Context, ev audit.Event) string {
+	return s.recordAudit(ctx, ev)
+}
+
+// Audit returns the process ring so adapters can share it as a Sink.
+func (s *App) Audit() *audit.Fanout {
+	if s == nil {
+		return nil
+	}
+	return s.audit
+}
+
 func (s *App) recordAudit(ctx context.Context, ev audit.Event) string {
 	if s == nil || s.audit == nil {
 		return ""
@@ -14,7 +27,7 @@ func (s *App) recordAudit(ctx context.Context, ev audit.Event) string {
 	if ev.Result == "" {
 		ev.Result = audit.ResultOK
 	}
-	return s.audit.Emit(ctx, ev).ID
+	return s.audit.Record(ctx, ev).ID
 }
 
 func (s *App) QueryAudit(ctx context.Context, actor Actor, in AuditQuery) (*AuditList, error) {

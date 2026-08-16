@@ -69,7 +69,9 @@ type Config struct {
 	RatePerSec float64
 	// RateBurst is the per-source burst. Zero uses auth.DefaultMgmtBurst.
 	RateBurst float64
-	// Auditor receives denied-authorization events. Nil uses a process-local ring.
+	// Auditor receives denied-authorization events when Service does not
+	// implement RecordAudit. *app.App writes the queryable ring; *audit.Fanout
+	// implements Sink so DEP-001 can pass App.Audit() here.
 	Auditor audit.Sink
 	// Live overrides liveness. Nil is always live while the process serves.
 	Live func() bool
@@ -107,7 +109,6 @@ type Server struct {
 	logger   *observability.Logger
 	tracer   *observability.Tracer
 	rate     *auth.Limiter
-	auditor  *audit.Fanout
 
 	mu     sync.Mutex
 	http   *http.Server
@@ -144,7 +145,6 @@ func New(cfg Config) (*Server, error) {
 		logger:   cfg.Logger,
 		tracer:   cfg.Tracer,
 		rate:     auth.ManagementLimiter(cfg.RatePerSec, cfg.RateBurst, nil),
-		auditor:  audit.NewFanout(0, cfg.Auditor),
 	}
 	return s, nil
 }
@@ -323,6 +323,7 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			s.metrics.Inc(observability.MetricAuthFailures, map[string]string{"result": result}, 1)
 		}
+		s.auditDenied(r, actor, string(rt.cap.ID), err)
 		s.writeProblem(w, r, instance, err)
 		return
 	}
@@ -360,14 +361,11 @@ func isHealthCap(cap capabilities.Capability) bool {
 }
 
 func (s *Server) auditDenied(r *http.Request, actor auth.Actor, cap string, err error) {
-	if s.auditor == nil {
-		return
-	}
 	code := ""
 	if de, ok := domainerr.As(err); ok {
 		code = string(de.Code)
 	}
-	s.auditor.Emit(r.Context(), audit.Event{
+	s.emitAudit(r.Context(), audit.Event{
 		Time:       time.Now().UTC(),
 		ActorID:    actor.ID,
 		ActorClass: actor.Class,
@@ -376,6 +374,20 @@ func (s *Server) auditDenied(r *http.Request, actor auth.Actor, cap string, err 
 		Result:     audit.ResultDenied,
 		ErrorCode:  code,
 	})
+}
+
+type auditRecorder interface {
+	RecordAudit(context.Context, audit.Event) string
+}
+
+func (s *Server) emitAudit(ctx context.Context, ev audit.Event) {
+	if rec, ok := s.svc.(auditRecorder); ok {
+		rec.RecordAudit(ctx, ev)
+		return
+	}
+	if s.cfg.Auditor != nil {
+		_ = s.cfg.Auditor.Emit(ctx, ev)
+	}
 }
 
 func requestID(r *http.Request) string {

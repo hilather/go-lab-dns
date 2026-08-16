@@ -1,9 +1,11 @@
 package rest
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
+	"github.com/hilather/go-lab-dns/internal/app"
 	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
 )
@@ -77,5 +79,36 @@ func TestRESTSharedAuthorizerMatchesMCP(t *testing.T) {
 		t.Fatal("viewer reset")
 	} else if de, ok := domainerr.As(err); !ok || de.Code != domainerr.CodeForbidden {
 		t.Fatalf("%v", err)
+	}
+}
+
+func TestRESTDeniedAuthorizationInAppAudit(t *testing.T) {
+	pol, err := auth.NewPolicy(auth.PolicyConfig{Tokens: []auth.Token{
+		{Token: "viewer", ID: "v", Role: auth.RoleViewer},
+		{Token: "admin", ID: "a", Role: auth.RoleAdministrator},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
+	s, err := New(Config{Service: svc, Auth: pol, RatePerSec: -1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := doRemote(t, s.Handler(), http.MethodPost, "/v1/state:reset", `{"reason":"no"}`, "192.0.2.10:9", "viewer")
+	requireProblem(t, rec, http.StatusForbidden, "forbidden")
+	list, err := svc.QueryAudit(context.Background(), auth.Actor{ID: "a", Class: auth.ClassToken, Role: auth.RoleAdministrator}, app.AuditQuery{Limit: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, ev := range list.Events {
+		if ev.Result == "denied" && ev.Capability == "state.reset" && ev.ActorID == "v" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("denied reset missing from app audit: %+v", list.Events)
 	}
 }

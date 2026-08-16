@@ -122,7 +122,13 @@ func (s *App) Validate(ctx context.Context, actor Actor, in ValidateIn) (*Plan, 
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if err := auth.AuthorizeChange(actor, in.Operations, nil); err != nil && len(in.Operations) > 0 {
+	var current *model.State
+	if in.State != nil {
+		current = in.State
+	} else if snap := s.store.Load(); snap != nil {
+		current = snap.Canonical
+	}
+	if err := auth.AuthorizeChange(actor, in.Operations, current); err != nil {
 		s.recordDenied(ctx, actor, "dns_state_validate", err)
 		return nil, err
 	}
