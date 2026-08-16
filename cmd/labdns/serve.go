@@ -35,6 +35,7 @@ type serveFlags struct {
 	ChaosDisable     bool
 	DNSListen        string
 	ManagementListen string
+	MCPCompat        bool
 	ShutdownTimeout  time.Duration
 	PIDFile          string
 }
@@ -83,6 +84,7 @@ func parseServeFlags(args []string, stderr io.Writer) (serveFlags, error) {
 	disable := fs.Bool("chaos-disable", false, "inhibit chaos regardless of YAML (also LABDNS_CHAOS_DISABLE=1)")
 	dnsListen := fs.String("dns-listen", "", "override DNS listen address (empty uses YAML, default :5353)")
 	mgmtListen := fs.String("management-listen", "", "override management listen address; off/none/- leaves it unbound")
+	mcpCompat := fs.Bool("mcp-compat", false, "accept any MCP protocol version the SDK supports instead of pinning "+mcpctl.ProtocolVersion+" (for clients on earlier SDK generations, e.g. gateways)")
 	shutdown := fs.Duration("shutdown-timeout", dnsserver.DefaultShutdownWait, "graceful shutdown deadline")
 	pidFile := fs.String("pid-file", "", "write process id after listeners bind")
 	if err := fs.Parse(args); err != nil {
@@ -97,6 +99,7 @@ func parseServeFlags(args []string, stderr io.Writer) (serveFlags, error) {
 		ChaosDisable:     *disable || chaos.EnvChaosDisable(),
 		DNSListen:        *dnsListen,
 		ManagementListen: *mgmtListen,
+		MCPCompat:        *mcpCompat,
 		ShutdownTimeout:  *shutdown,
 		PIDFile:          *pidFile,
 	}, nil
@@ -196,7 +199,11 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 		// The MCP Streamable HTTP adapter shares the management listener with
 		// REST: same address, same bearer policy, mounted at listeners
 		// management.mcpPath (default /mcp).
-		mcpSrv, err := mcpctl.New(mcpctl.Config{Service: svc, Auth: authn})
+		mcpSrv, err := mcpctl.New(mcpctl.Config{
+			Service:                 svc,
+			Auth:                    authn,
+			AllowAnyProtocolVersion: flags.MCPCompat,
+		})
 		if err != nil {
 			_ = rt.Shutdown(context.Background())
 			return nil, err

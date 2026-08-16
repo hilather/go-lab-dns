@@ -7,6 +7,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 ### Added
 
 - `serve` mounts the MCP Streamable HTTP adapter on the management listener at `spec.listeners.management.mcpPath` (default `/mcp`), sharing the address and bearer policy with REST. New `rest.Config.Mounts` serves additional handlers on the management listener under the same lifecycle.
+- Opt-in `serve --mcp-compat` flag (`mcp.Config.AllowAnyProtocolVersion`) relaxes the first-GA MCP protocol pin so clients on earlier SDK generations — e.g. MCP gateways on `mark3labs/mcp-go` — can negotiate. Default behavior is unchanged (ADR 0006 pin stays).
 
 ### Changed
 
