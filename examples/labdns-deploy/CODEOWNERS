@@ -1,0 +1,8 @@
+# High-impact surfaces require review. Never broaden these without an explicit ACK.
+* @hilather
+
+/environments/*/dns.yaml @hilather
+/environments/*/image.env @hilather
+/environments/*/compose.yaml @hilather
+/environments/*/k8s/ @hilather
+/policies/ @hilather

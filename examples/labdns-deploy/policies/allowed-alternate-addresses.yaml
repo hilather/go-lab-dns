@@ -1,0 +1,5 @@
+apiVersion: labdns.dev/policy/v1alpha1
+kind: AllowedAlternateAddresses
+# Chaos alternate-answer CIDRs in desired state must stay inside this set.
+cidrs:
+  - 10.42.0.0/16

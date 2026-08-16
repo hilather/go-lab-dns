@@ -1,0 +1,8 @@
+# Bearer tokens and other secrets stay out of Git.
+secrets/**
+!secrets/.gitkeep
+!secrets/README.md
+*.token
+*.pem
+.env
+**/.previous/

@@ -4,6 +4,7 @@ Status: Proposed
 Owners: Operations
 Last reviewed: 2026-08-15 (OBS-001 diagnostic queries)
 Last reviewed: 2026-08-15 (DEP-001 SIGUSR1 CLI + graceful shutdown)
+Last reviewed: 2026-08-15 (DEP-001 SIGUSR1 CLI; GIT-001 GitOps template)
 
 ## Routine checks
 
@@ -123,6 +124,15 @@ Alert recommendations for DEP/GIT:
 5. Add regression coverage or pipeline diagnostics.
 6. Rerun all required checks.
 7. Record any externally visible behavior in release notes.
+
+## GitOps onboarding and recovery
+
+A new lab copies [examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md),
+sets networks/domain/image digest, writes the bearer token **outside Git**,
+then runs `scripts/validate.sh` / `scripts/test-config.sh` / `scripts/deploy.sh`.
+Environment onboarding and recovery notes ship with that tree
+(`docs/onboarding.md`, `docs/recovery.md`). Rollback is a Git revert (or
+`scripts/rollback.sh`) plus recreate; the process never writes the bootstrap file.
 
 ## Backup and recovery
 

@@ -33,6 +33,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Versioned metrics/events catalog (`labdns.dev/metrics/v1alpha1`) with a label allowlist, automated no-QNAME/no-client-IP checks, bounded export queues, structured JSON logs, optional sampled tracing, and a filled `app.Status` DTO (revisions, listeners, cache, upstreams, chaos, ready/degraded, warnings). Artifact: [api/metrics/v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/metrics/v1alpha1.json).
 - REL-001 release automation: `scripts/release-diff` compares OpenAPI, MCP manifest, config schema, capability table, metrics catalog, CLI help, error catalog, and chaos-effect catalog between two git refs. Tag notes live at `docs/releases/<tag>.md`. Generated CLI help: [api/cli/help.txt](https://github.com/hilather/go-lab-dns/blob/main/api/cli/help.txt). Generated error catalog: [api/errors/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/errors/v1.json).
 - PERF-001 baselines: Go benches in `benches` (exact / wildcard / negative / cache hit / cache miss / upstream / chaos triggered / chaos idle), CI-safe soak (`-soak`, default 2s), max delayed concurrency, flood/admission, and client interop fixtures under [`testdata/interop`](https://github.com/hilather/go-lab-dns/blob/main/testdata/interop).
+- Copyable GitOps template at [examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md): Compose + Kubernetes, digest-pinned `ghcr.io/hilather/labdns`, isolated management, bearer `secretRef`, policy allowlists, and a probe suite (exact, wildcard, authoritative miss, overlay, unknown-client RA=0 / REFUSED, chaos simulation).
+- `labdns verify` runs probes through the DNS orchestrator and accepts `--policies`, `--image` / `--image-env`, and `--server` for live probes. Probe schema: [api/jsonschema/labdns.dev.probes.v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/jsonschema/labdns.dev.probes.v1alpha1.json).
 
 ### Changed
 
@@ -107,7 +109,9 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 - Required CI jobs now include `changelog`, `parity`, and `config-compat` in addition to format/lint/unit/race/fuzz-smoke/generated-file/documentation/security-scan/container-test. The `Release` workflow `tag-gate` refuses a tag when notes are incomplete, public-surface diffs are undocumented, generated files are stale, or a required CI job did not succeed on the exact commit. Capability-table diffs have their own review box (not the MCP box). `release-diff` writes the surface table to stdout so the uploaded `release-diff.txt` includes undocumented diffs. There is no `continue-on-error` or unbounded retry. Operator checklist: [docs/14-release-engineering.md](https://github.com/hilather/go-lab-dns/blob/main/docs/14-release-engineering.md).
 - `labdns serve --config PATH` compiles bootstrap YAML, serves DNS on the configured listen address (default `:5353` UDP+TCP), and serves management HTTP on the configured address (default `:8080`). `--chaos-disable` / `LABDNS_CHAOS_DISABLE` arm a startup lock that YAML, reset, and emergency-enable cannot relax. `SIGTERM` is graceful (cancel delays, then listeners). `SIGUSR1` and `labdns chaos emergency-disable --pid-file` are the local runtime emergency path.
+- `labdns serve --config PATH` compiles bootstrap YAML, serves DNS on the configured listen address (default `:5353` UDP+TCP), and serves management HTTP on the configured address (default `:8080`). `--chaos-disable` / `LABDNS_CHAOS_DISABLE` arm a startup lock that YAML, reset, and emergency-enable cannot relax. `SIGTERM` is graceful (cancel delays, then listeners). `SIGUSR1` and `labdns chaos emergency-disable --pid-file` are the local runtime emergency path. Serve loads `spec.management.auth` (`dev-loopback-unauth` or `bearer` + `secretRef`); a missing bearer file fails closed before accepting management.
 - Runtime plan/apply/reset are process-local via `app.Service`. `expectedRevision` is required except privileged reset. Idempotency keys use a bounded in-memory LRU (default 256; `<=0` is not unlimited). Reset rereads the bootstrap mount and never writes it. Export is canonical YAML/JSON with no comments, plus bootstrap-to-runtime operations. Container recreation discards runtime drift.
+- GitOps examples pin `ghcr.io/hilather/labdns@sha256:…`, bind management off the public DNS path, and keep tokens in env/Secret refs. `scripts/validate.sh` / `test-config.sh` / `deploy.sh` / `live-probe.sh` / `rollback.sh` have no bypass path.
 
 ### Observability
 
@@ -134,8 +138,9 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - `labdns serve` does not yet bind the management listener (REST `/v1` + MCP `/mcp`); DEP-001 wires `rest.Server` and `mcp.Server`.
 - Full SEC-001 RBAC is not implemented; MCP uses the same loopback-unauth / remote-bearer stub as REST.
 - GitOps/Compose/Kubernetes bearer examples land in GIT-001. Durable audit remains an optional hook, never fail-closed.
-- `labdns chaos emergency-disable --pid-file` is not implemented until DEP-001.
 - `make test-integration` and `make test-container` fail closed until later PRs. `make test-parity` runs the REST/MCP registry and adapter suites.
 - MCP adapter is not implemented; REST `/v1` is wired into `labdns serve`.
 - `make test-parity` fails closed until MCP-001.
 - Absolute QPS/latency numbers are recorded by benches, not gated in CI (hardware varies). Long soak is opt-in (`-soak=30m` / `LABDNS_SOAK_DURATION`).
+- Durable audit remains an optional hook, never fail-closed. The GitOps template uses an all-zero digest placeholder until a released image is pinned.
+- `make test-integration` fails closed until PERF-001.

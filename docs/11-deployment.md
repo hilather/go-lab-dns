@@ -3,6 +3,7 @@
 Status: Proposed
 Owners: Deployment, Operations, Security
 Last reviewed: 2026-08-15 (PERF-001 capacity notes)
+Last reviewed: 2026-08-15 (DEP-001 CLI; GIT-001 GitOps template)
 Related ADRs: 0003
 
 ## Goals
@@ -34,7 +35,7 @@ labdns serve --config=/etc/labdns/config.yaml [--chaos-disable]
              [--shutdown-timeout 5s] [--pid-file /tmp/labdns.pid]
 labdns validate --config=...
 labdns canonicalize --config=... [--format yaml|json]
-labdns verify --config=... --probes=...
+labdns verify --config=... --probes=... [--policies DIR] [--image REF|--image-env PATH] [--server HOST:PORT]
 labdns query --name=... --type=A [--server 127.0.0.1:5353] [--transport udp|tcp]
 labdns healthcheck --url=http://127.0.0.1:8080/v1/health/ready
 labdns chaos emergency-disable --pid-file=/tmp/labdns.pid
@@ -52,6 +53,11 @@ labdns version
 | `LABDNS_CHAOS_DISABLE` | Only documented safety-related environment variable. No env var raises chaos safety caps. |
 
 `labdns chaos emergency-disable --pid-file` sends **`SIGUSR1`** and does not call HTTP. `SIGTERM` / `SIGINT` are graceful shutdown. `SIGUSR2` is ignored.
+
+Copyable Compose, Kubernetes, policy, and probe files live in
+[examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md)
+(GIT-001). Those examples use **bearer** `secretRef` (no token in Git) and
+bind management to loopback or a NetworkPolicy-isolated ClusterIP.
 
 ## Compose example
 

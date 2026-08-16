@@ -1,12 +1,17 @@
 # Deployment Repository Guide
 
-Status: Proposed
+Status: Normative (GIT-001)
 Owners: Deployment, Platform
 Last reviewed: 2026-08-15
 
 ## Purpose
 
 The deployment repository is the durable source of truth for each environment. LabDNS runtime changes are ephemeral experiments until represented by a reviewed deployment-repository change.
+
+The copyable template ships in this application repository at
+[examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md).
+Copy that tree into a **separate** Git repo per lab. Application version:
+`labdns.dev/v1alpha1`. Image: **`ghcr.io/hilather/labdns` pinned by digest**.
 
 ## Suggested layout
 
@@ -20,6 +25,7 @@ labdns-deploy/
       probes.yaml
       compose.yaml
       image.env
+      k8s/
       README.md
     test-lab/
       dns.yaml
@@ -30,23 +36,29 @@ labdns-deploy/
   policies/
     allowed-upstreams.yaml
     allowed-client-networks.yaml
+    allowed-alternate-addresses.yaml
+    protected-names.yaml
     chaos-safety.yaml
   scripts/
     validate.sh
     test-config.sh
     deploy.sh
+    live-probe.sh
+    rollback.sh
   docs/
+    onboarding.md
     operations.md
     recovery.md
 ```
 
 ## Source-of-truth rules
 
-- Pin images by digest.
-- Mount `dns.yaml` read-only.
-- Keep secrets outside Git.
-- Require review for forwarding, protected names, management networks, and high-impact chaos changes.
-- Store verification probes with desired state.
+- Pin images by digest (`name@sha256:<64 hex>`). Tags and `:latest` fail `labdns verify --image`.
+- Mount `dns.yaml` read-only at `/etc/labdns/config.yaml`.
+- Keep secrets outside Git. GitOps auth is **bearer** via `secretRef` (file or Kubernetes Secret), never an inline token. Loopback (`127.0.0.1` / `::1`) may omit a bearer; every remote management peer must present one.
+- Isolate management: Compose binds `:8080` to `127.0.0.1`; Kubernetes uses ClusterIP plus NetworkPolicy.
+- Require review for forwarding, protected names, management networks, and high-impact chaos changes (`CODEOWNERS`).
+- Store verification probes with desired state (`labdns.dev/probes/v1alpha1`).
 - Preserve historical release and schema compatibility through Git history.
 
 ## Pull request pipeline
@@ -65,7 +77,17 @@ schema validation
  -> live probes
 ```
 
-All checks are required. Pipeline failures are fixed and hardened; they are not bypassed.
+All checks are required. Pipeline failures are fixed and hardened; they are not bypassed. The template scripts use `set -euo pipefail` and have no `|| true` on validate/verify.
+
+`scripts/validate.sh` runs:
+
+```text
+labdns validate --config dns.yaml
+labdns verify --config dns.yaml --probes probes.yaml \
+  --policies policies/ --image-env image.env
+```
+
+`labdns verify` compiles the document, checks digest pin and allowlists, then executes probes through the DNS orchestrator (`internal/dnsquery`) so refuse-forward and RA match the data plane. Probes with `live: true` run only when `--server` is set.
 
 ## Runtime-to-Git workflow
 
@@ -80,7 +102,11 @@ All checks are required. Pipeline failures are fixed and hardened; they are not 
 9. Deployment recreates or resets LabDNS from Git state.
 10. Drift returns to false.
 
+Container recreation always discards unsaved runtime mutations (ADR 0003).
+
 ## Probe format example
+
+Schema: [api/jsonschema/labdns.dev.probes.v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/jsonschema/labdns.dev.probes.v1alpha1.json).
 
 ```yaml
 apiVersion: labdns.dev/probes/v1alpha1
@@ -110,6 +136,26 @@ probes:
     expect:
       rcode: NXDOMAIN
 
+  - id: unknown-client-local
+    query:
+      name: ns1.lab.example.net.
+      type: A
+      client: 203.0.113.50
+    expect:
+      rcode: NOERROR
+      ra: false
+      noUpstream: true
+
+  - id: unknown-client-forward-only
+    query:
+      name: only-forwarded.corp.example.net.
+      type: A
+      client: 203.0.113.50
+    expect:
+      rcode: REFUSED
+      ra: false
+      noUpstream: true
+
   - id: chaos-simulation
     simulateChaos: true
     query:
@@ -121,9 +167,11 @@ probes:
       maximumDelay: 750ms
 ```
 
+Unknown-client probes: a local name still succeeds with **RA=0**; a name that would only be forwarded is **REFUSED** with **RA=0** and no upstream dial. Overlay hits are AA=0. Authoritative misses do not fall through.
+
 ## Rollback
 
-Rollback means reverting desired state or image pin in Git and redeploying. Runtime emergency rollback may deactivate a chaos policy or reset to bootstrap, but the deployment repository remains authoritative.
+Rollback means reverting desired state or image pin in Git and redeploying. `scripts/rollback.sh` restores the previous successful `deploy.sh` snapshot (one generation) and redeploys. Runtime emergency rollback may deactivate a chaos policy or reset to bootstrap, but the deployment repository remains authoritative.
 
 ## Agent instructions for deployment changes
 
@@ -136,4 +184,8 @@ Rollback means reverting desired state or image pin in Git and redeploying. Runt
 
 ## Testing strategy
 
-Test validation scripts, negative policy cases, image-digest enforcement, probe execution, rollback, and runtime-to-Git export compatibility.
+Test validation scripts, negative policy cases, image-digest enforcement, probe execution (exact, wildcard, authoritative miss, overlay, unknown-client refuse-forward, chaos simulation), rollback, container recreation reset-to-bootstrap, and runtime-to-Git export compatibility. A script or pipeline defect requires a regression test.
+
+## Handoff
+
+Template version is this repository revision. Supported application/config version: `labdns.dev/v1alpha1`. Image name: `ghcr.io/hilather/labdns`.

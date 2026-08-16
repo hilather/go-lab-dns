@@ -4,6 +4,7 @@ Status: Proposed normative quality gate
 Owners: All teams
 Last reviewed: 2026-08-15 (REL-001 release-diff and required CI)
 Last reviewed: 2026-08-15 (PERF-001 benches, soak, interop)
+Last reviewed: 2026-08-15 (GIT-001 deployment template probes)
 
 ## Policy
 
@@ -134,6 +135,10 @@ Soak assertions: every wire answer is a complete old or new RRset (never mixed/p
 - Signal handling and graceful shutdown.
 - Health checks.
 - No hidden persistent state after recreation.
+- GitOps template (`examples/labdns-deploy`): digest pin, policy rejection
+  (broad CIDRs, unapproved upstreams, unsafe chaos), probe suite (exact,
+  wildcard, authoritative miss, overlay, unknown-client RA=0 / REFUSED,
+  chaos simulation), rollback, and script fail-closed checks.
 
 ### Documentation tests
 

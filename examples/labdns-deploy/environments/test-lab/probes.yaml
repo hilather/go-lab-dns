@@ -1,0 +1,82 @@
+apiVersion: labdns.dev/probes/v1alpha1
+probes:
+  - id: exact-ns1
+    query:
+      name: ns1.lab.example.net.
+      type: A
+    expect:
+      rcode: NOERROR
+      answers: [10.42.0.53]
+      aa: true
+
+  - id: wildcard-tools
+    query:
+      name: random-name.tools.lab.example.net.
+      type: A
+    expect:
+      rcode: NOERROR
+      answers: [10.42.0.20]
+
+  - id: exact-over-wildcard
+    query:
+      name: grafana.tools.lab.example.net.
+      type: CNAME
+    expect:
+      answers: [gateway.lab.example.net.]
+
+  - id: authoritative-miss
+    query:
+      name: missing.lab.example.net.
+      type: A
+    expect:
+      rcode: NXDOMAIN
+
+  - id: overlay-hit
+    query:
+      name: special-api.vendor.example.
+      type: A
+    expect:
+      rcode: NOERROR
+      answers: [10.42.0.30]
+      aa: false
+
+  - id: unknown-client-local
+    query:
+      name: ns1.lab.example.net.
+      type: A
+      client: 203.0.113.50
+    expect:
+      rcode: NOERROR
+      answers: [10.42.0.53]
+      ra: false
+      noUpstream: true
+
+  - id: unknown-client-forward-only
+    query:
+      name: only-forwarded.corp.example.net.
+      type: A
+      client: 203.0.113.50
+    expect:
+      rcode: REFUSED
+      ra: false
+      noUpstream: true
+
+  - id: known-client-local-ra
+    query:
+      name: ns1.lab.example.net.
+      type: A
+      client: 10.42.1.10
+    expect:
+      rcode: NOERROR
+      answers: [10.42.0.53]
+      ra: true
+
+  - id: chaos-simulation
+    simulateChaos: true
+    query:
+      name: alpha.tools.lab.example.net.
+      type: A
+      clientGroup: test-devices
+    expect:
+      matchedPolicy: slow-tools
+      maximumDelay: 250ms

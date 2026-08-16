@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://labdns.dev/schema/probes/v1alpha1",
+  "title": "LabDNS probes v1alpha1",
+  "description": "Verification probes stored with desired state. labdns verify executes offline probes through the DNS orchestrator (classification, refuse-forward, RA). Probes with live: true require --server.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "probes"],
+  "properties": {
+    "apiVersion": { "const": "labdns.dev/probes/v1alpha1" },
+    "probes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/probe" }
+    }
+  },
+  "$defs": {
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "query"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "simulateChaos": { "type": "boolean" },
+        "live": { "type": "boolean", "description": "Skip unless labdns verify --server is set. Use for probes that need a reachable upstream or wire server." },
+        "query": { "$ref": "#/$defs/query" },
+        "expect": { "$ref": "#/$defs/expect" }
+      }
+    },
+    "query": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string", "default": "A" },
+        "transport": { "type": "string", "enum": ["udp", "tcp", ""] },
+        "clientGroup": { "type": "string" },
+        "client": { "type": "string", "description": "Source IP used for classification. Omitted/invalid is unknown (RA=0, never forward)." }
+      }
+    },
+    "expect": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rcode": { "type": "string" },
+        "answers": { "type": "array", "items": { "type": "string" } },
+        "aa": { "type": "boolean" },
+        "ra": { "type": "boolean" },
+        "noUpstream": { "type": "boolean", "description": "Fail if offline verify dials any configured upstream." },
+        "matchedPolicy": { "type": "string" },
+        "maximumDelay": { "type": "string" }
+      }
+    }
+  }
+}

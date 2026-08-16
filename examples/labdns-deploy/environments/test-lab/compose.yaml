@@ -1,0 +1,27 @@
+name: labdns-test-lab
+
+services:
+  labdns:
+    image: ${LABDNS_IMAGE:?set LABDNS_IMAGE from image.env}
+    command: ["serve", "--config=/etc/labdns/config.yaml"]
+    user: "65532:65532"
+    ports:
+      - "5353:5353/udp"
+      - "5353:5353/tcp"
+      - "127.0.0.1:18080:8080/tcp"
+    volumes:
+      - "./dns.yaml:/etc/labdns/config.yaml:ro"
+      - "${LABDNS_TOKEN_FILE:-../../secrets/labdns-token}:/run/secrets/labdns-token:ro"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/labdns", "healthcheck", "--url=http://127.0.0.1:8080/v1/health/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 3

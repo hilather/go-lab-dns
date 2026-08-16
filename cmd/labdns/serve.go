@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hilather/go-lab-dns/internal/app"
+	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/cache"
 	"github.com/hilather/go-lab-dns/internal/chaos"
 	"github.com/hilather/go-lab-dns/internal/compiler"
@@ -152,6 +153,18 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 		stopSig()
 		return nil, fmt.Errorf("compile: no DNS protocol enabled")
 	}
+	mgmtAddr, mgmtOff := managementListenAddr(snap, flags.ManagementListen)
+	var authn auth.Authenticator
+	if !mgmtOff && snap.Canonical != nil {
+		// Resolve tokens before binding so a missing bearer file cannot
+		// publish DNS while management fails closed.
+		pol, err := auth.FromSpec(snap.Canonical.Spec.Management.Auth)
+		if err != nil {
+			stopSig()
+			return nil, fmt.Errorf("management auth: %w", err)
+		}
+		authn = pol
+	}
 	srv, err := dnsserver.New(dnsserver.Config{
 		UDPAddr: udpAddr,
 		TCPAddr: tcpAddr,
@@ -177,9 +190,8 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 		pidPath: flags.PIDFile,
 	}
 
-	mgmtAddr, mgmtOff := managementListenAddr(snap, flags.ManagementListen)
 	if !mgmtOff {
-		mgmt, err := rest.New(rest.Config{Addr: mgmtAddr, Service: svc})
+		mgmt, err := rest.New(rest.Config{Addr: mgmtAddr, Service: svc, Auth: authn})
 		if err != nil {
 			_ = rt.Shutdown(context.Background())
 			return nil, err

@@ -1,0 +1,9 @@
+apiVersion: labdns.dev/policy/v1alpha1
+kind: ChaosSafety
+# Desired-state caps must be <= these values. YAML cannot raise them.
+maxDelay: 10s
+maxConcurrentDelayed: 2000
+maxDropProbability: 0.5
+maxActiveHighImpactPolicies: 1
+requireProtectedNames:
+  - dns.lab.example.net.

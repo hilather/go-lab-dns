@@ -1,0 +1,6 @@
+apiVersion: labdns.dev/policy/v1alpha1
+kind: AllowedClientNetworks
+# Every spec.access.clientGroups[].cidrs prefix must be contained in one
+# of these networks. 0.0.0.0/0 and ::/0 are rejected.
+networks:
+  - 10.42.0.0/16

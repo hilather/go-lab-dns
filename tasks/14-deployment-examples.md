@@ -1,6 +1,6 @@
 # GIT-001: Deployment Repository Examples and Probes
 
-Status: not-started
+Status: done
 Recommended owner: GitOps/platform agent
 Dependencies: DEP-001, stable config schema, CLI verify command
 Exclusive ownership: example deployment repository content and probe tooling integration
@@ -11,34 +11,34 @@ Provide a separate, copyable deployment-repository pattern for Docker Compose an
 
 ## Work items
 
-- [ ] Create a reference deployment repository tree in examples or a separate template artifact.
-- [ ] Add Compose and Kubernetes examples with non-root/read-only settings and management isolation.
-- [ ] Pin image by digest and document update workflow.
-- [ ] Add environment-specific `dns.yaml` and `probes.yaml` examples.
-- [ ] Define probe schema and CLI verification behavior.
-- [ ] Add policy files for allowed upstreams, client networks, alternate addresses, protected names, and chaos caps.
-- [ ] Add validate, test-config, deploy, live-probe, and rollback scripts or documented equivalents.
-- [ ] Document runtime export to pull-request workflow.
-- [ ] Add CODEOWNERS and approval guidance for high-impact changes.
-- [ ] Ensure secrets are external references.
+- [x] Create a reference deployment repository tree in examples or a separate template artifact.
+- [x] Add Compose and Kubernetes examples with non-root/read-only settings and management isolation.
+- [x] Pin image by digest and document update workflow.
+- [x] Add environment-specific `dns.yaml` and `probes.yaml` examples.
+- [x] Define probe schema and CLI verification behavior.
+- [x] Add policy files for allowed upstreams, client networks, alternate addresses, protected names, and chaos caps.
+- [x] Add validate, test-config, deploy, live-probe, and rollback scripts or documented equivalents.
+- [x] Document runtime export to pull-request workflow.
+- [x] Add CODEOWNERS and approval guidance for high-impact changes.
+- [x] Ensure secrets are external references.
 
 ## Required tests
 
-- [ ] Positive and negative deployment config validation.
-- [ ] Image digest enforcement.
-- [ ] Probe execution for exact, wildcard, authoritative miss, overlay, upstream, and chaos simulation.
-- [ ] Policy rejection for broadened networks, unsafe chaos, and unapproved upstreams.
-- [ ] Container recreation resets runtime drift.
-- [ ] Rollback restores prior desired behavior.
-- [ ] Deployment CI failure path retains diagnostics and cannot be bypassed by scripts.
-- [ ] Regression test for every deployment tooling defect.
+- [x] Positive and negative deployment config validation.
+- [x] Image digest enforcement.
+- [x] Probe execution for exact, wildcard, authoritative miss, overlay, upstream, and chaos simulation.
+- [x] Policy rejection for broadened networks, unsafe chaos, and unapproved upstreams.
+- [x] Container recreation resets runtime drift.
+- [x] Rollback restores prior desired behavior.
+- [x] Deployment CI failure path retains diagnostics and cannot be bypassed by scripts.
+- [x] Regression test for every deployment tooling defect.
 
 ## Documentation updates
 
-- [ ] Finalize `docs/12-deployment-repository.md`.
-- [ ] Add environment onboarding and recovery instructions.
-- [ ] Update operations runbooks.
-- [ ] Add release-note entry for deployment template changes.
+- [x] Finalize `docs/12-deployment-repository.md`.
+- [x] Add environment onboarding and recovery instructions.
+- [x] Update operations runbooks.
+- [x] Add release-note entry for deployment template changes.
 
 ## Acceptance criteria
 
@@ -48,4 +48,8 @@ Provide a separate, copyable deployment-repository pattern for Docker Compose an
 
 ## Handoff
 
-Provide the exact deployment template version and supported application/config versions.
+Template: `examples/labdns-deploy` at this repository revision.
+Supported application/config version: `labdns.dev/v1alpha1`.
+Image: `ghcr.io/hilather/labdns` (digest-pinned in GitOps).
+Probe API: `labdns.dev/probes/v1alpha1`.
+Policy API: `labdns.dev/policy/v1alpha1`.

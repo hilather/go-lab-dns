@@ -14,6 +14,7 @@ import (
 	"github.com/hilather/go-lab-dns/internal/app"
 	"github.com/hilather/go-lab-dns/internal/compiler"
 	"github.com/hilather/go-lab-dns/internal/config"
+	"github.com/hilather/go-lab-dns/internal/deploypolicy"
 	"github.com/hilather/go-lab-dns/internal/dnswire"
 	"github.com/hilather/go-lab-dns/internal/model"
 	"github.com/hilather/go-lab-dns/internal/snapshot"
@@ -95,6 +96,10 @@ func verifyCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs.SetOutput(stderr)
 	path := fs.String("config", "", "path to bootstrap YAML or JSON")
 	probesPath := fs.String("probes", "", "path to labdns.dev/probes/v1alpha1 YAML")
+	policiesDir := fs.String("policies", "", "deployment policy directory (optional)")
+	imageRef := fs.String("image", "", "container image reference to require digest pin (optional)")
+	imageEnv := fs.String("image-env", "", "image.env path containing LABDNS_IMAGE (optional)")
+	server := fs.String("server", "", "live DNS server host:port for probes with live: true")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -106,6 +111,35 @@ func verifyCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "labdns verify: load: %v\n", err)
 		return 1
+	}
+	if *imageEnv != "" {
+		ref, err := deploypolicy.ParseImageEnv(*imageEnv)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "labdns verify: image-env: %v\n", err)
+			return 1
+		}
+		if *imageRef == "" {
+			*imageRef = ref
+		}
+	}
+	if *imageRef != "" {
+		if err := deploypolicy.CheckImage(*imageRef); err != nil {
+			_, _ = fmt.Fprintf(stderr, "labdns verify: %v\n", err)
+			return 1
+		}
+		_, _ = fmt.Fprintf(stdout, "ok image digest pin\n")
+	}
+	if *policiesDir != "" {
+		pol, err := deploypolicy.LoadDir(*policiesDir)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "labdns verify: policies: %v\n", err)
+			return 1
+		}
+		if err := deploypolicy.Check(st, pol); err != nil {
+			_, _ = fmt.Fprintf(stderr, "labdns verify: %v\n", err)
+			return 1
+		}
+		_, _ = fmt.Fprintf(stdout, "ok policies\n")
 	}
 	snap, err := compiler.Compile(ctx, st, compiler.CompileOpts{})
 	if err != nil {
@@ -120,20 +154,37 @@ func verifyCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int
 		_, _ = fmt.Fprintf(stderr, "labdns verify: probes: %v\n", err)
 		return 1
 	}
+	runner := newProbeRunner(store, svc)
 	failed := 0
+	ran := 0
 	for _, p := range doc.Probes {
-		if err := runProbe(ctx, svc, p); err != nil {
+		if p.Live {
+			if *server == "" {
+				_, _ = fmt.Fprintf(stdout, "skip %s (live; pass --server)\n", p.ID)
+				continue
+			}
+			if err := runLiveProbe(p, *server); err != nil {
+				_, _ = fmt.Fprintf(stderr, "FAIL %s: %v\n", p.ID, err)
+				failed++
+				continue
+			}
+			_, _ = fmt.Fprintf(stdout, "ok %s\n", p.ID)
+			ran++
+			continue
+		}
+		if err := runProbe(ctx, runner, p); err != nil {
 			_, _ = fmt.Fprintf(stderr, "FAIL %s: %v\n", p.ID, err)
 			failed++
 			continue
 		}
 		_, _ = fmt.Fprintf(stdout, "ok %s\n", p.ID)
+		ran++
 	}
 	if failed > 0 {
-		_, _ = fmt.Fprintf(stderr, "labdns verify: %d/%d probes failed\n", failed, len(doc.Probes))
+		_, _ = fmt.Fprintf(stderr, "labdns verify: %d/%d probes failed\n", failed, ran+failed)
 		return 1
 	}
-	_, _ = fmt.Fprintf(stdout, "ok %d probes\n", len(doc.Probes))
+	_, _ = fmt.Fprintf(stdout, "ok %d probes\n", ran)
 	return 0
 }
 

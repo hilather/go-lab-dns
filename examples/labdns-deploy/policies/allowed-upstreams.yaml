@@ -1,0 +1,8 @@
+apiVersion: labdns.dev/policy/v1alpha1
+kind: AllowedUpstreams
+# Unlisted endpoints fail `labdns verify --policies`. Do not add public
+# resolvers without review — LabDNS is not an open recursive resolver.
+endpoints:
+  - 10.0.0.53:53
+  - 10.0.0.54:53
+  - 10.0.0.55:53

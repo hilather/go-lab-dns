@@ -87,6 +87,8 @@ make test-changelog
 `make test-integration` runs the short PERF-001 suite: client fixtures in [`testdata/interop`](https://github.com/hilather/go-lab-dns/blob/main/testdata/interop), soak/flood/admission in `internal/perf`, and the bench harness smoke in `benches`. Soak duration defaults to 2s; pass `go test ./internal/perf -soak=30m` or `LABDNS_SOAK_DURATION=30m` for the long run.
 
 `make test-parity` still fails closed until MCP lands:
+A copyable GitOps tree (Compose, Kubernetes, digest pin, bearer secret refs, probes) lives at [`examples/labdns-deploy`](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md). See [docs/12-deployment-repository.md](https://github.com/hilather/go-lab-dns/blob/main/docs/12-deployment-repository.md).
+Targets that are not yet implemented fail closed (non-zero exit with an explicit `unimplemented` message) rather than succeeding as no-ops:
 
 ```text
 make test-integration    # later DNS/control-plane PRs

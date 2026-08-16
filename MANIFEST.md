@@ -24,7 +24,7 @@
 - `docs/09-observability.md`
 - `docs/10-testing-strategy.md`
 - `docs/11-deployment.md`
-- `docs/12-deployment-repository.md`
+- `docs/12-deployment-repository.md` (template: `examples/labdns-deploy`)
 - `docs/13-operations-and-runbooks.md`
 - `docs/14-release-engineering.md`
 - `docs/15-documentation-governance.md`

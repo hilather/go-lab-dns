@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: labdns-isolate-management
+  labels:
+    app.kubernetes.io/name: labdns
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: labdns
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # DNS data plane from the lab client networks.
+    - ports:
+        - port: 5353
+          protocol: UDP
+        - port: 5353
+          protocol: TCP
+      from:
+        - ipBlock:
+            cidr: 10.42.0.0/16
+        - podSelector: {}
+    # Management only from the labeled control-plane namespace.
+    - ports:
+        - port: 8080
+          protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              labdns.dev/management: "true"
+  egress:
+    # Configured upstreams only (see policies/allowed-upstreams.yaml).
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+      to:
+        - ipBlock:
+            cidr: 10.0.0.53/32
+        - ipBlock:
+            cidr: 10.0.0.54/32
+        - ipBlock:
+            cidr: 10.0.0.55/32
+    # Kubernetes DNS for image-pull/service discovery is cluster-specific;
+    # add it here if the CNI requires it. Do not open 0.0.0.0/0.

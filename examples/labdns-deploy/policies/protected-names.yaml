@@ -1,0 +1,5 @@
+apiVersion: labdns.dev/policy/v1alpha1
+kind: ProtectedNames
+# These names must remain in spec.chaos.safety.protectedNames.
+names:
+  - dns.lab.example.net.

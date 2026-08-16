@@ -155,6 +155,37 @@ func TestVerifyProbes(t *testing.T) {
 	}
 }
 
+func TestVerifyGitOpsTemplateAndUnknownClient(t *testing.T) {
+	root := repoRoot(t)
+	cfg := filepath.Join(root, "examples/labdns-deploy/environments/main-lab/dns.yaml")
+	probes := filepath.Join(root, "examples/labdns-deploy/environments/main-lab/probes.yaml")
+	policies := filepath.Join(root, "examples/labdns-deploy/policies")
+	imageEnv := filepath.Join(root, "examples/labdns-deploy/environments/main-lab/image.env")
+	var stdout, stderr bytes.Buffer
+	code := runContext(context.Background(), []string{
+		"labdns", "verify", "--config", cfg, "--probes", probes,
+		"--policies", policies, "--image-env", imageEnv,
+	}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit %d stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	for _, want := range []string{"ok unknown-client-local", "ok unknown-client-forward-only", "ok policies"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("missing %q in %q", want, stdout.String())
+		}
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = runContext(context.Background(), []string{
+		"labdns", "verify", "--config", cfg, "--probes", probes,
+		"--image", "ghcr.io/hilather/labdns:latest",
+	}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("unpinned image exit %d stderr=%q", code, stderr.String())
+	}
+}
+
 func TestQueryAndHealthcheck(t *testing.T) {
 	path := ephemeralPackSample(t)
 	ctx, cancel := context.WithCancel(context.Background())
