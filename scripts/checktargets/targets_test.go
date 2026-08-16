@@ -31,9 +31,7 @@ var requiredTargets = []string{
 	"release-diff",
 }
 
-var unimplementedTargets = []string{
-	"test-integration",
-}
+var unimplementedTargets = []string{}
 
 // unimplementedCIJobs locks fail-closed CI jobs to an invert+phrase contract.
 // Remove a job from this map in the same change that makes its Make target succeed.
