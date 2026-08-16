@@ -83,10 +83,12 @@ jobs:
       - name: Public-surface diff
         run: |
           set -euo pipefail
+          # Write outside the repo: release-diff refuses a dirty worktree,
+          # and tee into the checkout would fail the next -require-ci step.
           go run ./scripts/release-diff \
             -notes "${{ steps.gate.outputs.notes }}" \
             "${{ steps.gate.outputs.prev }}" HEAD \
-            | tee release-diff.txt
+            | tee "${{ runner.temp }}/release-diff.txt"
 
       - name: Require green CI on this commit
         env:
@@ -99,6 +101,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-diff
-          path: release-diff.txt
+          path: ${{ runner.temp }}/release-diff.txt
           if-no-files-found: ignore
           retention-days: 30
