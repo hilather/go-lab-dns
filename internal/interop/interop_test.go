@@ -81,6 +81,17 @@ func runGoCase(t *testing.T, lab *perf.Lab, c Case) {
 	if c.EDNS {
 		edns = &dnswire.EDNS{UDPSize: 1232}
 	}
+	if c.WantSource != "" {
+		// Cold path: a prior wire exchange would cache the RRset and hide
+		// wildcard/exact synthesis.
+		res, _, err := lab.ServeHint(context.Background(), q)
+		if err != nil || res == nil {
+			t.Fatalf("in-process source: %v resp=%v", err, res)
+		}
+		if got := string(res.Result().Source); got != c.WantSource {
+			t.Fatalf("source=%s want %s", got, c.WantSource)
+		}
+	}
 	raw := perf.PackQuery(t, 1, q, edns)
 	udp := perf.MustExchangeUDP(t, lab.UDPAddr(), raw)
 

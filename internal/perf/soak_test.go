@@ -46,7 +46,9 @@ func TestSoakSwapsAndExpiry(t *testing.T) {
 	t.Log(CaptureEnv().String())
 	t.Logf("soak duration %s", d)
 
+	const soakDelay = 80 * time.Millisecond
 	st := LabState("")
+	st.Spec.Chaos.Policies[1].Outcomes[0].Actions[0].Duration = soakDelay
 	// Start with the delay policy already expired so the first expiry
 	// flip is a no-op until we extend it.
 	expired := time.Now().UTC().Add(-time.Second)
@@ -56,11 +58,12 @@ func TestSoakSwapsAndExpiry(t *testing.T) {
 	actor := app.Actor{ID: "soak", Class: "token"}
 
 	var (
-		queries   atomic.Int64
-		swaps     atomic.Int64
-		expiries  atomic.Int64
-		badAnswer atomic.Int64
-		partial   atomic.Int64
+		queries      atomic.Int64
+		delayQueries atomic.Int64
+		swaps        atomic.Int64
+		expiries     atomic.Int64
+		badAnswer    atomic.Int64
+		partial      atomic.Int64
 	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), d)
@@ -105,12 +108,48 @@ func TestSoakSwapsAndExpiry(t *testing.T) {
 		}()
 	}
 
+	// Hit the delay policy (ns-a / slow-ns) so activate/expiry is not
+	// mutation-API smoke: answers must stay complete while the policy flips.
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			id := uint16(200)
+			for ctx.Err() == nil {
+				id++
+				raw, err := EncodeQuery(id, QueryDelay(), nil)
+				if err != nil {
+					badAnswer.Add(1)
+					continue
+				}
+				out, err := DialUDP(lab.UDPAddr(), raw, 400*time.Millisecond)
+				if err != nil || out == nil {
+					continue
+				}
+				msg, err := unpackQuiet(out)
+				if err != nil {
+					partial.Add(1)
+					continue
+				}
+				delayQueries.Add(1)
+				if msg.RCode != model.RCodeNoError {
+					badAnswer.Add(1)
+					continue
+				}
+				if len(msg.Answers) != 1 || msg.Answers[0].Type != model.TypeA || msg.Answers[0].Data != "10.42.0.53" {
+					partial.Add(1)
+				}
+			}
+		}()
+	}
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		flip := false
 		for ctx.Err() == nil {
 			next := LabState("")
+			next.Spec.Chaos.Policies[1].Outcomes[0].Actions[0].Duration = soakDelay
 			ip := "10.42.0.80"
 			if flip {
 				ip = "10.42.0.81"
@@ -193,6 +232,9 @@ func TestSoakSwapsAndExpiry(t *testing.T) {
 	if queries.Load() < 1 {
 		t.Fatal("no successful queries during soak")
 	}
+	if delayQueries.Load() < 1 {
+		t.Fatal("no delay-name queries during soak")
+	}
 	if lab.Engine.Budgets().InFlight() != 0 {
 		t.Fatalf("delay reservations leaked: %d", lab.Engine.Budgets().InFlight())
 	}
@@ -201,7 +243,33 @@ func TestSoakSwapsAndExpiry(t *testing.T) {
 			t.Fatalf("cache grew past cap: %d", n)
 		}
 	}
-	t.Logf("queries=%d swaps=%d expiry_ops=%d", queries.Load(), swaps.Load(), expiries.Load())
+
+	// Expired delay must not hold ns.lab.example. for the configured duration.
+	snap := lab.Store.Load()
+	if snap == nil {
+		t.Fatal("no snapshot after soak")
+	}
+	past := time.Now().UTC().Add(-time.Second)
+	if _, err := svc.SetChaosExpiry(context.Background(), actor, app.ExpiryIn{
+		PolicyID:         "slow-ns",
+		ExpectedRevision: snap.Revision,
+		IdempotencyKey:   "soak-final-expire",
+		Reason:           "assert expiry takes effect",
+		ExpiresAt:        &past,
+	}); err != nil {
+		t.Fatalf("final expire: %v", err)
+	}
+	t0 := time.Now()
+	delayed := lab.Serve(t, QueryDelay())
+	elapsed := time.Since(t0)
+	if delayed.RCode != model.RCodeNoError || len(delayed.Answers) != 1 {
+		t.Fatalf("expired delay answer %+v", delayed)
+	}
+	if elapsed > 30*time.Millisecond {
+		t.Fatalf("expired delay still held the query for %s", elapsed)
+	}
+
+	t.Logf("queries=%d delay_queries=%d swaps=%d expiry_ops=%d", queries.Load(), delayQueries.Load(), swaps.Load(), expiries.Load())
 }
 
 func TestSoakNoGoroutineGrowth(t *testing.T) {

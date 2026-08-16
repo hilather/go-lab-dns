@@ -68,11 +68,9 @@ func runDigCase(t *testing.T, host, port, tcpAddr string, c Case) {
 	if c.WantEDEText != "" && !strings.Contains(out, c.WantEDEText) {
 		t.Fatalf("dig missing EDE text:\n%s", out)
 	}
-	if c.WantTTL > 0 && c.WantRcode == "NOERROR" {
-		if !strings.Contains(out, "\t"+strconv.Itoa(c.WantTTL)+"\t") && !strings.Contains(out, " "+strconv.Itoa(c.WantTTL)+" ") {
-			// Accept either presentation; some dig builds omit the TTL
-			// column under +short. Full output is used here.
-			t.Logf("dig ttl %d not obvious in output (non-fatal if answer present):\n%s", c.WantTTL, out)
+	if c.WantTTL > 0 && c.WantRcode == "NOERROR" && hasDigAnswerSection(out) {
+		if !digAnswerHasTTL(out, c.WantTTL) {
+			t.Fatalf("dig answer section missing TTL %d:\n%s", c.WantTTL, out)
 		}
 	}
 	for _, want := range c.WantAnswers {
@@ -96,6 +94,39 @@ func runDig(t *testing.T, host, port string, c Case, extra ...string) string {
 		t.Fatalf("dig %v: %v\n%s", args, err, out)
 	}
 	return string(out)
+}
+
+func hasDigAnswerSection(out string) bool {
+	return strings.Contains(out, "ANSWER SECTION")
+}
+
+func digAnswerHasTTL(out string, ttl int) bool {
+	want := strconv.Itoa(ttl)
+	inAnswer := false
+	for _, line := range strings.Split(out, "\n") {
+		trim := strings.TrimSpace(line)
+		if strings.Contains(line, "ANSWER SECTION") {
+			inAnswer = true
+			continue
+		}
+		if inAnswer && (trim == "" || strings.HasPrefix(trim, ";")) {
+			inAnswer = false
+			continue
+		}
+		if !inAnswer {
+			continue
+		}
+		if strings.Contains(line, "\t"+want+"\t") || strings.Contains(line, " "+want+" ") {
+			return true
+		}
+		fields := strings.Fields(line)
+		for _, f := range fields {
+			if f == want {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func hasDigFlag(out, flag string) bool {

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hilather/go-lab-dns/internal/app"
+	"github.com/hilather/go-lab-dns/internal/chaos"
 	"github.com/hilather/go-lab-dns/internal/model"
 )
 
@@ -15,7 +15,6 @@ func TestEmergencyDisableUnderLoad(t *testing.T) {
 	st := LabState("")
 	st.Spec.Chaos.Policies[1].Outcomes[0].Actions[0].Duration = 400 * time.Millisecond
 	lab := NewLab(t, Options{State: st})
-	svc := app.New(app.Options{Store: lab.Store, Engine: lab.Engine, Clock: lab.Clock})
 
 	var wg sync.WaitGroup
 	var late atomic.Int64
@@ -36,12 +35,18 @@ func TestEmergencyDisableUnderLoad(t *testing.T) {
 			}
 		}()
 	}
-	time.Sleep(20 * time.Millisecond)
-	if _, err := svc.EmergencyDisableChaos(context.Background(), app.Actor{ID: "op", Class: "token"}, app.EmergencyIn{Reason: "load"}); err != nil {
-		t.Fatal(err)
+	deadline := time.Now().Add(100 * time.Millisecond)
+	for lab.Engine.Budgets().InFlight() < 1 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
 	}
-	lab.Engine.CancelDelays()
+	// Production combined path (SIGUSR1): inhibit bit + cancel in-flight delays.
+	// app.EmergencyDisableChaos only stamps the bit and must not be papered
+	// over with a second CancelDelays here.
+	chaos.EmergencyDisable(lab.Store, lab.Engine)
 	wg.Wait()
+	if n := late.Load(); n != 0 {
+		t.Fatalf("in-flight delays not cancelled: late=%d (elapsed > 250ms)", n)
+	}
 
 	// After inhibit, a new query must not take the 400ms delay.
 	t0 := time.Now()
@@ -55,5 +60,4 @@ func TestEmergencyDisableUnderLoad(t *testing.T) {
 	if lab.Engine.Budgets().InFlight() != 0 {
 		t.Fatalf("reservations after emergency: %d", lab.Engine.Budgets().InFlight())
 	}
-	_ = late
 }
