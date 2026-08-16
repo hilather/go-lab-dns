@@ -1,3 +1,5 @@
+![LabDNS — laboratory DNS with exact overrides, wildcards, suffix forwarding, and bounded chaos](docs/assets/header.jpg)
+
 # LabDNS
 
 **Laboratory DNS** with exact overrides, RFC-style wildcards, suffix forwarding, and bounded chaos.

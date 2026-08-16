@@ -9,6 +9,8 @@ This page is the catalog. Normative design documents win over task summaries.
 | Path | Role |
 |---|---|
 | [README.md](../README.md) | Product page, quick starts, state APIs |
+| [docs/assets/header.jpg](assets/header.jpg) | README banner |
+| [docs/assets/social.jpg](assets/social.jpg) | 1280×640 social card |
 | [START-HERE.md](../START-HERE.md) | Onboarding and definition of done |
 | [AGENTS.md](../AGENTS.md) | Mandatory contributor / agent instructions |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | PR workflow |
