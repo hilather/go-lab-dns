@@ -33,8 +33,6 @@ var requiredTargets = []string{
 
 var unimplementedTargets = []string{
 	"test-integration",
-	"test-container",
-	"test-parity",
 }
 
 // unimplementedCIJobs locks fail-closed CI jobs to an invert+phrase contract.

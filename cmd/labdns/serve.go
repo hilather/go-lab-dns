@@ -136,7 +136,6 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 	}, nil)
 	reg := observability.NewRegistry()
 	h := dnsquery.NewOpts(dnsquery.Opts{Store: store, Engine: eng, Cache: c, Metrics: reg})
-	h := dnsquery.New(store, eng, c, nil, nil)
 	svc := app.New(app.Options{
 		Store:         store,
 		Cache:         c,
