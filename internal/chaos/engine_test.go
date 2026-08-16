@@ -65,6 +65,44 @@ func TestEmergencyDisablesDecide(t *testing.T) {
 	}
 }
 
+func TestSimulateEvaluatesDisabledPolicy(t *testing.T) {
+	clk := testutil.NewFakeClock(time.Date(2026, 8, 15, 20, 0, 0, 0, time.UTC))
+	eng := NewEngine(clk, nil)
+	st := sampleState(t)
+	st.Spec.Chaos.Policies[0].Enabled = false
+	snap := compileSnap(t, st)
+	q := model.Query{Name: "foo.tools.lab.example.net.", Type: model.TypeA, Class: model.ClassIN, Transport: model.TransportUDP}
+	wild := model.RecordID("tools-wildcard-a")
+	live, err := eng.Decide(context.Background(), snap, DecisionIn{
+		Query: q, ClientGroupID: "test-devices", ZoneID: "lab-zone",
+		Base:  &model.Result{RCode: model.RCodeNoError, WildcardSource: &wild, Answers: []model.RR{{Name: q.Name, Type: model.TypeA}}},
+		Phase: PhaseResponse,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasSkip(live, "slow-tools", "disabled") {
+		t.Fatalf("live should skip disabled: %+v", live.Decisions)
+	}
+	sim, err := eng.Simulate(context.Background(), snap, SimulateIn{
+		Query: q, ClientGroupID: "test-devices", ZoneID: "lab-zone",
+		Base:  &model.Result{RCode: model.RCodeNoError, WildcardSource: &wild, Answers: []model.RR{{Name: q.Name, Type: model.TypeA}}},
+		Phase: PhaseResponse,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, d := range sim.Decisions {
+		if d.PolicyID == "slow-tools" && d.Triggered && d.Delay() > 0 && d.Delay() <= 750*time.Millisecond {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("simulate should plan disabled policy: %+v", sim.Decisions)
+	}
+}
+
 func TestProtectedNameAndExemptGroup(t *testing.T) {
 	eng := NewEngine(testutil.NewFakeClock(time.Date(2026, 8, 15, 20, 0, 0, 0, time.UTC)), nil)
 	snap := mustSnap(t)

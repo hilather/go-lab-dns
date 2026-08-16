@@ -28,7 +28,8 @@ labdns-deploy/
 
 1. Copy this directory.
 2. Edit `environments/main-lab/dns.yaml` (zones, CIDRs, upstreams).
-3. Replace the all-zero digest in `image.env` **and** `k8s/kustomization.yaml`.
+3. Replace the all-zero digest in `image.env` **and** the same digest in
+   `k8s/kustomization.yaml` `images[].digest`. `validate.sh` fails if they differ.
 4. Write `secrets/labdns-token` (never commit it).
 5. From the application repo, or with `labdns` on `PATH`:
 
@@ -47,10 +48,14 @@ There is no skip flag.
 
 1. Promote a `ghcr.io/hilather/labdns` digest whose required CI passed.
 2. Set `LABDNS_IMAGE=ghcr.io/hilather/labdns@sha256:<64 hex>` in `image.env`.
-3. Set the same digest on `k8s/kustomization.yaml` `images[].digest`.
-4. Run `scripts/test-config.sh` and open a PR.
+3. Set the **same** digest on `k8s/kustomization.yaml` `images[].digest`.
+4. Run `scripts/test-config.sh` (it checks both pins) and open a PR.
 
 Mutable tags (`:latest`, `:v1`) fail `labdns verify --image`.
+
+`slow-tools` is present in Git with `enabled: false` so a copied main-lab does
+**not** delay every `*.tools` query from `10.42.0.0/16`. Activate it at
+runtime (with expiry) when you want the live impairment.
 
 ## Isolated management
 
@@ -74,7 +79,7 @@ lookup) so unknown-client behavior is real:
 | overlay hit | NOERROR, AA=0 |
 | unknown client + local name | local RCODE, **RA=0**, no upstream dial |
 | unknown client + forward-only name | **REFUSED**, **RA=0**, no upstream dial |
-| chaos simulation | `slow-tools` triggered, no sleep |
+| chaos simulation | `slow-tools` planned (policy stays `enabled: false` in Git; Simulate still evaluates it). `maximumDelay` is compared to the planned delay. |
 
 Probes with `live: true` run only when `--server` is set (`live-probe.sh`).
 

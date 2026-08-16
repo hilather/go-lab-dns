@@ -23,12 +23,17 @@ func TestEnvironmentsValidateAndVerify(t *testing.T) {
 	bin := buildLabDNS(t, root)
 	for _, env := range []string{"main-lab", "test-lab"} {
 		dir := filepath.Join(root, "examples", "labdns-deploy", "environments", env)
-		cmd := exec.Command(bin, "verify",
+		args := []string{"verify",
 			"--config", filepath.Join(dir, "dns.yaml"),
 			"--probes", filepath.Join(dir, "probes.yaml"),
 			"--policies", filepath.Join(root, "examples", "labdns-deploy", "policies"),
 			"--image-env", filepath.Join(dir, "image.env"),
-		)
+		}
+		kust := filepath.Join(dir, "k8s", "kustomization.yaml")
+		if _, err := os.Stat(kust); err == nil {
+			args = append(args, "--kustomize", kust)
+		}
+		cmd := exec.Command(bin, args...)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("%s verify: %v\n%s", env, err, out)
@@ -65,6 +70,7 @@ func TestPolicyNegativesAndUnpinnedImage(t *testing.T) {
 		{"broad", []string{"verify", "--config", filepath.Join(deploy, "testdata", "invalid", "broad-client.yaml"), "--probes", probes, "--policies", policies}, "allowed-client-networks"},
 		{"upstream", []string{"verify", "--config", filepath.Join(deploy, "testdata", "invalid", "bad-upstream.yaml"), "--probes", probes, "--policies", policies}, "allowed-upstreams"},
 		{"chaos", []string{"verify", "--config", filepath.Join(deploy, "testdata", "invalid", "unsafe-chaos.yaml"), "--probes", probes, "--policies", policies}, "maxDelay"},
+		{"kustomize-mismatch", []string{"verify", "--config", filepath.Join(deploy, "environments", "main-lab", "dns.yaml"), "--probes", probes, "--image-env", filepath.Join(deploy, "environments", "main-lab", "image.env"), "--kustomize", filepath.Join(deploy, "testdata", "invalid", "kustomization-mismatch.yaml")}, "digest"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -77,6 +83,39 @@ func TestPolicyNegativesAndUnpinnedImage(t *testing.T) {
 				t.Fatalf("want %q in\n%s", tc.want, out)
 			}
 		})
+	}
+}
+
+func TestMissingPolicyKindFailsClosed(t *testing.T) {
+	root := repoRoot(t)
+	bin := buildLabDNS(t, root)
+	src := filepath.Join(root, "examples", "labdns-deploy", "policies")
+	dir := t.TempDir()
+	ents, err := os.ReadDir(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range ents {
+		if e.Name() == "allowed-client-networks.yaml" {
+			continue
+		}
+		b, err := os.ReadFile(filepath.Join(src, e.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, e.Name()), b, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cfg := filepath.Join(root, "examples", "labdns-deploy", "environments", "main-lab", "dns.yaml")
+	probes := filepath.Join(root, "examples", "labdns-deploy", "environments", "main-lab", "probes.yaml")
+	cmd := exec.Command(bin, "verify", "--config", cfg, "--probes", probes, "--policies", dir)
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("expected missing kind to fail\n%s", out)
+	}
+	if !strings.Contains(string(out), "AllowedClientNetworks") {
+		t.Fatalf("want missing kind in\n%s", out)
 	}
 }
 
@@ -219,7 +258,7 @@ func TestRecreationResetsRuntimeDrift(t *testing.T) {
 	ctx := context.Background()
 	actor := auth.Actor{ID: "test", Class: "token", Role: "administrator"}
 	boot := svc.Store().Load()
-	if _, err := svc.DeactivateChaos(ctx, actor, app.ActivationIn{
+	if _, err := svc.ActivateChaos(ctx, actor, app.ActivationIn{
 		PolicyID: "slow-tools", ExpectedRevision: boot.Revision, Reason: "ephemeral",
 	}); err != nil {
 		t.Fatal(err)
@@ -260,6 +299,13 @@ func TestComposeAndK8sIsolateManagementAndPinDigest(t *testing.T) {
 	np := read(t, filepath.Join(root, "examples", "labdns-deploy", "environments", "main-lab", "k8s", "networkpolicy.yaml"))
 	if !strings.Contains(np, "8080") || !strings.Contains(np, "labdns.dev/management") {
 		t.Fatal("networkpolicy must isolate management")
+	}
+	svcYAML := read(t, filepath.Join(root, "examples", "labdns-deploy", "environments", "main-lab", "k8s", "service.yaml"))
+	if !strings.Contains(svcYAML, "externalTrafficPolicy: Local") {
+		t.Fatal("DNS Service must set externalTrafficPolicy: Local so refuse-forward sees the real client IP")
+	}
+	if !strings.Contains(read(t, filepath.Join(root, "examples", "labdns-deploy", "environments", "main-lab", "k8s", "management-namespace.yaml")), `labdns.dev/management: "true"`) {
+		t.Fatal("missing management namespace sample")
 	}
 	kust := read(t, filepath.Join(root, "examples", "labdns-deploy", "environments", "main-lab", "k8s", "kustomization.yaml"))
 	img, err := deploypolicy.ParseImageEnv(filepath.Join(root, "examples", "labdns-deploy", "environments", "main-lab", "image.env"))

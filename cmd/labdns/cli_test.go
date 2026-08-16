@@ -165,11 +165,12 @@ func TestVerifyGitOpsTemplateAndUnknownClient(t *testing.T) {
 	code := runContext(context.Background(), []string{
 		"labdns", "verify", "--config", cfg, "--probes", probes,
 		"--policies", policies, "--image-env", imageEnv,
+		"--kustomize", filepath.Join(root, "examples/labdns-deploy/environments/main-lab/k8s/kustomization.yaml"),
 	}, &stdout, &stderr)
 	if code != 0 {
 		t.Fatalf("exit %d stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
-	for _, want := range []string{"ok unknown-client-local", "ok unknown-client-forward-only", "ok policies"} {
+	for _, want := range []string{"ok unknown-client-local", "ok unknown-client-forward-only", "ok policies", "ok kustomize digest pin"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("missing %q in %q", want, stdout.String())
 		}

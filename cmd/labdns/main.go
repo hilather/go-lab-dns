@@ -63,7 +63,7 @@ func printUsage(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  serve --config PATH [--chaos-disable] [--dns-listen ADDR] [--management-listen ADDR|off] [--shutdown-timeout DUR] [--pid-file PATH]")
 	_, _ = fmt.Fprintln(w, "  validate --config PATH")
 	_, _ = fmt.Fprintln(w, "  canonicalize --config PATH [--format yaml|json]")
-	_, _ = fmt.Fprintln(w, "  verify --config PATH --probes PATH [--policies DIR] [--image REF|--image-env PATH] [--server HOST:PORT]")
+	_, _ = fmt.Fprintln(w, "  verify --config PATH --probes PATH [--policies DIR] [--image REF|--image-env PATH] [--kustomize PATH] [--server HOST:PORT]")
 	_, _ = fmt.Fprintln(w, "  query --name NAME [--type A] [--server HOST:PORT] [--transport udp|tcp]")
 	_, _ = fmt.Fprintln(w, "  healthcheck --url URL")
 	_, _ = fmt.Fprintln(w, "  chaos emergency-disable --pid-file PATH")

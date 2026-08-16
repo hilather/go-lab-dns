@@ -15,6 +15,16 @@ import (
 
 const policyAPIVersion = "labdns.dev/policy/v1alpha1"
 
+// RequiredKinds are always enforced when --policies is set. Omitting a
+// file used to skip that gate; missing kinds are now fail-closed.
+var RequiredKinds = []string{
+	"AllowedUpstreams",
+	"AllowedClientNetworks",
+	"AllowedAlternateAddresses",
+	"ProtectedNames",
+	"ChaosSafety",
+}
+
 // ImageDigest is a digest-pinned container reference.
 // Tags and untagged names are rejected so GitOps cannot float on :latest.
 var ImageDigest = regexp.MustCompile(`(?i)^[a-z0-9._\-/]+@sha256:[0-9a-f]{64}$`)
@@ -34,6 +44,9 @@ type Set struct {
 	HaveAlternates      bool
 	HaveProtected       bool
 	HaveChaos           bool
+	// haveProtectedFile is true only when a ProtectedNames document was
+	// loaded. ChaosSafety.requireProtectedNames must not satisfy that gate.
+	haveProtectedFile bool
 }
 
 type fileHeader struct {
@@ -85,7 +98,33 @@ func LoadDir(dir string) (*Set, error) {
 	if n == 0 {
 		return nil, fmt.Errorf("no policy yaml files in %s", dir)
 	}
+	if missing := out.missingKinds(); len(missing) > 0 {
+		return nil, fmt.Errorf("missing required policy kinds: %s", strings.Join(missing, ", "))
+	}
 	return out, nil
+}
+
+func (s *Set) missingKinds() []string {
+	if s == nil {
+		return append([]string(nil), RequiredKinds...)
+	}
+	var missing []string
+	if !s.HaveUpstreams {
+		missing = append(missing, "AllowedUpstreams")
+	}
+	if !s.HaveClients {
+		missing = append(missing, "AllowedClientNetworks")
+	}
+	if !s.HaveAlternates {
+		missing = append(missing, "AllowedAlternateAddresses")
+	}
+	if !s.haveProtectedFile {
+		missing = append(missing, "ProtectedNames")
+	}
+	if !s.HaveChaos {
+		missing = append(missing, "ChaosSafety")
+	}
+	return missing
 }
 
 func loadFile(path string, out *Set) error {
@@ -139,6 +178,7 @@ func loadFile(path string, out *Set) error {
 			out.ProtectedNames = append(out.ProtectedNames, canonName(n))
 		}
 		out.HaveProtected = true
+		out.haveProtectedFile = true
 	case "ChaosSafety":
 		var f chaosSafetyFile
 		if err := yaml.Unmarshal(b, &f); err != nil {
@@ -212,27 +252,89 @@ func ParseImageEnv(path string) (string, error) {
 	return image, nil
 }
 
+type kustomizeImages struct {
+	Images []kustomizeImage `yaml:"images"`
+}
+
+type kustomizeImage struct {
+	Name    string `yaml:"name"`
+	NewName string `yaml:"newName"`
+	NewTag  string `yaml:"newTag"`
+	Digest  string `yaml:"digest"`
+}
+
+// CheckKustomizeImage requires kustomize images[] to be the same digest pin
+// as imageRef (LABDNS_IMAGE). A tag rewrite is fail-closed.
+func CheckKustomizeImage(kustomizePath, imageRef string) error {
+	if err := CheckImage(imageRef); err != nil {
+		return err
+	}
+	b, err := os.ReadFile(kustomizePath)
+	if err != nil {
+		return err
+	}
+	var doc kustomizeImages
+	if err := yaml.Unmarshal(b, &doc); err != nil {
+		return fmt.Errorf("%s: %w", kustomizePath, err)
+	}
+	wantName, wantDigest, err := splitImageDigest(imageRef)
+	if err != nil {
+		return err
+	}
+	var matched bool
+	for _, img := range doc.Images {
+		name := strings.TrimSpace(img.Name)
+		if img.NewName != "" {
+			name = strings.TrimSpace(img.NewName)
+		}
+		if name != wantName {
+			continue
+		}
+		matched = true
+		if strings.TrimSpace(img.NewTag) != "" {
+			return fmt.Errorf("%s: image %s uses newTag %q (digest pin required)", kustomizePath, name, img.NewTag)
+		}
+		got := strings.TrimSpace(img.Digest)
+		if got == "" {
+			return fmt.Errorf("%s: image %s has no digest", kustomizePath, name)
+		}
+		if !strings.Contains(got, ":") {
+			got = "sha256:" + got
+		}
+		if !strings.EqualFold(got, wantDigest) {
+			return fmt.Errorf("%s: image %s digest %s != %s from image pin", kustomizePath, name, got, wantDigest)
+		}
+	}
+	if !matched {
+		return fmt.Errorf("%s: no images[] entry for %s", kustomizePath, wantName)
+	}
+	return nil
+}
+
+func splitImageDigest(ref string) (name, digest string, err error) {
+	ref = strings.TrimSpace(ref)
+	name, digest, ok := strings.Cut(ref, "@")
+	if !ok || name == "" || digest == "" {
+		return "", "", fmt.Errorf("image %q is not name@digest", ref)
+	}
+	return name, digest, nil
+}
+
 // Check compares a compiled-ready desired state against the allowlists.
+// Every required kind is evaluated. An empty allowlist is deny-all, not a skip.
 func Check(st *model.State, pol *Set) error {
 	if st == nil || pol == nil {
 		return fmt.Errorf("config and policies are required")
 	}
+	if missing := pol.missingKinds(); len(missing) > 0 {
+		return fmt.Errorf("missing required policy kinds: %s", strings.Join(missing, ", "))
+	}
 	var errs []string
-	if pol.HaveUpstreams {
-		errs = append(errs, checkUpstreams(st, pol)...)
-	}
-	if pol.HaveClients {
-		errs = append(errs, checkClients(st, pol)...)
-	}
-	if pol.HaveAlternates {
-		errs = append(errs, checkAlternates(st, pol)...)
-	}
-	if pol.HaveProtected {
-		errs = append(errs, checkProtected(st, pol)...)
-	}
-	if pol.HaveChaos {
-		errs = append(errs, checkChaos(st, pol)...)
-	}
+	errs = append(errs, checkUpstreams(st, pol)...)
+	errs = append(errs, checkClients(st, pol)...)
+	errs = append(errs, checkAlternates(st, pol)...)
+	errs = append(errs, checkProtected(st, pol)...)
+	errs = append(errs, checkChaos(st, pol)...)
 	if len(errs) == 0 {
 		return nil
 	}
@@ -304,16 +406,18 @@ func checkProtected(st *model.State, pol *Set) []string {
 func checkChaos(st *model.State, pol *Set) []string {
 	var errs []string
 	s := st.Spec.Chaos.Safety
-	if pol.MaxDelay > 0 && s.MaxDelay > pol.MaxDelay {
+	// Zero caps are deny (not "unset / skip"). A missing numeric field
+	// therefore rejects any positive configured value.
+	if s.MaxDelay > pol.MaxDelay {
 		errs = append(errs, fmt.Sprintf("maxDelay %s exceeds policy cap %s", s.MaxDelay, pol.MaxDelay))
 	}
-	if pol.MaxConcurrent > 0 && s.MaxConcurrentDelayed > pol.MaxConcurrent {
+	if s.MaxConcurrentDelayed > pol.MaxConcurrent {
 		errs = append(errs, fmt.Sprintf("maxConcurrentDelayed %d exceeds policy cap %d", s.MaxConcurrentDelayed, pol.MaxConcurrent))
 	}
-	if pol.MaxDropProbability > 0 && s.MaxDropProbability > pol.MaxDropProbability+1e-9 {
+	if s.MaxDropProbability > pol.MaxDropProbability+1e-9 {
 		errs = append(errs, fmt.Sprintf("maxDropProbability %g exceeds policy cap %g", s.MaxDropProbability, pol.MaxDropProbability))
 	}
-	if pol.MaxActiveHighImpact > 0 && s.MaxActiveHighImpactPolicies > pol.MaxActiveHighImpact {
+	if s.MaxActiveHighImpactPolicies > pol.MaxActiveHighImpact {
 		errs = append(errs, fmt.Sprintf("maxActiveHighImpactPolicies %d exceeds policy cap %d", s.MaxActiveHighImpactPolicies, pol.MaxActiveHighImpact))
 	}
 	return errs

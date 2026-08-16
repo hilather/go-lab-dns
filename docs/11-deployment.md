@@ -35,7 +35,7 @@ labdns serve --config=/etc/labdns/config.yaml [--chaos-disable]
              [--shutdown-timeout 5s] [--pid-file /tmp/labdns.pid]
 labdns validate --config=...
 labdns canonicalize --config=... [--format yaml|json]
-labdns verify --config=... --probes=... [--policies DIR] [--image REF|--image-env PATH] [--server HOST:PORT]
+labdns verify --config=... --probes=... [--policies DIR] [--image REF|--image-env PATH] [--kustomize PATH] [--server HOST:PORT]
 labdns query --name=... --type=A [--server 127.0.0.1:5353] [--transport udp|tcp]
 labdns healthcheck --url=http://127.0.0.1:8080/v1/health/ready
 labdns chaos emergency-disable --pid-file=/tmp/labdns.pid
@@ -61,17 +61,24 @@ bind management to loopback or a NetworkPolicy-isolated ClusterIP.
 
 ## Compose example
 
+The copyable file is
+[examples/labdns-deploy/environments/main-lab/compose.yaml](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/environments/main-lab/compose.yaml).
+It pins `${LABDNS_IMAGE:?…}` (digest from `image.env`), runs as `65532:65532`,
+and mounts the bearer token file. Do not use a tag or an inline token.
+
 ```yaml
 services:
   labdns:
-    image: ghcr.io/hilather/labdns@sha256:REPLACE_WITH_DIGEST
+    image: ${LABDNS_IMAGE:?set LABDNS_IMAGE from image.env}
     command: ["serve", "--config=/etc/labdns/config.yaml"]
+    user: "65532:65532"
     ports:
       - "53:5353/udp"
       - "53:5353/tcp"
       - "127.0.0.1:8080:8080/tcp"
     volumes:
       - "./dns.yaml:/etc/labdns/config.yaml:ro"
+      - "${LABDNS_TOKEN_FILE:-../../secrets/labdns-token}:/run/secrets/labdns-token:ro"
     read_only: true
     tmpfs:
       - /tmp
@@ -92,8 +99,8 @@ services:
 - Use a ConfigMap or equivalent for non-secret bootstrap YAML.
 - Use a Secret or workload identity for credentials.
 - Run one replica for runtime mutation semantics in the initial release.
-- Expose UDP and TCP port 53 through a service/load balancer that preserves required client identity or use node-local deployment.
-- Isolate management ports with NetworkPolicy.
+- Expose UDP and TCP port 53 through a Service with `externalTrafficPolicy: Local` (or a node-local DaemonSet / hostNetwork path) so refuse-forward classifies the real client IP. Default Cluster SNAT makes every query look like a node address.
+- Isolate management ports with NetworkPolicy. Allow :8080 only from namespaces labeled `labdns.dev/management=true`. If kubelet probes never become Ready on a policy-enforcing CNI, add the node CIDR as documented in the template NetworkPolicy.
 - Use a read-only root filesystem, seccomp, dropped capabilities, and a non-root security context.
 - Set CPU, memory, and ephemeral-storage limits. First-GA starting point on the PERF-001 reference class (**2 vCPU / 4 GiB**): `cpu: 500m` request / `2` limit, `memory: 256Mi` request / `1Gi` limit. Raise memory before raising `spec.cache.maxEntries` or `spec.chaos.safety.maxConcurrentDelayed`.
 - Use disruption budgets only after multi-instance desired-state behavior is defined.

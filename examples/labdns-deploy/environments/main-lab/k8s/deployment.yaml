@@ -26,6 +26,8 @@ spec:
           type: RuntimeDefault
       containers:
         - name: labdns
+          # Name only. Apply with `kubectl apply -k` so kustomization.yaml
+          # rewrites this to the same digest as image.env. Do not apply -f.
           image: ghcr.io/hilather/labdns
           imagePullPolicy: IfNotPresent
           args: ["serve", "--config=/etc/labdns/config.yaml"]

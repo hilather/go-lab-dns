@@ -1,0 +1,4 @@
+# Deliberately disagrees with environments/*/image.env.
+images:
+  - name: ghcr.io/hilather/labdns
+    digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

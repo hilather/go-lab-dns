@@ -49,7 +49,7 @@
         "ra": { "type": "boolean" },
         "noUpstream": { "type": "boolean", "description": "Fail if offline verify dials any configured upstream." },
         "matchedPolicy": { "type": "string" },
-        "maximumDelay": { "type": "string" }
+        "maximumDelay": { "type": "string", "description": "Upper bound on the planned chaos delay from Simulate. Compared to the triggered decision delay; simulation never sleeps." }
       }
     }
   }

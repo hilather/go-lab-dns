@@ -118,7 +118,9 @@ spec:
       - id: slow-tools
         owner: platform-lab
         reason: Test application startup timeouts
-        enabled: true
+        # Git desired state stays off. Simulate still evaluates this policy;
+        # activate at runtime (with expiry) to impair live queries.
+        enabled: false
         safetyClass: low
         scope:
           recordIds: [tools-wildcard-a]

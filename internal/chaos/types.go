@@ -95,6 +95,17 @@ type PolicyDecision struct {
 	Actions    []PlannedAction
 }
 
+// Delay is the longest planned delay on this decision (simulation never sleeps).
+func (d PolicyDecision) Delay() time.Duration {
+	var max time.Duration
+	for _, a := range d.Actions {
+		if a.Delay > max {
+			max = a.Delay
+		}
+	}
+	return max
+}
+
 // PlannedAction is one selected effect after clamping.
 type PlannedAction struct {
 	PolicyID     model.PolicyID

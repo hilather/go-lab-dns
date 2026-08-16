@@ -44,4 +44,8 @@ fail_closed unsafe-chaos \
 	"${BIN}" verify --config "${NEG}/unsafe-chaos.yaml" --probes "${DIR}/probes.yaml" \
 	--policies "${ROOT}/policies"
 
+fail_closed kustomize-mismatch \
+	"${BIN}" verify --config "${DIR}/dns.yaml" --probes "${DIR}/probes.yaml" \
+	--image-env "${DIR}/image.env" --kustomize "${NEG}/kustomization-mismatch.yaml"
+
 echo "test-config ok (positives passed, negatives rejected)" >&2

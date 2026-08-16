@@ -14,7 +14,17 @@ See also the application runbooks in the LabDNS repository
 
 Compose: `127.0.0.1:8080`. Kubernetes: NetworkPolicy + ClusterIP. Remote
 calls need `Authorization: Bearer`. Health live/ready stay unauthenticated
-so kubelet/Docker HEALTHCHECK work.
+so Docker HEALTHCHECK and kubelet work at the HTTP layer.
+
+Kubernetes DNS Service uses `externalTrafficPolicy: Local` so
+refuse-forward sees the real client IP. That pins the single replica to
+the node that received the packet; use a DaemonSet/hostNetwork if you
+need every node.
+
+Management :8080 is allowed only from namespaces labeled
+`labdns.dev/management=true` (see `k8s/management-namespace.yaml`). If
+kubelet probes never become Ready on a policy-enforcing CNI, uncomment
+the node-CIDR exception in `networkpolicy.yaml`.
 
 ## Chaos
 

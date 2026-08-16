@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: labdns-main-lab
 resources:
   - namespace.yaml
+  - management-namespace.yaml
   - deployment.yaml
   - service.yaml
   - networkpolicy.yaml

@@ -215,10 +215,14 @@ func (e *Engine) decide(snap *snapshot.Snapshot, in DecisionIn, filter []model.P
 			}
 		}
 		if reason := gateSkip(p, now, safety, snap.CompiledAt); reason != "" {
-			plan.Decisions = append(plan.Decisions, PolicyDecision{
-				PolicyID: p.ID, Precedence: cp.Precedence, SkipReason: reason,
-			})
-			continue
+			// Simulation answers "what would this policy do if activated".
+			// Live Decide still skips disabled policies.
+			if !(simulate && reason == "disabled") {
+				plan.Decisions = append(plan.Decisions, PolicyDecision{
+					PolicyID: p.ID, Precedence: cp.Precedence, SkipReason: reason,
+				})
+				continue
+			}
 		}
 
 		h, pval, wval := e.uniforms(p, snap, in, now, simulate)

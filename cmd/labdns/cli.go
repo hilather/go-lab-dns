@@ -99,6 +99,7 @@ func verifyCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	policiesDir := fs.String("policies", "", "deployment policy directory (optional)")
 	imageRef := fs.String("image", "", "container image reference to require digest pin (optional)")
 	imageEnv := fs.String("image-env", "", "image.env path containing LABDNS_IMAGE (optional)")
+	kustomize := fs.String("kustomize", "", "kustomization.yaml whose images[].digest must match the image pin")
 	server := fs.String("server", "", "live DNS server host:port for probes with live: true")
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -128,6 +129,17 @@ func verifyCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int
 			return 1
 		}
 		_, _ = fmt.Fprintf(stdout, "ok image digest pin\n")
+	}
+	if *kustomize != "" {
+		if *imageRef == "" {
+			_, _ = fmt.Fprintln(stderr, "labdns verify: --kustomize requires --image or --image-env")
+			return 2
+		}
+		if err := deploypolicy.CheckKustomizeImage(*kustomize, *imageRef); err != nil {
+			_, _ = fmt.Fprintf(stderr, "labdns verify: %v\n", err)
+			return 1
+		}
+		_, _ = fmt.Fprintf(stdout, "ok kustomize digest pin\n")
 	}
 	if *policiesDir != "" {
 		pol, err := deploypolicy.LoadDir(*policiesDir)

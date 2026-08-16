@@ -90,6 +90,57 @@ func TestServeFromConfigInvalidDoesNotListen(t *testing.T) {
 	testutil.MustClose(t, ln2)
 }
 
+func TestServeTemplateBearerRequiresSecret(t *testing.T) {
+	src, err := os.ReadFile(filepath.Join(repoRoot(t), "examples/labdns-deploy/environments/main-lab/dns.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	token := filepath.Join(dir, "labdns-token")
+	rewritten := string(src)
+	rewritten = strings.Replace(rewritten, `address: ":5353"`, `address: "127.0.0.1:0"`, 1)
+	rewritten = strings.Replace(rewritten, `address: ":8080"`, `address: "127.0.0.1:0"`, 1)
+	rewritten = strings.Replace(rewritten, `secretRef: /run/secrets/labdns-token`, "secretRef: "+token, 1)
+	if !strings.Contains(rewritten, "127.0.0.1:0") || !strings.Contains(rewritten, token) {
+		t.Fatal("template rewrite missed listen or secretRef")
+	}
+	path := filepath.Join(dir, "dns.yaml")
+	if err := os.WriteFile(path, []byte(rewritten), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	rt, err := serveFromConfig(context.Background(), serveFlags{Config: path})
+	if err == nil || rt != nil {
+		t.Fatalf("missing token bound: rt=%v err=%v", rt, err)
+	}
+	if !strings.Contains(err.Error(), "auth") && !strings.Contains(err.Error(), "token") && !strings.Contains(err.Error(), "secret") {
+		t.Fatalf("want auth failure, got %v", err)
+	}
+
+	if err := os.WriteFile(token, []byte(""), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	rt, err = serveFromConfig(context.Background(), serveFlags{Config: path})
+	if err == nil || rt != nil {
+		t.Fatalf("empty token bound: rt=%v err=%v", rt, err)
+	}
+
+	if err := os.WriteFile(token, []byte("test-token\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	rt, err = serveFromConfig(context.Background(), serveFlags{Config: path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = rt.Shutdown(context.Background()) })
+	if rt.UDPAddr() == nil || rt.TCPAddr() == nil {
+		t.Fatal("DNS not bound with token file")
+	}
+	if rt.MgmtAddr() == "" {
+		t.Fatal("management not bound with token file")
+	}
+}
+
 func TestServeCLIMissingConfig(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := runContext(context.Background(), []string{"labdns", "serve"}, &stdout, &stderr)

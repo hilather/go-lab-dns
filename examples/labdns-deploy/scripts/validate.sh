@@ -12,9 +12,15 @@ BIN="$(labdns_bin)"
 
 echo "validate ${ENV_NAME} config=${DIR}/dns.yaml" >&2
 "${BIN}" validate --config "${DIR}/dns.yaml"
-"${BIN}" verify \
-	--config "${DIR}/dns.yaml" \
-	--probes "${DIR}/probes.yaml" \
-	--policies "${ROOT}/policies" \
+VERIFY=(
+	verify
+	--config "${DIR}/dns.yaml"
+	--probes "${DIR}/probes.yaml"
+	--policies "${ROOT}/policies"
 	--image-env "${DIR}/image.env"
+)
+if [ -f "${DIR}/k8s/kustomization.yaml" ]; then
+	VERIFY+=(--kustomize "${DIR}/k8s/kustomization.yaml")
+fi
+"${BIN}" "${VERIFY[@]}"
 echo "validate ok" >&2

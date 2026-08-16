@@ -116,7 +116,7 @@ spec:
       - id: slow-tools
         owner: platform-lab
         reason: CI chaos simulation
-        enabled: true
+        enabled: false
         safetyClass: low
         scope:
           recordIds: [tools-wildcard-a]

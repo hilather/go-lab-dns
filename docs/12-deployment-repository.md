@@ -53,7 +53,7 @@ labdns-deploy/
 
 ## Source-of-truth rules
 
-- Pin images by digest (`name@sha256:<64 hex>`). Tags and `:latest` fail `labdns verify --image`.
+- Pin images by digest (`name@sha256:<64 hex>`). Tags and `:latest` fail `labdns verify --image`. When `k8s/kustomization.yaml` exists, `--kustomize` must carry the **same** digest as `image.env`.
 - Mount `dns.yaml` read-only at `/etc/labdns/config.yaml`.
 - Keep secrets outside Git. GitOps auth is **bearer** via `secretRef` (file or Kubernetes Secret), never an inline token. Loopback (`127.0.0.1` / `::1`) may omit a bearer; every remote management peer must present one.
 - Isolate management: Compose binds `:8080` to `127.0.0.1`; Kubernetes uses ClusterIP plus NetworkPolicy.
@@ -84,7 +84,8 @@ All checks are required. Pipeline failures are fixed and hardened; they are not 
 ```text
 labdns validate --config dns.yaml
 labdns verify --config dns.yaml --probes probes.yaml \
-  --policies policies/ --image-env image.env
+  --policies policies/ --image-env image.env \
+  [--kustomize environments/<env>/k8s/kustomization.yaml]
 ```
 
 `labdns verify` compiles the document, checks digest pin and allowlists, then executes probes through the DNS orchestrator (`internal/dnsquery`) so refuse-forward and RA match the data plane. Probes with `live: true` run only when `--server` is set.

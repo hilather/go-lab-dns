@@ -6,7 +6,13 @@ metadata:
     app.kubernetes.io/name: labdns
     labdns.dev/plane: dns
 spec:
+  # Preserve the client source IP. Cluster SNAT would make every query
+  # look like a node address: NetworkPolicy (10.42.0.0/16) drops it, and
+  # refuse-forward classifies the SNATed IP instead of the lab device.
+  # Local + one replica is node-local (no cross-node LB). Multi-node
+  # labs should use a DaemonSet / hostNetwork path instead.
   type: LoadBalancer
+  externalTrafficPolicy: Local
   selector:
     app.kubernetes.io/name: labdns
   ports:

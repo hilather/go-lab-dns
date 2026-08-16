@@ -88,6 +88,48 @@ func TestCheckRejectsBroadeningAndUnsafeChaos(t *testing.T) {
 	}
 }
 
+func TestLoadDirRequiresAllKinds(t *testing.T) {
+	dir := t.TempDir()
+	writePolicyTree(t, dir)
+	if _, err := LoadDir(dir); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(dir, "allowed-client-networks.yaml")); err != nil {
+		t.Fatal(err)
+	}
+	_, err := LoadDir(dir)
+	if err == nil || !strings.Contains(err.Error(), "AllowedClientNetworks") {
+		t.Fatalf("missing kind: %v", err)
+	}
+}
+
+func TestCheckKustomizeImageMatchesPin(t *testing.T) {
+	dir := t.TempDir()
+	pin := "ghcr.io/hilather/labdns@sha256:" + strings.Repeat("ab", 32)
+	path := filepath.Join(dir, "kustomization.yaml")
+	body := "images:\n  - name: ghcr.io/hilather/labdns\n    digest: sha256:" + strings.Repeat("ab", 32) + "\n"
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := CheckKustomizeImage(path, pin); err != nil {
+		t.Fatal(err)
+	}
+	mismatch := "images:\n  - name: ghcr.io/hilather/labdns\n    digest: sha256:" + strings.Repeat("00", 32) + "\n"
+	if err := os.WriteFile(path, []byte(mismatch), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := CheckKustomizeImage(path, pin); err == nil {
+		t.Fatal("mismatched digest")
+	}
+	tagged := "images:\n  - name: ghcr.io/hilather/labdns\n    newTag: latest\n"
+	if err := os.WriteFile(path, []byte(tagged), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := CheckKustomizeImage(path, pin); err == nil {
+		t.Fatal("newTag")
+	}
+}
+
 func TestLoadDirRejectsUnknownKind(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "odd.yaml"), []byte("apiVersion: labdns.dev/policy/v1alpha1\nkind: NotAPolicy\n"), 0o600); err != nil {

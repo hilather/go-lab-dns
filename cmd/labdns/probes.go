@@ -165,10 +165,24 @@ func runSimulateProbe(ctx context.Context, svc *app.App, p probe) error {
 		}
 	}
 	if p.Expect.MaximumDelay != "" {
-		// Simulation never sleeps; the field is accepted for document
-		// compatibility and checked only as a parseable duration.
-		if _, err := time.ParseDuration(p.Expect.MaximumDelay); err != nil {
+		want, err := time.ParseDuration(p.Expect.MaximumDelay)
+		if err != nil {
 			return fmt.Errorf("maximumDelay: %w", err)
+		}
+		var got time.Duration
+		for _, d := range out.Decisions {
+			if p.Expect.MatchedPolicy != "" && string(d.PolicyID) != p.Expect.MatchedPolicy {
+				continue
+			}
+			if !d.Triggered {
+				continue
+			}
+			if d.Delay > got {
+				got = d.Delay
+			}
+		}
+		if got > want {
+			return fmt.Errorf("planned delay %s exceeds maximumDelay %s", got, want)
 		}
 	}
 	return nil

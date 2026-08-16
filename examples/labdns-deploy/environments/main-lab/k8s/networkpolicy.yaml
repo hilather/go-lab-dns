@@ -22,7 +22,8 @@ spec:
         - ipBlock:
             cidr: 10.42.0.0/16
         - podSelector: {}
-    # Management only from the labeled control-plane namespace.
+    # Management only from namespaces labeled labdns.dev/management=true
+    # (see management-namespace.yaml). The workload namespace is not labeled.
     - ports:
         - port: 8080
           protocol: TCP
@@ -30,6 +31,15 @@ spec:
         - namespaceSelector:
             matchLabels:
               labdns.dev/management: "true"
+    # Kubelet HTTP probes come from the node. Host-network kubelet is
+    # exempt on some CNIs; Calico/Cilium often still apply this policy.
+    # Uncomment and set the cluster node CIDR if Ready never becomes true.
+    # - ports:
+    #     - port: 8080
+    #       protocol: TCP
+    #   from:
+    #     - ipBlock:
+    #         cidr: NODE_CIDR
   egress:
     # Configured upstreams only (see policies/allowed-upstreams.yaml).
     - ports:

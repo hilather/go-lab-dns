@@ -137,12 +137,14 @@ func (s *App) SimulateChaos(ctx context.Context, actor Actor, in SimulateIn) (*S
 	}
 	decisions := make([]ChaosDecision, len(out.Decisions))
 	for i, d := range out.Decisions {
+		delay := d.Delay()
 		decisions[i] = ChaosDecision{
 			PolicyID:   d.PolicyID,
 			OutcomeID:  d.OutcomeID,
 			Triggered:  d.Triggered,
 			SkipReason: d.SkipReason,
 			DigestHex:  d.Hash.DigestHex,
+			Delay:      delay,
 		}
 	}
 	return &SimulateOut{

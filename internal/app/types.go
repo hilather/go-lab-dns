@@ -276,6 +276,7 @@ type ChaosDecision struct {
 	Triggered  bool
 	SkipReason string
 	DigestHex  string
+	Delay      time.Duration
 }
 
 // ActivationIn activates or deactivates a policy via Apply.
