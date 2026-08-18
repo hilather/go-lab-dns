@@ -583,7 +583,7 @@ Policy evaluation order (specificity, not automatic cancellation):
 7. Client group
 8. Global
 
-Composition: `compose` | `terminal` | `exclusive-group`. Conflicting terminal transport actions are rejected at compile time.
+Composition: `compose` | `terminal` | `exclusive-group`. Exclusive-group winners are per query and span the pre-resolution and response `Decide` calls. Conflicting terminal transport actions are rejected at compile time.
 
 Action phases (fixed; invalid combinations fail compile):
 
@@ -1254,7 +1254,7 @@ Revision JSON:
 }
 ```
 
-Idempotency cache: bounded in-memory, process-local, cleared on reset. Same key + same body → original result. Same key + different body → `idempotency_conflict`.
+Idempotency cache: bounded in-memory, process-local, cleared on reset. Same key + same body → original result after `expectedRevision` is re-checked (Plan recomputes if the live base moved; Apply may replay a successful commit). Same key + different body → `idempotency_conflict`. Empty `expectedRevision` is rejected even on a cache hit.
 
 ---
 

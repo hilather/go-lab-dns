@@ -2,7 +2,7 @@
 
 Status: Implementation-confirmed for local resolution (RES-001) and forwarding/cache/orchestrator (FWD-001)
 Owners: DNS
-Last reviewed: 2026-08-15 (AccessIndex classify)
+Last reviewed: 2026-08-18 (overlay CNAME kept when forward refused)
 Related ADRs: 0002, 0005
 
 ## Problem statement
@@ -147,7 +147,7 @@ Health is **query-driven**: no extra probe packets. An upstream is marked down a
 1. is classified `ClientGroupID = ""`;
 2. still receives local authoritative or overlay answers (including authoritative NXDOMAIN/NODATA) with **RA=0**;
 3. is **never forwarded** and does not fill cache from upstream;
-4. receives **REFUSED** (RA=0) only when there is no local path (no matching zone, or overlay fallthrough with no permitted policy).
+4. receives **REFUSED** (RA=0) only when there is no local path (no matching zone, or empty overlay fallthrough with no permitted policy). An overlay CNAME chain that already produced local answers is returned as a complete overlay answer (**NOERROR**, RA=0, answers=CNAME chain) when forwarding is refused — including unknown/local-only clients and a CNAME target with no matching forwarding policy. The CNAME is not discarded.
 
 `ClientGroup.AllowForward=false` is the same gate for a known group. Empty `clientGroups` serves local zones to everyone and forwards to no one. Classification uses the compiled `AccessIndex` (longest-prefix CIDR). An uncompiled zero `AccessIndex` still walks `snap.Canonical.Spec.Access` so hand-built test snapshots classify. A compiled-empty index does **not** fall back to spec CIDRs.
 
@@ -245,6 +245,19 @@ source=exact
 answers=alias.vendor.example. CNAME outside.example.
 Fallthrough=true
 AA=0 AD=0 CD=0 RA=0
+```
+
+When that query cannot be forwarded, `dnsquery` returns the same CNAME as a complete overlay answer (`Fallthrough=false`, NOERROR, RA=0) instead of empty REFUSED.
+
+Example (exact CNAME then wildcard synthesis):
+
+```text
+QNAME=alias.lab.example.net. QTYPE=A
+zone=lab-zone mode=authoritative
+source=wildcard
+wildcardSource=foo-wildcard-a
+closestEncloser=foo.lab.example.net.
+answers=alias CNAME x.foo + synthesized A
 ```
 
 Explain does not write to the cache, consume a live chaos budget, or change policy state unless an explicit simulation option requests a modeled budget result.

@@ -185,7 +185,10 @@ func (e *Engine) decide(snap *snapshot.Snapshot, in DecisionIn, filter []model.P
 		ClientGroup:    in.ClientGroupID,
 	})
 
-	exclusive := map[string]model.PolicyID{}
+	exclusive := in.Exclusive
+	if exclusive == nil {
+		exclusive = NewExclusiveSet()
+	}
 	haveTransport := ""
 	safety := snap.Safety
 
@@ -207,7 +210,7 @@ func (e *Engine) decide(snap *snapshot.Snapshot, in DecisionIn, filter []model.P
 			continue
 		}
 		if p.Composition == model.CompositionExclusiveGroup && p.ExclusiveGroup != "" {
-			if winner, ok := exclusive[p.ExclusiveGroup]; ok {
+			if winner, ok := exclusive.Winner(p.ExclusiveGroup); ok {
 				plan.Decisions = append(plan.Decisions, PolicyDecision{
 					PolicyID: p.ID, Precedence: cp.Precedence, SkipReason: "exclusive_group:" + string(winner),
 				})
@@ -280,7 +283,7 @@ func (e *Engine) decide(snap *snapshot.Snapshot, in DecisionIn, filter []model.P
 			plan.TransportHint = hint
 		}
 		if p.Composition == model.CompositionExclusiveGroup && p.ExclusiveGroup != "" {
-			exclusive[p.ExclusiveGroup] = p.ID
+			exclusive.Claim(p.ExclusiveGroup, p.ID)
 		}
 		if p.Composition == model.CompositionTerminal {
 			break

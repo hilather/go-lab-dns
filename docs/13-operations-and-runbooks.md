@@ -4,7 +4,7 @@ Status: Proposed
 Owners: Operations
 Last reviewed: 2026-08-15 (OBS-001 diagnostic queries)
 Last reviewed: 2026-08-15 (DEP-001 SIGUSR1 CLI + graceful shutdown)
-Last reviewed: 2026-08-15 (DEP-001 SIGUSR1 CLI; GIT-001 GitOps template)
+Last reviewed: 2026-08-18 (REST/MCP emergency disable cancels delays)
 
 ## Routine checks
 

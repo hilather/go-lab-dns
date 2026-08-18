@@ -39,9 +39,8 @@ func TestEmergencyDisableUnderLoad(t *testing.T) {
 	for lab.Engine.Budgets().InFlight() < 1 && time.Now().Before(deadline) {
 		time.Sleep(time.Millisecond)
 	}
-	// Production combined path (SIGUSR1): inhibit bit + cancel in-flight delays.
-	// app.EmergencyDisableChaos only stamps the bit and must not be papered
-	// over with a second CancelDelays here.
+	// Production combined path (SIGUSR1 and app.EmergencyDisableChaos):
+	// inhibit bit + cancel in-flight delays.
 	chaos.EmergencyDisable(lab.Store, lab.Engine)
 	wg.Wait()
 	if n := late.Load(); n != 0 {

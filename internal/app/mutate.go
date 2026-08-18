@@ -45,7 +45,18 @@ func (s *App) planLocked(ctx context.Context, actor Actor, in ChangeIn) (*Plan, 
 	if hit, err := s.idemp.lookup(in.IdempotencyKey, fp); err != nil {
 		return nil, err
 	} else if hit != nil && hit.plan != nil {
-		return clonePlan(hit.plan), nil
+		if err := s.checkExpectedRevision(in); err != nil {
+			s.forgetIdempOnConflict(in.IdempotencyKey, err)
+			return nil, err
+		}
+		prev, err := s.active()
+		if err != nil {
+			return nil, err
+		}
+		if hit.plan.PreviousRevision == prev.Revision {
+			return clonePlan(hit.plan), nil
+		}
+		// Foreign mutation moved the base; recompute against current.
 	}
 	cand, err := s.buildCandidate(ctx, in, true)
 	if err != nil {
@@ -81,6 +92,9 @@ func (s *App) applyLocked(ctx context.Context, actor Actor, in ChangeIn) (*Apply
 	if hit, err := s.idemp.lookup(in.IdempotencyKey, fp); err != nil {
 		return nil, err
 	} else if hit != nil && hit.apply != nil {
+		if in.ExpectedRevision == "" {
+			return nil, missingExpectedRevision()
+		}
 		return cloneApply(hit.apply), nil
 	}
 	cand, err := s.buildCandidate(ctx, in, true)
@@ -204,13 +218,8 @@ func (s *App) buildCandidate(ctx context.Context, in ChangeIn, requireRev bool) 
 		return nil, err
 	}
 	if requireRev {
-		if in.ExpectedRevision == "" {
-			return nil, domainerr.ValidationFailed("expectedRevision is required",
-				domainerr.FieldViolation{Path: "expectedRevision", Code: "required", Message: "expectedRevision is required for plan and apply"})
-		}
-		if in.ExpectedRevision != prev.Revision {
-			return nil, domainerr.RevisionConflict("active revision does not match expectedRevision", string(prev.Revision)).
-				WithRemediation("Re-read GET state and re-plan against the current revision.")
+		if err := s.checkExpectedRevision(in); err != nil {
+			return nil, err
 		}
 	}
 	copied, err := cloneState(prev.Canonical)
@@ -292,6 +301,26 @@ func toAuditDiff(in []DiffEntry) []audit.RedactedEntry {
 		out[i] = audit.RedactedEntry{Path: d.Path, Op: d.Op, Before: d.Before, After: d.After}
 	}
 	return out
+}
+
+func missingExpectedRevision() error {
+	return domainerr.ValidationFailed("expectedRevision is required",
+		domainerr.FieldViolation{Path: "expectedRevision", Code: "required", Message: "expectedRevision is required for plan and apply"})
+}
+
+func (s *App) checkExpectedRevision(in ChangeIn) error {
+	if in.ExpectedRevision == "" {
+		return missingExpectedRevision()
+	}
+	prev, err := s.active()
+	if err != nil {
+		return err
+	}
+	if in.ExpectedRevision != prev.Revision {
+		return domainerr.RevisionConflict("active revision does not match expectedRevision", string(prev.Revision)).
+			WithRemediation("Re-read GET state and re-plan against the current revision.")
+	}
+	return nil
 }
 
 func (s *App) forgetIdempOnConflict(key string, err error) {

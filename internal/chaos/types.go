@@ -36,8 +36,9 @@ type DecisionIn struct {
 	ForwardingID    model.PolicyID
 	Base            *model.Result // nil in pre-resolution
 	Phase           Phase
-	SimulationNonce string      // hash-v1 field 10; live Decide leaves this empty
-	Sticky          *StickyRand // live random-mode draws shared across phases
+	SimulationNonce string        // hash-v1 field 10; live Decide leaves this empty
+	Sticky          *StickyRand   // live random-mode draws shared across phases
+	Exclusive       *ExclusiveSet // exclusive-group winners shared across phases
 }
 
 // SimulateIn is a side-effect-free decision request. IDs are pre-classified

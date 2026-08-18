@@ -2,7 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Chaos, DNS, Security
-Last reviewed: 2026-08-15 (CHA-002 effect execution)
+Last reviewed: 2026-08-18 (exclusive-group spans Decide phases)
 Related ADRs: 0005, 0007
 
 ## Problem statement
@@ -86,7 +86,7 @@ Precedence controls evaluation order, not automatic cancellation. A policy can d
 
 - `compose`: continue evaluating compatible lower-precedence policies.
 - `terminal`: stop after this policy selects an outcome.
-- `exclusive-group`: only the highest-priority selected policy in the named group runs.
+- `exclusive-group`: only the highest-priority selected policy in the named group runs. Winners are per query, shared across the pre-resolution and response `Decide` calls (not reset between phases).
 
 Conflicting terminal transport actions are rejected during candidate-state validation.
 
