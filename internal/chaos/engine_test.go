@@ -248,6 +248,55 @@ func TestCompositionTerminalAndExclusive(t *testing.T) {
 	}
 }
 
+func TestExclusiveGroupSpansPhases(t *testing.T) {
+	st := sampleState(t)
+	st.Spec.Chaos.Policies[1].Composition = model.CompositionExclusiveGroup
+	st.Spec.Chaos.Policies[1].ExclusiveGroup = "g1"
+	st.Spec.Chaos.Policies = append(st.Spec.Chaos.Policies, model.ChaosPolicy{
+		ID: "g1-servfail", Owner: "o", Reason: "r", Enabled: true, SafetyClass: model.SafetyClassLow,
+		Composition: model.CompositionExclusiveGroup, ExclusiveGroup: "g1",
+		Selector: model.ChaosSelector{Mode: model.SelectorDeterministic, Seed: "z", Probability: 1},
+		Outcomes: []model.ChaosOutcome{{ID: "x", Weight: 1, Actions: []model.ChaosAction{
+			{Type: model.ActionRCode, Phase: model.PhaseBeforeResponse, Value: "SERVFAIL"},
+		}}},
+	})
+	snap := compileSnap(t, st)
+	eng := NewEngine(testutil.NewFakeClock(time.Date(2026, 8, 15, 20, 0, 0, 0, time.UTC)), nil)
+	ex := NewExclusiveSet()
+	pre, err := eng.Decide(context.Background(), snap, DecisionIn{
+		Query: model.Query{Name: "x.example.", Type: model.TypeA, Transport: model.TransportUDP},
+		Phase: PhasePreResolution, Exclusive: ex,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var preWinner model.PolicyID
+	for _, d := range pre.Decisions {
+		if d.Triggered && d.PolicyID == "global-delay" {
+			preWinner = d.PolicyID
+		}
+	}
+	if preWinner == "" {
+		t.Fatalf("pre-resolution winner missing: %+v", pre.Decisions)
+	}
+	post, err := eng.Decide(context.Background(), snap, DecisionIn{
+		Query: model.Query{Name: "x.example.", Type: model.TypeA, Transport: model.TransportUDP},
+		Phase: PhaseResponse, Exclusive: ex,
+		Base: &model.Result{RCode: model.RCodeNoError},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasSkip(post, "g1-servfail", "exclusive_group:global-delay") {
+		t.Fatalf("exclusive-group must span phases: %+v", post.Decisions)
+	}
+	for _, d := range post.Decisions {
+		if d.PolicyID == "g1-servfail" && d.Triggered {
+			t.Fatal("response-phase sibling ran after pre-resolution exclusive winner")
+		}
+	}
+}
+
 func TestDelayClampAndSimulateNoBudget(t *testing.T) {
 	st := sampleState(t)
 	st.Spec.Chaos.Safety.MaxDelay = 10 * time.Millisecond

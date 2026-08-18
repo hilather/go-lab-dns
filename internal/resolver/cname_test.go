@@ -51,6 +51,29 @@ func TestWildcardCNAME(t *testing.T) {
 	}
 }
 
+func TestCNAMEThenWildcardReportsWildcardSource(t *testing.T) {
+	snap := snapOf(t, []model.Zone{authZone(
+		rec("c", "alias", model.TypeCNAME, time.Second, "x.foo.lab.example.net."),
+		rec("wc", "*.foo", model.TypeA, time.Second, "192.0.2.1"),
+	)}, 0)
+	res := resolve(t, snap, "alias.lab.example.net.", model.TypeA, authZoneID)
+	wantRCode(t, res, model.RCodeNoError)
+	wantData(t, res, model.TypeCNAME, "x.foo.lab.example.net.")
+	wantData(t, res, model.TypeA, "192.0.2.1")
+	if res.Source != model.SourceWildcard {
+		t.Fatalf("source=%s, want wildcard after CNAME→wildcard synthesis", res.Source)
+	}
+	if res.WildcardSource == nil || *res.WildcardSource != "wc" {
+		t.Fatalf("wildcardSource=%v", res.WildcardSource)
+	}
+	if res.ClosestEncloser == nil || *res.ClosestEncloser != "foo.lab.example.net." {
+		t.Fatalf("closestEncloser=%v", res.ClosestEncloser)
+	}
+	if res.Explanation == nil || res.Explanation.Source != model.SourceWildcard {
+		t.Fatalf("explain source=%v", res.Explanation)
+	}
+}
+
 func TestAuthCNAMEOutsideZoneStops(t *testing.T) {
 	snap := snapOf(t, []model.Zone{authZone(
 		rec("c", "alias", model.TypeCNAME, time.Second, "outside.example."),

@@ -182,32 +182,26 @@ func wildcardOwner(
 		if len(all) == 0 {
 			return missNonexistent(snap, q, qname, zd, *answers, *source, *wildID, *encl), "", true, nil
 		}
-		if first {
-			*source = model.SourceWildcard
-			*wildID = ptrID(all[0].ID)
-			*encl = ptrName(enc)
-		}
+		*source = model.SourceWildcard
+		*wildID = ptrID(all[0].ID)
+		*encl = ptrName(enc)
 		*answers = append(*answers, rrsetsToRRs(all, current)...)
 		return positive(snap, q, qname, zd, *answers, *source, *wildID, *encl), "", true, nil
 	}
 
 	if rr, ok := zd.Wildcard(wc, qtype); ok {
-		if first {
-			*source = model.SourceWildcard
-			*wildID = ptrID(rr.ID)
-			*encl = ptrName(enc)
-		}
+		*source = model.SourceWildcard
+		*wildID = ptrID(rr.ID)
+		*encl = ptrName(enc)
 		*answers = append(*answers, rrsetToRRs(rr, current)...)
 		return positive(snap, q, qname, zd, *answers, *source, *wildID, *encl), "", true, nil
 	}
 
 	if qtype != model.TypeCNAME && qtype != typeANY {
 		if rr, ok := zd.Wildcard(wc, model.TypeCNAME); ok {
-			if first {
-				*source = model.SourceWildcard
-				*wildID = ptrID(rr.ID)
-				*encl = ptrName(enc)
-			}
+			*source = model.SourceWildcard
+			*wildID = ptrID(rr.ID)
+			*encl = ptrName(enc)
 			synth := rr
 			synth.Owner = current
 			*answers = append(*answers, rrsetToRRs(synth, current)...)

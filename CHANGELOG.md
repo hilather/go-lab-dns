@@ -14,7 +14,11 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Fixed
 
-- None.
+- REST/MCP `EmergencyDisableChaos` now cancels outstanding chaos delays, matching `SIGUSR1` / `chaos.EmergencyDisable` and the documented emergency-disable contract.
+- Plan idempotency cache hits re-check `expectedRevision` against the live snapshot and recompute after a foreign mutation, so a stale plan cannot be replayed. Empty `expectedRevision` is still rejected on cached Plan and Apply.
+- Overlay CNAME answers are no longer discarded when forwarding is refused (unknown/local-only client, or CNAME target with no matching policy). Clients receive the local CNAME with NOERROR and RA=0.
+- Wildcard synthesis after an exact CNAME now reports `source=wildcard` plus wildcard-source and closest-encloser explain fields.
+- Chaos `exclusive-group` winners are shared across pre-resolution and response `Decide` calls on the same query.
 
 ### Removed or deprecated
 

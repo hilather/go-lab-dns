@@ -391,6 +391,73 @@ func TestOverlayCNAMEUsesTargetSuffixPolicy(t *testing.T) {
 	}
 }
 
+func TestOverlayCNAMEUnknownClientKeepsLocalAnswers(t *testing.T) {
+	st := &model.State{Spec: model.Spec{
+		Access:   model.AccessSpec{UnknownClient: model.UnknownClientRefuseForward, ClientGroups: nil},
+		Defaults: model.DefaultsSpec{TTL: time.Second, NegativeTTL: time.Second, CNAMEDepth: 8},
+		Zones: []model.Zone{{
+			ID: "ov", Name: "ov.example.", Mode: model.ZoneModeOverlay,
+			Records: []model.Record{{ID: "c", Owner: "alias", Type: model.TypeCNAME, TTL: time.Second, Values: []string{"outside.example."}}},
+		}},
+		Forwarding: model.ForwardingSpec{
+			Policies: []model.ForwardingPolicy{{ID: "def", Suffix: ".", UpstreamPool: "p"}},
+			Pools:    []model.UpstreamPool{{ID: "p", Strategy: model.StrategyOrdered, Upstreams: []model.Upstream{{ID: "u", Endpoint: "127.0.0.1:9", Transport: model.TransportUDP}}}},
+		},
+	}}
+	snap := compileSnap(t, st)
+	store := snapshot.NewStore()
+	store.Swap(snap)
+	h := NewOpts(Opts{Store: store})
+	res := serve(t, h, model.Query{
+		Name: "alias.ov.example.", Type: model.TypeA, Class: model.ClassIN,
+		Client: netip.MustParseAddr("8.8.8.8"), RD: true,
+	})
+	if res.RCode != model.RCodeNoError {
+		t.Fatalf("rcode=%s want NOERROR with local overlay CNAME", res.RCode)
+	}
+	if res.RA {
+		t.Fatal("unknown client must have RA=0")
+	}
+	if len(res.Answers) != 1 || res.Answers[0].Type != model.TypeCNAME {
+		t.Fatalf("want local CNAME, got %+v", res.Answers)
+	}
+	if res.Answers[0].Data != "outside.example." {
+		t.Fatalf("cname target=%q", res.Answers[0].Data)
+	}
+	if h.DeniedForward() != 0 {
+		t.Fatalf("denied_forward=%d, local CNAME is not a refused forward", h.DeniedForward())
+	}
+}
+
+func TestOverlayCNAMENoTargetPolicyKeepsLocalAnswers(t *testing.T) {
+	st := &model.State{Spec: model.Spec{
+		Access:   model.AccessSpec{ClientGroups: []model.ClientGroup{{ID: "fwd", CIDRs: []string{"10.0.0.0/8"}, AllowForward: true}}},
+		Defaults: model.DefaultsSpec{TTL: time.Second, NegativeTTL: time.Second, CNAMEDepth: 8},
+		Zones: []model.Zone{{
+			ID: "ov", Name: "corp.example.net.", Mode: model.ZoneModeOverlay,
+			Records: []model.Record{{ID: "c", Owner: "alias", Type: model.TypeCNAME, TTL: time.Second, Values: []string{"outside.example."}}},
+		}},
+		Forwarding: model.ForwardingSpec{
+			Policies: []model.ForwardingPolicy{{ID: "corp", Suffix: "corp.example.net.", UpstreamPool: "p"}},
+			Pools:    []model.UpstreamPool{{ID: "p", Strategy: model.StrategyOrdered, Upstreams: []model.Upstream{{ID: "u", Endpoint: "127.0.0.1:9", Transport: model.TransportUDP}}}},
+		},
+	}}
+	snap := compileSnap(t, st)
+	store := snapshot.NewStore()
+	store.Swap(snap)
+	h := NewOpts(Opts{Store: store})
+	res := serve(t, h, model.Query{
+		Name: "alias.corp.example.net.", Type: model.TypeA, Class: model.ClassIN,
+		Client: netip.MustParseAddr("10.0.0.9"), RD: true,
+	})
+	if res.RCode != model.RCodeNoError {
+		t.Fatalf("rcode=%s want NOERROR with local overlay CNAME", res.RCode)
+	}
+	if len(res.Answers) != 1 || res.Answers[0].Type != model.TypeCNAME {
+		t.Fatalf("want local CNAME when target has no policy, got %+v", res.Answers)
+	}
+}
+
 func TestEmptyClientGroupsServesLocalForwardsNone(t *testing.T) {
 	st := &model.State{Spec: model.Spec{
 		Access:   model.AccessSpec{UnknownClient: model.UnknownClientRefuseForward, ClientGroups: nil},

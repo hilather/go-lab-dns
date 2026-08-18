@@ -63,6 +63,22 @@ func TestChaosActivateDeactivateSimulate(t *testing.T) {
 	}
 }
 
+func TestEmergencyDisableCancelsInFlightDelays(t *testing.T) {
+	path := copyFixture(t)
+	svc, _ := mustBoot(t, path)
+	canceled := make(chan struct{})
+	unreg := svc.engine.Budgets().WatchCancel(func() { close(canceled) })
+	defer unreg()
+	if _, err := svc.EmergencyDisableChaos(context.Background(), actor(), EmergencyIn{Reason: "stop"}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-canceled:
+	case <-time.After(time.Second):
+		t.Fatal("EmergencyDisableChaos did not cancel outstanding delays")
+	}
+}
+
 func TestEmergencyDisableDoesNotChangeRevision(t *testing.T) {
 	path := copyFixture(t)
 	svc, boot := mustBoot(t, path)

@@ -222,10 +222,11 @@ func (s *App) applyChaosActivation(ctx context.Context, actor Actor, id model.Po
 	})
 }
 
-// EmergencyDisableChaos sets the store-level inhibit bit and CAS-stamps the
-// current snapshot. It does not compile and does not take App.mu, so a long
-// apply cannot block it. It never republishes a Canonical copied before a
-// concurrent Swap. YAML emergencyDisabled still forces the bit on.
+// EmergencyDisableChaos sets the store-level inhibit bit, CAS-stamps the
+// current snapshot, and cancels outstanding delay reservations. It does
+// not compile and does not take App.mu, so a long apply cannot block it.
+// It never republishes a Canonical copied before a concurrent Swap. YAML
+// emergencyDisabled still forces the bit on.
 func (s *App) EmergencyDisableChaos(ctx context.Context, actor Actor, in EmergencyIn) (*ApplyResult, error) {
 	return s.setEmergency(ctx, actor, in, true, "dns_chaos_emergency_disable")
 }
@@ -253,6 +254,11 @@ func (s *App) setEmergency(ctx context.Context, actor Actor, in EmergencyIn, off
 	next := s.store.StampEmergency()
 	if next == nil {
 		return nil, domainerr.Internal("no active snapshot")
+	}
+	// REST/MCP emergency disable must match SIGUSR1: inhibit new
+	// actions and cancel cancellable outstanding delays.
+	if off && s.engine != nil {
+		s.engine.CancelDelays()
 	}
 	res := &ApplyResult{
 		Plan: Plan{

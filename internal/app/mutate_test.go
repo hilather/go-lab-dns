@@ -199,6 +199,85 @@ func TestIdempotencyRetryAfterRevisionConflict(t *testing.T) {
 	}
 }
 
+func TestPlanIdempotencyRevalidatesExpectedRevision(t *testing.T) {
+	path := copyFixture(t)
+	svc, boot := mustBoot(t, path)
+	ctx := context.Background()
+	const key = "stale-plan"
+	planIn := ChangeIn{
+		ExpectedRevision: boot.Revision,
+		IdempotencyKey:   key,
+		Reason:           "add www",
+		Operations:       []model.Operation{addWWWRecord()},
+	}
+	first, err := svc.Plan(ctx, actor(), planIn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foreign, err := svc.Apply(ctx, actor(), ChangeIn{
+		ExpectedRevision: boot.Revision,
+		IdempotencyKey:   "foreign",
+		Reason:           "other",
+		Operations: []model.Operation{{
+			Op:     model.OpUpdate,
+			Target: model.Target{Kind: model.TargetDefaults},
+			Value:  json.RawMessage(`{"ttl":"45s","negativeTTL":"10s","cnameDepth":8}`),
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = svc.Plan(ctx, actor(), planIn)
+	_ = requireCode(t, err, domainerr.CodeRevisionConflict)
+	planIn.ExpectedRevision = foreign.CandidateRevision
+	fresh, err := svc.Plan(ctx, actor(), planIn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fresh.PreviousRevision != foreign.CandidateRevision {
+		t.Fatalf("stale plan replay PreviousRevision=%s want %s (first=%s)", fresh.PreviousRevision, foreign.CandidateRevision, first.PreviousRevision)
+	}
+	if fresh.CandidateRevision == first.CandidateRevision {
+		t.Fatal("plan after foreign apply reused the cached candidate revision")
+	}
+}
+
+func TestPlanIdempotencyStillRequiresExpectedRevision(t *testing.T) {
+	path := copyFixture(t)
+	svc, boot := mustBoot(t, path)
+	ctx := context.Background()
+	in := ChangeIn{
+		ExpectedRevision: boot.Revision,
+		IdempotencyKey:   "need-rev",
+		Reason:           "add www",
+		Operations:       []model.Operation{addWWWRecord()},
+	}
+	if _, err := svc.Plan(ctx, actor(), in); err != nil {
+		t.Fatal(err)
+	}
+	in.ExpectedRevision = ""
+	_, err := svc.Plan(ctx, actor(), in)
+	_ = requireCode(t, err, domainerr.CodeValidationFailed)
+}
+
+func TestApplyIdempotencyStillRequiresExpectedRevision(t *testing.T) {
+	path := copyFixture(t)
+	svc, boot := mustBoot(t, path)
+	ctx := context.Background()
+	in := ChangeIn{
+		ExpectedRevision: boot.Revision,
+		IdempotencyKey:   "need-rev-apply",
+		Reason:           "add www",
+		Operations:       []model.Operation{addWWWRecord()},
+	}
+	if _, err := svc.Apply(ctx, actor(), in); err != nil {
+		t.Fatal(err)
+	}
+	in.ExpectedRevision = ""
+	_, err := svc.Apply(ctx, actor(), in)
+	_ = requireCode(t, err, domainerr.CodeValidationFailed)
+}
+
 func TestIdempotencySameKeyDifferentBody(t *testing.T) {
 	path := copyFixture(t)
 	svc, boot := mustBoot(t, path)

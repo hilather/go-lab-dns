@@ -123,9 +123,10 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (resp *dnsserv
 	cl = classify(snap, q)
 	tracked = true
 	sticky := chaos.NewStickyRand()
+	exclusive := chaos.NewExclusiveSet()
 	var pre chaos.ActionPlan
 	if !h.inhibited() {
-		pre = h.decide(ctx, snap, q, cl, nil, chaos.PhasePreResolution, sticky)
+		pre = h.decide(ctx, snap, q, cl, nil, chaos.PhasePreResolution, sticky, exclusive)
 	} else {
 		pre = chaos.ActionPlan{Disabled: true, Reason: "emergency_disabled"}
 	}
@@ -170,7 +171,7 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (resp *dnsserv
 		return dnsserver.NewResponse(res), dnsserver.HintSend, nil
 	}
 
-	post := h.decide(ctx, snap, q, cl, &res, chaos.PhaseResponse, sticky)
+	post := h.decide(ctx, snap, q, cl, &res, chaos.PhaseResponse, sticky, exclusive)
 	if h.inhibited() {
 		applyRA(&res, cl)
 		return dnsserver.NewResponse(res), dnsserver.HintSend, nil
@@ -230,7 +231,7 @@ func (h *Handler) sendBase(ctx context.Context, snap *snapshot.Snapshot, q model
 	return dnsserver.NewResponse(res), dnsserver.HintSend, nil
 }
 
-func (h *Handler) decide(ctx context.Context, snap *snapshot.Snapshot, q model.Query, cl class, base *model.Result, phase chaos.Phase, sticky *chaos.StickyRand) chaos.ActionPlan {
+func (h *Handler) decide(ctx context.Context, snap *snapshot.Snapshot, q model.Query, cl class, base *model.Result, phase chaos.Phase, sticky *chaos.StickyRand, exclusive *chaos.ExclusiveSet) chaos.ActionPlan {
 	if h == nil || h.eng == nil || h.inhibited() {
 		return chaos.ActionPlan{Disabled: h.inhibited(), Reason: inhibitReason(h)}
 	}
@@ -242,6 +243,7 @@ func (h *Handler) decide(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 		Base:          base,
 		Phase:         phase,
 		Sticky:        sticky,
+		Exclusive:     exclusive,
 	})
 	if err != nil {
 		h.logf("chaos decide: %v", err)
@@ -312,10 +314,7 @@ func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 	}
 
 	if cl.ForwardingID == "" {
-		h.denied.Add(1)
-		h.observeDenied(cl)
-		h.logf("denied_forward group=%s zone=%s policy=%s", cl.Group, cl.ZoneID, cl.ForwardingID)
-		return refused(snap, q, cl), nil
+		return h.localOverlayOrRefused(snap, q, cl, local, haveLocal, plan), nil
 	}
 	if beforeUpstream != nil {
 		if err := beforeUpstream(); err != nil {
@@ -336,10 +335,7 @@ func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 			// stays the original-QNAME selection for a future chaos.Decide.
 			tid, ok := snap.Forwarding.Select(target)
 			if !ok {
-				h.denied.Add(1)
-				h.observeDenied(cl)
-				h.logf("denied_forward group=%s zone=%s policy=%s", cl.Group, cl.ZoneID, cl.ForwardingID)
-				return refused(snap, q, cl), nil
+				return h.localOverlayOrRefused(snap, q, cl, local, haveLocal, plan), nil
 			}
 			exchangeID = tid
 		}
@@ -468,6 +464,20 @@ func cacheable(res model.Result) bool {
 	default:
 		return false
 	}
+}
+
+// localOverlayOrRefused keeps a local overlay CNAME (or other local
+// answers) when forwarding is refused. REFUSED is only for no local path.
+func (h *Handler) localOverlayOrRefused(snap *snapshot.Snapshot, q model.Query, cl class, local model.Result, haveLocal bool, plan chaos.ActionPlan) model.Result {
+	if haveLocal && len(local.Answers) > 0 {
+		local.Fallthrough = false
+		h.storeCache(snap, q, cl, local, true, plan)
+		return local
+	}
+	h.denied.Add(1)
+	h.observeDenied(cl)
+	h.logf("denied_forward group=%s zone=%s policy=%s", cl.Group, cl.ZoneID, cl.ForwardingID)
+	return refused(snap, q, cl)
 }
 
 func applyRA(res *model.Result, cl class) {

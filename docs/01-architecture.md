@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: Architecture, DNS, Control Plane
-Last reviewed: 2026-08-15 (STA-001 plan/apply/export/reset)
+Last reviewed: 2026-08-18 (emergency disable cancels delays; plan idempotency rechecks revision)
 Related ADRs: 0001, 0002, 0003, 0004, 0005
 
 ## Problem statement
@@ -191,7 +191,7 @@ The chaos engine receives a structured resolution context and cannot access mana
 
 `labdns serve --config PATH` loads bootstrap YAML, runs `compiler.Compile`, installs the snapshot on `snapshot.Store` (`SetBootstrap` + `Swap`), binds UDP/TCP DNS, and binds management HTTP (`rest.Server`, default `:8080`). `--management-listen=off` leaves management unbound so `SIGUSR1` / `labdns chaos emergency-disable --pid-file` still work. Invalid bootstrap does not bind DNS or management.
 
-`internal/app.Service` implements plan/apply/validate/export/reset plus zone/record/resolve queries against the active snapshot. Mutations copy `Canonical`, apply typed `Operation`s, then normalize/validate/compile before `Store.Swap`. `expectedRevision` is required except privileged reset. Idempotency keys live in a bounded in-memory LRU (default 256; `<=0` is not unlimited). Reset rereads the bootstrap mount and never writes it. Chaos activate/deactivate/set-expiry compile to `OpUpdate` + `TargetChaosActivation` via `Apply`. `SimulateChaos` is side-effect-free. `EmergencyDisableChaos` sets a store-level runtime inhibit bit that `Store.Swap` stamps onto every snapshot; apply cannot clear it. The emergency path CAS-stamps the current active snapshot and does not republish a Canonical copied before a concurrent swap. `SIGUSR1` sets that runtime bit. `labdns serve --chaos-disable` / `LABDNS_CHAOS_DISABLE` set a separate startup lock that `Reset` and `EmergencyEnableChaos` cannot clear.
+`internal/app.Service` implements plan/apply/validate/export/reset plus zone/record/resolve queries against the active snapshot. Mutations copy `Canonical`, apply typed `Operation`s, then normalize/validate/compile before `Store.Swap`. `expectedRevision` is required except privileged reset. Idempotency keys live in a bounded in-memory LRU (default 256; `<=0` is not unlimited). Reset rereads the bootstrap mount and never writes it. Chaos activate/deactivate/set-expiry compile to `OpUpdate` + `TargetChaosActivation` via `Apply`. `SimulateChaos` is side-effect-free. `EmergencyDisableChaos` sets a store-level runtime inhibit bit that `Store.Swap` stamps onto every snapshot, CAS-stamps the current active snapshot, and cancels outstanding delay reservations (`Engine.CancelDelays`); apply cannot clear the bit. The emergency path does not republish a Canonical copied before a concurrent swap. `SIGUSR1` uses the same combined path (`chaos.EmergencyDisable`). `labdns serve --chaos-disable` / `LABDNS_CHAOS_DISABLE` set a separate startup lock that `Reset` and `EmergencyEnableChaos` cannot clear.
 
 Default listen address (first GA, configured later by CFG): `:5353` UDP+TCP.
 

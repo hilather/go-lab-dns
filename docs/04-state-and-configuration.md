@@ -2,7 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Configuration, Application
-Last reviewed: 2026-08-15 (STA-001 plan/apply/export/reset)
+Last reviewed: 2026-08-18 (plan idempotency rechecks expectedRevision; emergency cancel)
 Related ADRs: 0003, 0005
 
 Canonical Go types live in `internal/model`. YAML/JSON decode, default materialization, validation, canonical export, revision hashing, and the published schema live in `internal/config` and [api/jsonschema/labdns.dev.v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/jsonschema/labdns.dev.v1alpha1.json). `compiler.Compile` orchestrates normalize/validate plus zone, forwarding, and access indexes into an immutable `snapshot.Snapshot`. `internal/app.Service` is the HTTP-less mutation core: copy candidate, apply `Operation`s, normalize, validate, compile, diff/impact, then dry-run (`Plan`) or atomic `Store.Swap` (`Apply`). REST/MCP adapters are not in this slice.
@@ -81,7 +81,7 @@ Requirements:
 
 - `expectedRevision` is required for writes except an explicitly privileged bootstrap reset.
 - Idempotency keys are retained in a bounded in-memory LRU (default **256** entries). Zero/`<=0` is not unlimited — it falls back to 256.
-- Repeated keys with the same request identity (reason + ticket + operations) return the original result. `expectedRevision` is a precondition, not part of the key identity.
+- Repeated keys with the same request identity (reason + ticket + operations) return the original result. `expectedRevision` is a precondition, not part of the key identity: every Plan/Apply request still requires a non-empty `expectedRevision`. A cached Plan is reused only when that revision still matches the live snapshot and the cached plan was computed against that same base; otherwise Plan returns `revision_conflict` or recomputes. A cached successful Apply may replay with the original revision (true idempotency) but still rejects an empty `expectedRevision`.
 - Repeated keys with different identity return `idempotency_conflict`.
 - Failures are not cached. A `revision_conflict` after a same-key plan evicts that key so a retry with the new revision can proceed.
 - Plans and applies use the same validation and compilation path. The live snapshot is never edited in place.
@@ -92,7 +92,7 @@ Requirements:
 
 Reset rereads the mounted bootstrap file, validates and compiles it, and swaps only after success. A missing or invalid replacement file leaves the current runtime state active and does not clear the idempotency cache. Reset clears runtime idempotency entries after a successful swap. Runtime-only emergency inhibit (`Store` process bit + `Snapshot.EmergencyChaosOff`) is cleared on reset (YAML `emergencyDisabled` still compiles on). The service never writes the bootstrap file. When no mount path is configured, reset recompiles the last `Store.Bootstrap()` canonical state.
 
-`EmergencyDisableChaos` sets the store-level inhibit bit and CAS-stamps the current snapshot. `Store.Swap` copies that bit onto every installed snapshot, so apply cannot clear it and emergency cannot roll back a concurrent apply's Canonical.
+`EmergencyDisableChaos` sets the store-level inhibit bit, CAS-stamps the current snapshot, and cancels outstanding delay reservations. `Store.Swap` copies that bit onto every installed snapshot, so apply cannot clear it and emergency cannot roll back a concurrent apply's Canonical. SIGUSR1 uses the same combined path.
 
 ## Export
 
