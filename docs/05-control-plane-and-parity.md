@@ -1,8 +1,8 @@
 # Control Plane and REST/MCP Parity
 
 Status: Proposed normative behavior
-Owners: Application, REST, MCP
-Last reviewed: 2026-08-15 (capability registry freeze)
+Owners: Application, REST, MCP, UI
+Last reviewed: 2026-08-19 (UIBinding; disposition derived from RESTOnly)
 Related ADRs: 0004, 0006
 
 ## Problem statement
@@ -40,24 +40,45 @@ type Capability struct {
     RESTOnly       bool
     REST           []RESTBinding
     MCP            *MCPBinding
+    UI             *UIBinding
     ServiceMethods []string
 }
+
+type UIBinding struct {
+    Route  string // SPA path, e.g. /zones/:zoneId
+    Action string // view | mutate
+}
 ```
+
+`UI` is omitted only for `REST_ONLY_PROTOCOL` rows the console does not surface as its own page (session and static assets, when added) and for `MCP_ONLY_PROTOCOL`. Health live/ready are REST-only probes displayed on the dashboard (`Route: "/"`, `Action: "view"`).
 
 The registry is the source for:
 
 - REST route registration.
 - OpenAPI operation metadata.
 - MCP tool or resource registration.
+- Operator UI route/action bindings.
 - Scope documentation.
 - Parity tests.
 - Capability manifests embedded in releases.
 
+## Dispositions
+
+Disposition is **derived** from `RESTOnly`: `RESTOnly` → `REST_ONLY_PROTOCOL`, otherwise `PARITY_REQUIRED`. It is not a stored catalog enum. A third value (`PARITY_DIFFERENT_BINDING`) requires an ADR before the registry grows a stored field.
+
+| Disposition | Meaning |
+|---|---|
+| `PARITY_REQUIRED` | REST + MCP + UI (page or in-page action) |
+| `REST_ONLY_PROTOCOL` | No MCP tool. UI may use the route (session, assets) or display it (live/ready) |
+| `MCP_ONLY_PROTOCOL` | Protocol machinery (`tools/list`); no UI row. Not used in the current catalog |
+| `PARITY_DIFFERENT_BINDING` | Requires an ADR (reserved; not derived from `RESTOnly`) |
+
 ## Parity rules
 
-- Every public REST write operation has one or more MCP tools with equivalent semantics.
+- Every public REST write operation has one or more MCP tools with equivalent semantics, except `REST_ONLY_PROTOCOL`.
 - Every MCP mutation tool has a REST operation.
 - REST GET representations may map to MCP resources or read tools.
+- Every `PARITY_REQUIRED` capability has a non-nil `UI` binding. Page map: [docs/22-web-ui.md](22-web-ui.md).
 - Status codes and JSON-RPC codes differ by transport, but domain error codes and error data match.
 - Pagination, filtering, revisions, and authorization semantics match.
 - Default values are applied in the shared application layer.
@@ -65,7 +86,7 @@ The registry is the source for:
 
 ## Core capabilities
 
-Frozen names live in `internal/capabilities` and the generated manifest `api/capabilities/v1.json`. Renaming a tool, resource, or REST path requires a coordinated catalog + manifest + design-table change. Health live/ready are REST-only process probes and are not MCP tools.
+Frozen names live in `internal/capabilities` and the generated manifest `api/capabilities/v1.json`. Renaming a tool, resource, REST path, or UI route bound in the registry requires a coordinated catalog + manifest + design-table change. Health live/ready are REST-only process probes and are not MCP tools. Operator UI routes for each row: [docs/22-web-ui.md](22-web-ui.md).
 
 | Capability | REST | MCP tool / resource | Scopes |
 |---|---|---|---|

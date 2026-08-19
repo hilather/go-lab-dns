@@ -100,6 +100,39 @@ func TestParityMCPMutationsHaveREST(t *testing.T) {
 	}
 }
 
+func TestParityUIBindingsComplete(t *testing.T) {
+	for _, c := range All() {
+		wantDisp := DispositionParityRequired
+		if c.RESTOnly {
+			wantDisp = DispositionRESTOnlyProtocol
+		}
+		if got := c.Disposition(); got != wantDisp {
+			t.Errorf("%s Disposition()=%s want %s", c.ID, got, wantDisp)
+		}
+		if c.RESTOnly {
+			continue
+		}
+		if c.UI == nil {
+			t.Errorf("%s is PARITY_REQUIRED without UI binding", c.ID)
+			continue
+		}
+		if c.UI.Route == "" {
+			t.Errorf("%s UI.Route empty", c.ID)
+		}
+		if c.UI.Action != "view" && c.UI.Action != "mutate" {
+			t.Errorf("%s UI.Action=%q want view|mutate", c.ID, c.UI.Action)
+		}
+	}
+	live := MustLookup(HealthLive)
+	if live.UI == nil || live.UI.Route != "/" || live.UI.Action != "view" {
+		t.Errorf("health.live UI=%+v want route=/ action=view", live.UI)
+	}
+	ready := MustLookup(HealthReady)
+	if ready.UI == nil || ready.UI.Route != "/" || ready.UI.Action != "view" {
+		t.Errorf("health.ready UI=%+v want route=/ action=view", ready.UI)
+	}
+}
+
 func TestDocs05TableCoversFrozenTitles(t *testing.T) {
 	body := readRepoFile(t, "docs", "05-control-plane-and-parity.md")
 	if strings.Contains(body, "Handler          Handler") || strings.Contains(body, "REST             *RESTBinding") {

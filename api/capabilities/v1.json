@@ -16,7 +16,11 @@
           "path": "/v1/health/live"
         }
       ],
-      "mcp": null
+      "mcp": null,
+      "ui": {
+        "route": "/",
+        "action": "view"
+      }
     },
     {
       "id": "health.ready",
@@ -32,7 +36,11 @@
           "path": "/v1/health/ready"
         }
       ],
-      "mcp": null
+      "mcp": null,
+      "ui": {
+        "route": "/",
+        "action": "view"
+      }
     },
     {
       "id": "version",
@@ -57,6 +65,10 @@
         "tools": [
           "dns_version_get"
         ]
+      },
+      "ui": {
+        "route": "/",
+        "action": "view"
       },
       "serviceMethods": [
         "Version"
@@ -89,6 +101,10 @@
           "labdns://capabilities"
         ]
       },
+      "ui": {
+        "route": "/capabilities",
+        "action": "view"
+      },
       "serviceMethods": [
         "Capabilities"
       ]
@@ -120,6 +136,10 @@
           "labdns://status"
         ]
       },
+      "ui": {
+        "route": "/",
+        "action": "view"
+      },
       "serviceMethods": [
         "Status"
       ]
@@ -147,6 +167,10 @@
         "resources": [
           "labdns://schema/config"
         ]
+      },
+      "ui": {
+        "route": "/schema",
+        "action": "view"
       },
       "serviceMethods": [
         "ConfigSchema"
@@ -179,6 +203,10 @@
           "labdns://state"
         ]
       },
+      "ui": {
+        "route": "/state",
+        "action": "view"
+      },
       "serviceMethods": [
         "GetState"
       ]
@@ -209,6 +237,10 @@
         "tools": [
           "dns_state_validate"
         ]
+      },
+      "ui": {
+        "route": "/state",
+        "action": "mutate"
       },
       "serviceMethods": [
         "Validate"
@@ -241,6 +273,10 @@
           "dns_change_plan"
         ]
       },
+      "ui": {
+        "route": "/changes",
+        "action": "mutate"
+      },
       "serviceMethods": [
         "Plan"
       ]
@@ -272,6 +308,10 @@
           "dns_change_apply"
         ]
       },
+      "ui": {
+        "route": "/changes",
+        "action": "mutate"
+      },
       "serviceMethods": [
         "Apply"
       ]
@@ -299,6 +339,10 @@
         "tools": [
           "dns_state_export"
         ]
+      },
+      "ui": {
+        "route": "/state",
+        "action": "view"
       },
       "serviceMethods": [
         "Export"
@@ -330,6 +374,10 @@
         "tools": [
           "dns_state_reset"
         ]
+      },
+      "ui": {
+        "route": "/reset",
+        "action": "mutate"
       },
       "serviceMethods": [
         "Reset"
@@ -366,6 +414,10 @@
         "resources": [
           "labdns://zones/{zoneId}"
         ]
+      },
+      "ui": {
+        "route": "/zones",
+        "action": "view"
       },
       "serviceMethods": [
         "ListZones",
@@ -404,6 +456,10 @@
           "labdns://records/{recordId}"
         ]
       },
+      "ui": {
+        "route": "/zones/:zoneId",
+        "action": "view"
+      },
       "serviceMethods": [
         "ListRecords",
         "GetRecord"
@@ -436,6 +492,10 @@
           "dns_resolve"
         ]
       },
+      "ui": {
+        "route": "/resolve",
+        "action": "view"
+      },
       "serviceMethods": [
         "Resolve"
       ]
@@ -467,6 +527,10 @@
           "dns_explain_resolution"
         ]
       },
+      "ui": {
+        "route": "/resolve",
+        "action": "view"
+      },
       "serviceMethods": [
         "Explain"
       ]
@@ -492,6 +556,10 @@
           "dns_forwarding_policies_list"
         ]
       },
+      "ui": {
+        "route": "/forwarding",
+        "action": "view"
+      },
       "serviceMethods": [
         "ListForwardingPolicies"
       ]
@@ -516,6 +584,10 @@
         "tools": [
           "dns_upstream_pools_list"
         ]
+      },
+      "ui": {
+        "route": "/forwarding",
+        "action": "view"
       },
       "serviceMethods": [
         "ListUpstreamPools"
@@ -545,6 +617,10 @@
           "labdns://upstreams"
         ]
       },
+      "ui": {
+        "route": "/forwarding",
+        "action": "view"
+      },
       "serviceMethods": [
         "UpstreamsStatus"
       ]
@@ -572,6 +648,10 @@
         "tools": [
           "dns_cache_status"
         ]
+      },
+      "ui": {
+        "route": "/cache",
+        "action": "view"
       },
       "serviceMethods": [
         "CacheStatus"
@@ -601,6 +681,10 @@
           "dns_cache_flush"
         ]
       },
+      "ui": {
+        "route": "/cache",
+        "action": "mutate"
+      },
       "serviceMethods": [
         "CacheFlush"
       ]
@@ -628,6 +712,10 @@
         "tools": [
           "dns_chaos_status"
         ]
+      },
+      "ui": {
+        "route": "/chaos",
+        "action": "view"
       },
       "serviceMethods": [
         "ChaosStatus"
@@ -662,6 +750,10 @@
           "labdns://chaos/policies/{policyId}"
         ]
       },
+      "ui": {
+        "route": "/chaos",
+        "action": "view"
+      },
       "serviceMethods": [
         "ListChaosPolicies",
         "GetChaosPolicy"
@@ -693,6 +785,10 @@
         "tools": [
           "dns_chaos_simulate"
         ]
+      },
+      "ui": {
+        "route": "/chaos",
+        "action": "view"
       },
       "serviceMethods": [
         "SimulateChaos"
@@ -730,6 +826,10 @@
           "dns_chaos_deactivate"
         ]
       },
+      "ui": {
+        "route": "/chaos/:policyId",
+        "action": "mutate"
+      },
       "serviceMethods": [
         "ActivateChaos",
         "DeactivateChaos"
@@ -761,6 +861,10 @@
         "tools": [
           "dns_chaos_set_expiry"
         ]
+      },
+      "ui": {
+        "route": "/chaos/:policyId",
+        "action": "mutate"
       },
       "serviceMethods": [
         "SetChaosExpiry"
@@ -798,6 +902,10 @@
           "dns_chaos_emergency_enable"
         ]
       },
+      "ui": {
+        "route": "/",
+        "action": "mutate"
+      },
       "serviceMethods": [
         "EmergencyDisableChaos",
         "EmergencyEnableChaos"
@@ -833,6 +941,10 @@
           "labdns://audit/recent"
         ]
       },
+      "ui": {
+        "route": "/audit",
+        "action": "view"
+      },
       "serviceMethods": [
         "QueryAudit"
       ]
@@ -860,6 +972,10 @@
         "tools": [
           "dns_audit_get"
         ]
+      },
+      "ui": {
+        "route": "/audit/:eventId",
+        "action": "view"
       },
       "serviceMethods": [
         "GetAudit"
@@ -890,6 +1006,10 @@
         ],
         "docsId": "dns-semantics"
       },
+      "ui": {
+        "route": "/docs/:id",
+        "action": "view"
+      },
       "serviceMethods": [
         "Docs"
       ]
@@ -918,6 +1038,10 @@
           "labdns://docs/chaos-safety"
         ],
         "docsId": "chaos-safety"
+      },
+      "ui": {
+        "route": "/docs/:id",
+        "action": "view"
       },
       "serviceMethods": [
         "Docs"

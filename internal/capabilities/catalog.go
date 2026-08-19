@@ -9,12 +9,14 @@ func catalog() []Capability {
 			Description: "Process liveness. Not an MCP tool; chaos must not affect it.",
 			Idempotent:  true, RESTOnly: true,
 			REST: []RESTBinding{{Method: "GET", Path: "/v1/health/live"}},
+			UI:   &UIBinding{Route: "/", Action: "view"},
 		},
 		{
 			ID: HealthReady, Title: "Health ready", Version: VersionTag,
 			Description: "Readiness (valid snapshot, listeners bound). Not an MCP tool.",
 			Idempotent:  true, RESTOnly: true,
 			REST: []RESTBinding{{Method: "GET", Path: "/v1/health/ready"}},
+			UI:   &UIBinding{Route: "/", Action: "view"},
 		},
 		{
 			ID: Version, Title: "Version", Version: VersionTag,
@@ -23,6 +25,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "buildinfo.Info"},
 			REST:           []RESTBinding{{Method: "GET", Path: "/v1/version"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_version_get"}},
+			UI:             &UIBinding{Route: "/", Action: "view"},
 			ServiceMethods: []string{"Version"},
 		},
 		{
@@ -32,6 +35,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "CapabilityView"},
 			REST:           []RESTBinding{{Method: "GET", Path: "/v1/capabilities"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_capabilities_get"}, Resources: []string{"labdns://capabilities"}},
+			UI:             &UIBinding{Route: "/capabilities", Action: "view"},
 			ServiceMethods: []string{"Capabilities"},
 		},
 		{
@@ -41,6 +45,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "Status"},
 			REST:           []RESTBinding{{Method: "GET", Path: "/v1/status"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_status_get"}, Resources: []string{"labdns://status"}},
+			UI:             &UIBinding{Route: "/", Action: "view"},
 			ServiceMethods: []string{"Status"},
 		},
 		{
@@ -49,6 +54,7 @@ func catalog() []Capability {
 			RequiredScopes: []string{ScopeDNSRead}, Idempotent: true,
 			REST:           []RESTBinding{{Method: "GET", Path: "/v1/schema/config"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_schema_get"}, Resources: []string{"labdns://schema/config"}},
+			UI:             &UIBinding{Route: "/schema", Action: "view"},
 			ServiceMethods: []string{"ConfigSchema"},
 		},
 		{
@@ -58,6 +64,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "StateView"},
 			REST:           []RESTBinding{{Method: "GET", Path: "/v1/state"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_state_get"}, Resources: []string{"labdns://state"}},
+			UI:             &UIBinding{Route: "/state", Action: "view"},
 			ServiceMethods: []string{"GetState"},
 		},
 		{
@@ -68,6 +75,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "Plan"},
 			REST:           []RESTBinding{{Method: "POST", Path: "/v1/state:validate"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_state_validate"}},
+			UI:             &UIBinding{Route: "/state", Action: "mutate"},
 			ServiceMethods: []string{"Validate"},
 		},
 		{
@@ -78,6 +86,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "Plan"},
 			REST:           []RESTBinding{{Method: "POST", Path: "/v1/changes:plan"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_change_plan"}},
+			UI:             &UIBinding{Route: "/changes", Action: "mutate"},
 			ServiceMethods: []string{"Plan"},
 		},
 		{
@@ -88,6 +97,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "ApplyResult"},
 			REST:           []RESTBinding{{Method: "POST", Path: "/v1/changes:apply"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_change_apply"}},
+			UI:             &UIBinding{Route: "/changes", Action: "mutate"},
 			ServiceMethods: []string{"Apply"},
 		},
 		{
@@ -97,6 +107,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "Export"},
 			REST:           []RESTBinding{{Method: "GET", Path: "/v1/state:export"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_state_export"}},
+			UI:             &UIBinding{Route: "/state", Action: "view"},
 			ServiceMethods: []string{"Export"},
 		},
 		{
@@ -107,6 +118,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "ApplyResult"},
 			REST:           []RESTBinding{{Method: "POST", Path: "/v1/state:reset"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_state_reset"}},
+			UI:             &UIBinding{Route: "/reset", Action: "mutate"},
 			ServiceMethods: []string{"Reset"},
 		},
 		{
@@ -122,6 +134,7 @@ func catalog() []Capability {
 				Tools:     []string{"dns_zones_list", "dns_zone_get"},
 				Resources: []string{"labdns://zones/{zoneId}"},
 			},
+			UI:             &UIBinding{Route: "/zones", Action: "view"},
 			ServiceMethods: []string{"ListZones", "GetZone"},
 		},
 		{
@@ -137,6 +150,7 @@ func catalog() []Capability {
 				Tools:     []string{"dns_records_list", "dns_record_get"},
 				Resources: []string{"labdns://records/{recordId}"},
 			},
+			UI:             &UIBinding{Route: "/zones/:zoneId", Action: "view"},
 			ServiceMethods: []string{"ListRecords", "GetRecord"},
 		},
 		{
@@ -147,6 +161,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "ResolveOut"},
 			REST:           []RESTBinding{{Method: "POST", Path: "/v1/resolve"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_resolve"}},
+			UI:             &UIBinding{Route: "/resolve", Action: "view"},
 			ServiceMethods: []string{"Resolve"},
 		},
 		{
@@ -157,6 +172,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "ExplainOut"},
 			REST:           []RESTBinding{{Method: "POST", Path: "/v1/resolve:explain"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_explain_resolution"}},
+			UI:             &UIBinding{Route: "/resolve", Action: "view"},
 			ServiceMethods: []string{"Explain"},
 		},
 		{
@@ -165,6 +181,7 @@ func catalog() []Capability {
 			RequiredScopes: []string{ScopeForwardersRead}, Idempotent: true,
 			REST:           []RESTBinding{{Method: "GET", Path: "/v1/forwarding/policies"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_forwarding_policies_list"}},
+			UI:             &UIBinding{Route: "/forwarding", Action: "view"},
 			ServiceMethods: []string{"ListForwardingPolicies"},
 		},
 		{
@@ -173,6 +190,7 @@ func catalog() []Capability {
 			RequiredScopes: []string{ScopeForwardersRead}, Idempotent: true,
 			REST:           []RESTBinding{{Method: "GET", Path: "/v1/upstream-pools"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_upstream_pools_list"}},
+			UI:             &UIBinding{Route: "/forwarding", Action: "view"},
 			ServiceMethods: []string{"ListUpstreamPools"},
 		},
 		{
@@ -181,6 +199,7 @@ func catalog() []Capability {
 			RequiredScopes: []string{ScopeForwardersRead}, Idempotent: true,
 			REST:           []RESTBinding{{Method: "GET", Path: "/v1/upstreams/status"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_upstreams_status"}, Resources: []string{"labdns://upstreams"}},
+			UI:             &UIBinding{Route: "/forwarding", Action: "view"},
 			ServiceMethods: []string{"UpstreamsStatus"},
 		},
 		{
@@ -190,6 +209,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "CacheSummary"},
 			REST:           []RESTBinding{{Method: "GET", Path: "/v1/cache/status"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_cache_status"}},
+			UI:             &UIBinding{Route: "/cache", Action: "view"},
 			ServiceMethods: []string{"CacheStatus"},
 		},
 		{
@@ -199,6 +219,7 @@ func catalog() []Capability {
 			InputSchema:    &SchemaRef{Name: "FlushIn"},
 			REST:           []RESTBinding{{Method: "POST", Path: "/v1/cache:flush"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_cache_flush"}},
+			UI:             &UIBinding{Route: "/cache", Action: "mutate"},
 			ServiceMethods: []string{"CacheFlush"},
 		},
 		{
@@ -208,6 +229,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "ChaosRuntimeStatus"},
 			REST:           []RESTBinding{{Method: "GET", Path: "/v1/chaos/status"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_chaos_status"}},
+			UI:             &UIBinding{Route: "/chaos", Action: "view"},
 			ServiceMethods: []string{"ChaosStatus"},
 		},
 		{
@@ -222,6 +244,7 @@ func catalog() []Capability {
 				Tools:     []string{"dns_chaos_policies_list", "dns_chaos_policy_get"},
 				Resources: []string{"labdns://chaos/policies/{policyId}"},
 			},
+			UI:             &UIBinding{Route: "/chaos", Action: "view"},
 			ServiceMethods: []string{"ListChaosPolicies", "GetChaosPolicy"},
 		},
 		{
@@ -232,6 +255,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "SimulateOut"},
 			REST:           []RESTBinding{{Method: "POST", Path: "/v1/chaos:simulate"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_chaos_simulate"}},
+			UI:             &UIBinding{Route: "/chaos", Action: "view"},
 			ServiceMethods: []string{"SimulateChaos"},
 		},
 		{
@@ -245,6 +269,7 @@ func catalog() []Capability {
 				{Method: "POST", Path: "/v1/chaos/policies/{id}:deactivate"},
 			},
 			MCP:            &MCPBinding{Tools: []string{"dns_chaos_activate", "dns_chaos_deactivate"}},
+			UI:             &UIBinding{Route: "/chaos/:policyId", Action: "mutate"},
 			ServiceMethods: []string{"ActivateChaos", "DeactivateChaos"},
 		},
 		{
@@ -255,6 +280,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "ApplyResult"},
 			REST:           []RESTBinding{{Method: "POST", Path: "/v1/chaos/policies/{id}:expire"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_chaos_set_expiry"}},
+			UI:             &UIBinding{Route: "/chaos/:policyId", Action: "mutate"},
 			ServiceMethods: []string{"SetChaosExpiry"},
 		},
 		{
@@ -268,6 +294,7 @@ func catalog() []Capability {
 				{Method: "POST", Path: "/v1/chaos:emergency-enable"},
 			},
 			MCP:            &MCPBinding{Tools: []string{"dns_chaos_emergency_disable", "dns_chaos_emergency_enable"}},
+			UI:             &UIBinding{Route: "/", Action: "mutate"},
 			ServiceMethods: []string{"EmergencyDisableChaos", "EmergencyEnableChaos"},
 		},
 		{
@@ -278,6 +305,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "AuditList"},
 			REST:           []RESTBinding{{Method: "GET", Path: "/v1/audit"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_audit_query"}, Resources: []string{"labdns://audit/recent"}},
+			UI:             &UIBinding{Route: "/audit", Action: "view"},
 			ServiceMethods: []string{"QueryAudit"},
 		},
 		{
@@ -287,6 +315,7 @@ func catalog() []Capability {
 			OutputSchema:   &SchemaRef{Name: "AuditEvent"},
 			REST:           []RESTBinding{{Method: "GET", Path: "/v1/audit/{eventId}"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_audit_get"}},
+			UI:             &UIBinding{Route: "/audit/:eventId", Action: "view"},
 			ServiceMethods: []string{"GetAudit"},
 		},
 		{
@@ -295,6 +324,7 @@ func catalog() []Capability {
 			RequiredScopes: []string{ScopeDNSRead}, Idempotent: true,
 			REST:           []RESTBinding{{Method: "GET", Path: "/v1/docs/dns-semantics"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_docs_get"}, Resources: []string{"labdns://docs/dns-semantics"}, DocsID: "dns-semantics"},
+			UI:             &UIBinding{Route: "/docs/:id", Action: "view"},
 			ServiceMethods: []string{"Docs"},
 		},
 		{
@@ -303,6 +333,7 @@ func catalog() []Capability {
 			RequiredScopes: []string{ScopeDNSRead}, Idempotent: true,
 			REST:           []RESTBinding{{Method: "GET", Path: "/v1/docs/chaos-safety"}},
 			MCP:            &MCPBinding{Tools: []string{"dns_docs_get"}, Resources: []string{"labdns://docs/chaos-safety"}, DocsID: "chaos-safety"},
+			UI:             &UIBinding{Route: "/docs/:id", Action: "view"},
 			ServiceMethods: []string{"Docs"},
 		},
 	}

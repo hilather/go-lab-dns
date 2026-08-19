@@ -77,6 +77,10 @@ func cloneCapability(c Capability) Capability {
 		s := *c.OutputSchema
 		c.OutputSchema = &s
 	}
+	if c.UI != nil {
+		ui := *c.UI
+		c.UI = &ui
+	}
 	return c
 }
 

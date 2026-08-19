@@ -2,7 +2,7 @@
 
 Status: Proposed normative design (not yet implemented)
 Owners: Control Plane, REST, Security, UI
-Last reviewed: 2026-08-19
+Last reviewed: 2026-08-19 (config + UIBinding; disposition derived from RESTOnly)
 Related ADRs: 0004 (embedded-UI ADR is not yet in this tree)
 
 ## Problem statement
@@ -28,6 +28,7 @@ REST and MCP already share one capability model. Humans in the mcp-integration-l
 - maildev-style WebSockets, a design-system kit, or unsafe-inline scripts.
 - Server-sent events in the first UI increment (revision-based polling is enough; SSE is a documented follow-on).
 - Changing DNS wire behavior, chaos effects, or GitOps persistence.
+- Publishing `/v1/session` or `GET /` catalog rows before handlers exist.
 
 ## Invariants
 
@@ -98,54 +99,58 @@ Forbidden:
 
 ## Dispositions
 
-Extend the registry with an explicit disposition (LabMail). Adapters and parity tests switch on it.
+Disposition is **derived** from `RESTOnly` (`RESTOnly` → `REST_ONLY_PROTOCOL`, otherwise `PARITY_REQUIRED`). It is not a stored catalog enum. Adapters and parity tests call `Capability.Disposition()`. A third value (`PARITY_DIFFERENT_BINDING`) requires an ADR before the registry grows a stored field.
 
 | Disposition | UI requirement | Examples |
 |---|---|---|
-| `PARITY_REQUIRED` | Page or in-page action; Playwright covers the workflow | state, zones, records, resolve, explain, forwarding, cache, chaos, audit, plan/apply |
-| `REST_ONLY_PROTOCOL` | No MCP tool. UI may *use* the route (session, assets) or *display* it (live/ready via dashboard) | health live/ready, session, SPA assets, OpenAPI document |
-| `MCP_ONLY_PROTOCOL` | No UI row | `tools/list`, protocol negotiate |
+| `PARITY_REQUIRED` | Page or in-page action; `UI` is required | state, zones, records, resolve, explain, forwarding, cache, chaos, audit, plan/apply |
+| `REST_ONLY_PROTOCOL` | No MCP tool. UI may *use* the route (session, assets) or *display* it (live/ready via dashboard) | health live/ready; session and SPA assets when added |
+| `MCP_ONLY_PROTOCOL` | No UI row | `tools/list`, protocol negotiate (not in the current catalog) |
 | `PARITY_DIFFERENT_BINDING` | Allowed only with an ADR | reserved for a later SSE vs MCP resource live-update |
 
-Health live/ready stay process probes (not MCP tools). The dashboard displays ready/live from `GET /v1/status` and/or the probe routes; it does not reimplement readiness.
+Health live/ready stay process probes (not MCP tools). Their `UI` points at the dashboard (`Route: "/"`, `Action: "view"`). The dashboard displays ready/live from `GET /v1/status` and/or the probe routes; it does not reimplement readiness.
 
 ## Capability → UI map
 
-Every current table row in [docs/05-control-plane-and-parity.md](05-control-plane-and-parity.md) maps as follows. New REST/MCP rows added later must extend this table in the same change.
+Every current table row in [docs/05-control-plane-and-parity.md](05-control-plane-and-parity.md) maps as follows. New REST/MCP rows added later must extend this table in the same change. Registry `UIBinding.Route` / `Action` is the machine spelling; the notes column is operator UX.
+
+Session create/get/delete and UI assets are **not** catalog rows yet. Do not publish those REST paths until handlers exist.
 
 | Capability | REST | UI route / action | Notes |
 |---|---|---|---|
-| Health live | `GET /v1/health/live` | Dashboard probe widget | REST_ONLY; optional direct fetch |
-| Health ready | `GET /v1/health/ready` | Dashboard probe widget | REST_ONLY |
-| Version | `GET /v1/version` | Dashboard | |
-| Capabilities | `GET /v1/capabilities` | `/capabilities` and shell scope gating | |
-| Agent status | `GET /v1/status` | `/` dashboard; poll source of truth for revision | |
-| Config schema | `GET /v1/schema/config` | `/schema` | |
-| Get state | `GET /v1/state` | `/state` | |
-| Validate | `POST /v1/state:validate` | `/state` and `/changes` | |
-| Plan | `POST /v1/changes:plan` | `/changes` | Always before apply |
-| Apply | `POST /v1/changes:apply` | `/changes` confirm | expectedRevision + Idempotency-Key + reason |
-| Export | `GET /v1/state:export` | `/state` download YAML/JSON | |
-| Reset | `POST /v1/state:reset` | `/reset` gated | type confirmation; `dns.admin` |
-| Zones list/get | `GET /v1/zones`, `GET /v1/zones/{zoneId}` | `/zones`, `/zones/:zoneId` | |
-| Records list/get | `GET /v1/zones/{zoneId}/records`, `.../{recordId}` | `/zones/:zoneId`, `/zones/:zoneId/records/:recordId` | Writes via plan/apply |
-| Resolve | `POST /v1/resolve` | `/resolve` | |
-| Explain | `POST /v1/resolve:explain` | `/resolve` (explain tab) | |
-| Forwarding | `GET /v1/forwarding/policies` | `/forwarding` | |
-| Pools | `GET /v1/upstream-pools` | `/forwarding` | |
-| Upstream status | `GET /v1/upstreams/status` | `/forwarding` (live poll) | Independent of snapshot revision |
-| Cache status | `GET /v1/cache/status` | `/cache` (live poll) | Independent of snapshot revision |
-| Cache flush | `POST /v1/cache:flush` | `/cache` | `dns.admin`; not desired-state |
-| Chaos status | `GET /v1/chaos/status` | `/chaos` + shell banner | |
-| Chaos policies | `GET /v1/chaos/policies`, `GET /v1/chaos/policies/{policyId}` | `/chaos`, `/chaos/:policyId` | |
-| Simulate | `POST /v1/chaos:simulate` | `/chaos` simulate | Side-effect free |
-| Activate / deactivate | `POST ...:activate`, `:deactivate` | `/chaos/:policyId` | Same scopes as REST/MCP |
-| Set expiry | `POST ...:expire` | `/chaos/:policyId` | |
-| Emergency disable / enable | `POST /v1/chaos:emergency-disable`, `:emergency-enable` | Shell emergency control | Prominent; one confirm; not a typed phrase |
-| Audit list/get | `GET /v1/audit`, `GET /v1/audit/{eventId}` | `/audit`, `/audit/:eventId` | |
-| Docs | `GET /v1/docs/dns-semantics`, `.../chaos-safety` | `/docs/:id` | |
-| Session create/get/delete | `POST/GET/DELETE /v1/session` | `/login`, shell Sign out | REST_ONLY; added by UI-001 |
-| UI assets | `GET /`, hashed `/assets/*` | SPA | REST_ONLY; added by UI-001 |
+| Health live | `GET /v1/health/live` | `/` `view` (dashboard probe) | REST_ONLY |
+| Health ready | `GET /v1/health/ready` | `/` `view` (dashboard probe) | REST_ONLY |
+| Version | `GET /v1/version` | `/` `view` | Dashboard |
+| Capabilities | `GET /v1/capabilities` | `/capabilities` `view` | Shell scope gating |
+| Agent status | `GET /v1/status` | `/` `view` | Dashboard; poll source of truth for revision |
+| Config schema | `GET /v1/schema/config` | `/schema` `view` | |
+| Get state | `GET /v1/state` | `/state` `view` | |
+| Validate | `POST /v1/state:validate` | `/state` `mutate` | Also used from `/changes` |
+| Plan | `POST /v1/changes:plan` | `/changes` `mutate` | Always before apply |
+| Apply | `POST /v1/changes:apply` | `/changes` `mutate` | expectedRevision + Idempotency-Key + reason |
+| Export | `GET /v1/state:export` | `/state` `view` | Download YAML/JSON |
+| Reset | `POST /v1/state:reset` | `/reset` `mutate` | Type confirmation; `dns.admin` |
+| Zones list/get | `GET /v1/zones`, `GET /v1/zones/{zoneId}` | `/zones` `view` | Detail `/zones/:zoneId` |
+| Records list/get | `GET /v1/zones/{zoneId}/records`, `.../{recordId}` | `/zones/:zoneId` `view` | Writes via plan/apply |
+| Resolve | `POST /v1/resolve` | `/resolve` `view` | |
+| Explain | `POST /v1/resolve:explain` | `/resolve` `view` | Explain tab |
+| Forwarding | `GET /v1/forwarding/policies` | `/forwarding` `view` | |
+| Pools | `GET /v1/upstream-pools` | `/forwarding` `view` | |
+| Upstream status | `GET /v1/upstreams/status` | `/forwarding` `view` | Live poll; independent of snapshot revision |
+| Cache status | `GET /v1/cache/status` | `/cache` `view` | Live poll; independent of snapshot revision |
+| Cache flush | `POST /v1/cache:flush` | `/cache` `mutate` | `dns.admin`; not desired-state |
+| Chaos status | `GET /v1/chaos/status` | `/chaos` `view` | Plus shell banner |
+| Chaos policies | `GET /v1/chaos/policies`, `GET /v1/chaos/policies/{policyId}` | `/chaos` `view` | Detail `/chaos/:policyId` |
+| Simulate | `POST /v1/chaos:simulate` | `/chaos` `view` | Side-effect free |
+| Activate / deactivate | `POST ...:activate`, `:deactivate` | `/chaos/:policyId` `mutate` | Same scopes as REST/MCP |
+| Set expiry | `POST ...:expire` | `/chaos/:policyId` `mutate` | |
+| Emergency disable / enable | `POST /v1/chaos:emergency-disable`, `:emergency-enable` | `/` `mutate` | Shell emergency control |
+| Audit list | `GET /v1/audit` | `/audit` `view` | |
+| Audit get | `GET /v1/audit/{eventId}` | `/audit/:eventId` `view` | |
+| Docs: DNS semantics | `GET /v1/docs/dns-semantics` | `/docs/:id` `view` | |
+| Docs: chaos safety | `GET /v1/docs/chaos-safety` | `/docs/:id` `view` | |
+
+`TestParityUIBindingsComplete` diffs this table (title, first `route` token, first `action` token) against the catalog and a frozen `map[ID]UIBinding`. Health live/ready (RESTOnly) also declare dashboard `UI`.
 
 ## Pages and UX
 

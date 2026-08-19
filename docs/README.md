@@ -30,6 +30,7 @@ This page is the catalog. Normative design documents win over task summaries.
 | [03-chaos-engine.md](03-chaos-engine.md) | Policies, selectors, effects |
 | [04-state-and-configuration.md](04-state-and-configuration.md) | YAML, revisions, plan/apply/export/reset |
 | [05-control-plane-and-parity.md](05-control-plane-and-parity.md) | Shared capability registry |
+| [22-web-ui.md](22-web-ui.md) | Operator UI bindings and dispositions |
 | [implementation-design.md](implementation-design.md) | Implementation design |
 
 ## Interfaces

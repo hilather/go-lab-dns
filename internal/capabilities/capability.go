@@ -21,6 +21,19 @@ type MCPBinding struct {
 	DocsID string `json:"docsId,omitempty"`
 }
 
+// UIBinding is the operator-console page for one capability.
+// Action is "view" or "mutate".
+type UIBinding struct {
+	Route  string `json:"route,omitempty"`
+	Action string `json:"action,omitempty"` // view | mutate
+}
+
+// Disposition values derived from RESTOnly. Not a stored catalog field.
+const (
+	DispositionParityRequired   = "PARITY_REQUIRED"
+	DispositionRESTOnlyProtocol = "REST_ONLY_PROTOCOL"
+)
+
 // Capability is one frozen row of the REST↔MCP table.
 //
 // Handler funcs are not stored here so this package does not import
@@ -39,7 +52,16 @@ type Capability struct {
 	RESTOnly       bool          `json:"restOnly,omitempty"`
 	REST           []RESTBinding `json:"rest"`
 	MCP            *MCPBinding   `json:"mcp"`
+	UI             *UIBinding    `json:"ui,omitempty"`
 	ServiceMethods []string      `json:"serviceMethods,omitempty"`
+}
+
+// Disposition is REST_ONLY_PROTOCOL when RESTOnly is set, else PARITY_REQUIRED.
+func (c Capability) Disposition() string {
+	if c.RESTOnly {
+		return DispositionRESTOnlyProtocol
+	}
+	return DispositionParityRequired
 }
 
 // RESTRef is Method plus Path, used as a lookup key ("GET /v1/state").

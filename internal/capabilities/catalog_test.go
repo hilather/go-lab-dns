@@ -101,6 +101,15 @@ func TestAllReturnsCopy(t *testing.T) {
 	if again.MCP.Tools[0] != "dns_change_apply" {
 		t.Fatal("Lookup shares MCP tool slice")
 	}
+	live := MustLookup(HealthLive)
+	if live.UI == nil {
+		t.Fatal("health.live UI missing")
+	}
+	live.UI.Route = "/mutated"
+	againLive := MustLookup(HealthLive)
+	if againLive.UI == nil || againLive.UI.Route != "/" {
+		t.Fatal("Lookup shares UI pointer")
+	}
 }
 
 func TestMustLookupUnknownPanics(t *testing.T) {
