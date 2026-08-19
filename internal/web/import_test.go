@@ -1,4 +1,4 @@
-package chaos
+package web
 
 import (
 	"go/parser"
@@ -9,30 +9,20 @@ import (
 	"github.com/hilather/go-lab-dns/internal/testutil/goparse"
 )
 
-func TestChaosImportDAG(t *testing.T) {
+func TestImportDAG(t *testing.T) {
 	fset := token.NewFileSet()
 	pkgs, err := goparse.ParseDir(fset, ".", parser.ImportsOnly)
 	if err != nil {
 		t.Fatal(err)
 	}
-	allowed := map[string]bool{
-		"github.com/hilather/go-lab-dns/internal/domainerr": true,
-		"github.com/hilather/go-lab-dns/internal/model":     true,
-		"github.com/hilather/go-lab-dns/internal/snapshot":  true,
-		"github.com/hilather/go-lab-dns/internal/testutil":  true,
-	}
 	forbiddenPref := []string{
 		"github.com/miekg/dns",
 		"github.com/modelcontextprotocol",
-		"github.com/coredns",
 		"github.com/hilather/go-lab-dns/internal/app",
-		"github.com/hilather/go-lab-dns/internal/compiler",
+		"github.com/hilather/go-lab-dns/internal/chaos",
 		"github.com/hilather/go-lab-dns/internal/dnsquery",
 		"github.com/hilather/go-lab-dns/internal/dnsserver",
-		"github.com/hilather/go-lab-dns/internal/dnswire",
 		"github.com/hilather/go-lab-dns/internal/control",
-		"github.com/hilather/go-lab-dns/internal/web",
-		"net/http",
 	}
 	for _, pkg := range pkgs {
 		for filename, f := range pkg.Files {
@@ -46,11 +36,8 @@ func TestChaosImportDAG(t *testing.T) {
 						t.Errorf("%s imports forbidden %q", filename, path)
 					}
 				}
-				if !strings.HasPrefix(path, "github.com/hilather/go-lab-dns/internal/") {
-					continue
-				}
-				if !allowed[path] {
-					t.Errorf("%s production import %q", filename, path)
+				if strings.HasPrefix(path, "github.com/hilather/go-lab-dns/internal/") {
+					t.Errorf("%s production import %q; web may import only the standard library", filename, path)
 				}
 			}
 		}

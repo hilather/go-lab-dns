@@ -71,8 +71,7 @@ func Check(root string) error {
 			return err
 		}
 		if d.IsDir() {
-			base := d.Name()
-			if base == ".git" || base == "testdata" || base == "vendor" {
+			if skipDocDir(d.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -226,6 +225,15 @@ func yamlLooksStructured(body []byte) error {
 		}
 	}
 	return nil
+}
+
+func skipDocDir(name string) bool {
+	switch name {
+	case ".git", "testdata", "vendor", "node_modules":
+		return true
+	default:
+		return false
+	}
 }
 
 func skipLink(target string) bool {

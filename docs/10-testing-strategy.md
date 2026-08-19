@@ -2,6 +2,7 @@
 
 Status: Proposed normative quality gate
 Owners: All teams
+Last reviewed: 2026-08-19 (make web-test / web-build and CI job web)
 Last reviewed: 2026-08-15 (REL-001 release-diff and required CI)
 Last reviewed: 2026-08-15 (PERF-001 benches, soak, interop)
 Last reviewed: 2026-08-15 (GIT-001 deployment template probes)
@@ -83,6 +84,10 @@ For each capability:
 3. Invoke MCP with equivalent input.
 4. Normalize transport envelopes.
 5. Assert equivalent domain output, error code, authorization result, revision behavior, and audit event.
+
+### Operator UI tests
+
+`make web-test` runs Vitest in `web/` (fail closed if Node is missing; not Playwright). `make web-build` emits `web/dist` only. GitHub job id `web` is required. Session-memory tests must prove CSRF is not written to `localStorage`.
 
 ### Race and leak tests
 

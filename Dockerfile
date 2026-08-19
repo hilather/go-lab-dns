@@ -4,6 +4,14 @@
 # Run with a read-only root filesystem, cap_drop ALL, and no-new-privileges.
 # Host port 53 maps to container 5353. Management is :8080.
 
+# Node 22.14.0 alpine, digest pinned (multi-arch index).
+FROM node:22.14.0-alpine@sha256:9bef0ef1e268f60627da9ba7d7605e8831d5b56ad07487d24d1aa386336d1944 AS web
+WORKDIR /src/web
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
+COPY web/ ./
+RUN npm run build && test -f dist/index.html
+
 FROM golang:1.26.6-alpine AS build
 WORKDIR /src
 
@@ -13,6 +21,10 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+# Overlay Vite output on the committed embed stub so go:embed sees production assets.
+COPY --from=web /src/web/dist ./internal/web/dist
+RUN test -f internal/web/dist/index.html
+RUN test -d internal/web/dist/assets && ls internal/web/dist/assets | grep -q .
 
 ARG VERSION=dev
 ARG COMMIT=unknown

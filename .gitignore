@@ -17,3 +17,10 @@ coverage.html
 *.swp
 *.swo
 .DS_Store
+
+# Operator console (Vite). Keep web/package-lock.json and the embed stub.
+web/node_modules/
+web/dist/
+web/playwright-report/
+web/test-results/
+internal/web/dist/assets/

@@ -8,6 +8,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 - Additive v1alpha1 `spec.ui.enabled` (default **true** when omitted, including documents with no `spec.access`; explicit `false` is preserved) and `spec.management.allowedOrigins` (exact `http(s)://host[:port]` Origin strings). New update-only target kind `ui` (`dns.admin`) so plan/apply/export cover UI drift.
 - Capability registry `ui` bindings (SPA `route` and `view`/`mutate` `action`) on the existing 31 REST/MCP rows. Disposition is derived from `RESTOnly` (`REST_ONLY_PROTOCOL` vs `PARITY_REQUIRED`); it is not a stored enum. No new REST paths.
+- Vite/React operator-console toolchain (`web/`), committed embed stub (`internal/web`), fail-closed `make web-test` / `make web-build`, required CI job `web`, and a digest-pinned Node 22.14.0 image stage. Production assets are copied into the embed path in Docker only; local `go test` uses the stub and does not require Node.
 
 ### Changed
 

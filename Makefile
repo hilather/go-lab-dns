@@ -1,6 +1,8 @@
 # LabDNS task runner. Tool versions are pinned; do not use @latest.
 
 GO ?= go
+NODE ?= node
+WEB_DIR := web
 export GOTOOLCHAIN ?= local
 export GOPROXY ?= https://proxy.golang.org,direct
 
@@ -10,16 +12,13 @@ GOLANGCI_LINT_MOD ?= github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GO
 
 .PHONY: help format lint generate verify-generated test test-race test-fuzz-smoke \
 	test-integration test-parity test-config-compat test-docs test-container \
-	security-scan test-changelog release-diff
+	security-scan test-changelog release-diff web-test web-build web-generate
 
 help:
 	@printf '%s\n' \
 		'LabDNS Make targets (Go 1.26; module github.com/hilather/go-lab-dns)' \
 		'  format              go fmt ./...' \
 		'  lint                go vet + golangci-lint $(GOLANGCI_LINT_VERSION)' \
-		'  generate            write testdata/generated/fixture.txt, api/capabilities/v1.json, api/openapi/v1.json, and api/mcp/v1.json' \
-		'  generate            write testdata/generated/fixture.txt, api/capabilities/v1.json, api/openapi/v1.json, and api/metrics/v1alpha1.json' \
-		'  verify-generated    fail if generate would change the fixture' \
 		'  generate            write fixture + generated public surfaces (OpenAPI, MCP, capabilities, metrics, CLI help, errors)' \
 		'  verify-generated    fail if generate would change any generated file' \
 		'  test                go test ./...' \
@@ -27,14 +26,15 @@ help:
 		'  test-fuzz-smoke     execute the buildinfo and dnswire seed corpora' \
 		'  test-docs           required documents, metadata, links, and example YAML' \
 		'  security-scan       govulncheck' \
-		'  test-integration    unimplemented until later DNS/control-plane PRs' \
-		'  test-parity         REST/MCP capability parity and MCP goldens' \
 		'  test-integration    short interop + soak/flood/admission (CI-safe)' \
-		'  test-parity         unimplemented until API-001 / MCP-001' \
+		'  test-parity         REST/MCP capability parity and MCP goldens' \
 		'  test-config-compat  positive+negative v1alpha1 config fixtures' \
 		'  test-container      build ghcr.io/hilather/labdns and check non-root/read-only/no-caps' \
 		'  test-changelog      fail if observable paths changed without CHANGELOG.md' \
-		'  release-diff        compare public surfaces: make release-diff FROM=prev TO=HEAD NOTES=docs/releases/vX.Y.Z.md'
+		'  release-diff        compare public surfaces: make release-diff FROM=prev TO=HEAD NOTES=docs/releases/vX.Y.Z.md' \
+		'  web-test            Vitest unit tests in web/ (fail closed if Node is missing; not Playwright)' \
+		'  web-build           Vite production build to web/dist only (fail closed if Node is missing)' \
+		'  web-generate        OpenAPI TypeScript client (unimplemented until UI-002)'
 
 format:
 	$(GO) fmt ./...
@@ -79,6 +79,19 @@ test-container:
 
 test-changelog:
 	$(GO) run ./scripts/checkchangelog
+
+web-generate:
+	@command -v $(NODE) >/dev/null || { echo 'web-generate: node 22.14.0 is required' >&2; exit 1; }
+	cd $(WEB_DIR) && npm ci && npm run generate
+
+web-test:
+	@command -v $(NODE) >/dev/null || { echo 'web-test: node 22.14.0 is required' >&2; exit 1; }
+	cd $(WEB_DIR) && npm ci && npm test
+
+web-build:
+	@command -v $(NODE) >/dev/null || { echo 'web-build: node 22.14.0 is required' >&2; exit 1; }
+	cd $(WEB_DIR) && npm ci && npm run build
+	test -f web/dist/index.html
 
 # FROM and TO are git refs. NOTES is optional and required for a tag gate.
 FROM ?=

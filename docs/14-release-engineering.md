@@ -2,6 +2,7 @@
 
 Status: Normative release gate (REL-001)
 Owners: Release Engineering, All maintainers
+Last reviewed: 2026-08-19 (required CI job `web`; Node 22.14.0)
 Last reviewed: 2026-08-16 (GA-001 1.0.0-rc.1 candidate; Actions SHA pins)
 
 ## Goals
@@ -39,15 +40,17 @@ make test-container
 make test-changelog
 make test-parity
 make test-config-compat
+make web-test
+make web-build
 ```
 
-`make test-integration` runs the short PERF-001 suite (`internal/interop`, `internal/perf`, `benches`; default soak 2s). It is **not** a required GitHub job; local and `test-integration` remain fail-closed with no bypass.
+`make web-test` is Vitest only and fails closed if Node is missing. `make web-build` writes `web/dist` only and must not dirty `internal/web/dist/index.html`. `make test-integration` runs the short PERF-001 suite (`internal/interop`, `internal/perf`, `benches`; default soak 2s). It is **not** a required GitHub job; local and `test-integration` remain fail-closed with no bypass.
 
 Required GitHub job IDs (SoT: `internal/releasecontract.RequiredCIJobs`):
 
 ```text
 format lint unit race fuzz-smoke generated-file documentation
-security-scan container-test changelog parity config-compat
+security-scan container-test changelog parity config-compat web
 ```
 
 Branch protection must require those names. Do not mark a required check optional to ship.
@@ -59,7 +62,7 @@ The Release workflow [`.github/workflows/release.yml`](https://github.com/hilath
 - All required CI checks pass on the **exact** tag commit (`release-diff -require-ci`).
 - Generated files are current (`make verify-generated`).
 - Worktree is clean.
-- Unit, race, fuzz smoke, parity, config compatibility, container, documentation, changelog, and security checks passed on that SHA.
+- Unit, race, fuzz smoke, parity, config compatibility, container, documentation, changelog, security, and web checks passed on that SHA.
 - `docs/releases/<tag>.md` exists, uses every required heading from `RELEASE-NOTES-TEMPLATE.md`, and has no leftover template placeholders.
 - `release-diff <previous-tag> HEAD -notes docs/releases/<tag>.md` reports every public-surface difference and refuses undocumented ones.
 - Known limitations are explicit.

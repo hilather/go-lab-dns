@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Deployment, Operations, Security
+Last reviewed: 2026-08-19 (Dockerfile Node 22.14.0 stage for operator console)
 Last reviewed: 2026-08-15 (PERF-001 capacity notes)
 Last reviewed: 2026-08-15 (DEP-001 CLI; GIT-001 GitOps template)
 Related ADRs: 0003
@@ -16,11 +17,12 @@ Related ADRs: 0003
 
 ## Container image
 
-Image: **`ghcr.io/hilather/labdns`** (pin by digest in GitOps). The root `Dockerfile` is a multi-stage build (`golang:1.26.6-alpine` → `scratch`) that ships:
+Image: **`ghcr.io/hilather/labdns`** (pin by digest in GitOps). The root `Dockerfile` is a multi-stage build (`node:22.14.0-alpine` digest-pinned → `golang:1.26.6-alpine` → `scratch`) that ships:
 
 - One static `labdns` binary at `/labdns`.
 - CA certificates for optional TLS upstreams.
 - `LICENSE` (Apache-2.0) and OCI labels (`org.opencontainers.image.licenses=Apache-2.0`).
+- Embedded operator-console assets from the Node stage (`web/dist` copied over `internal/web/dist` after `COPY . .`). The image build fails if `index.html` or hashed `assets/` are missing.
 - No shell. `HEALTHCHECK` uses exec form `/labdns healthcheck`.
 
 The image user is numeric **`65532:65532`**. Listen on 5353 in the container and map host port 53. Required runtime flags: `read_only: true`, `cap_drop: [ALL]`, `security_opt: [no-new-privileges:true]`, tmpfs `/tmp`.

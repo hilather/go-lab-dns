@@ -10,3 +10,7 @@ examples
 .dockerignore
 .golangci.yml
 .gitignore
+web/node_modules
+web/dist
+web/playwright-report
+web/test-results

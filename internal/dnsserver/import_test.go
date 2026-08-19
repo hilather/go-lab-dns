@@ -30,6 +30,7 @@ func TestNoMiekgOrPolicyImports(t *testing.T) {
 		"github.com/hilather/go-lab-dns/internal/config",
 		"github.com/hilather/go-lab-dns/internal/app",
 		"github.com/hilather/go-lab-dns/internal/control",
+		"github.com/hilather/go-lab-dns/internal/web",
 	}
 	for _, pkg := range pkgs {
 		for filename, f := range pkg.Files {

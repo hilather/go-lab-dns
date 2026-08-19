@@ -67,6 +67,34 @@ func TestCheckReportsMissingMetadata(t *testing.T) {
 	}
 }
 
+func TestCheckSkipsNodeModules(t *testing.T) {
+	dir := t.TempDir()
+	for _, rel := range RequiredRootDocs {
+		path := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		body := "# x\n"
+		if strings.HasPrefix(rel, "docs/") && strings.HasSuffix(rel, ".md") && !strings.Contains(rel, "implementation") {
+			body = "# x\n\nStatus: Proposed\nOwners: Test\nLast reviewed: 2026-08-15\n"
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	nm := filepath.Join(dir, "web", "node_modules", "pkg")
+	if err := os.MkdirAll(nm, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	broken := []byte("# npm\n\nSee [missing](definitely-not-a-file.md).\n")
+	if err := os.WriteFile(filepath.Join(nm, "README.md"), broken, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := Check(dir); err != nil {
+		t.Fatalf("node_modules markdown must be skipped: %v", err)
+	}
+}
+
 func TestCheckReportsInvalidExampleYAML(t *testing.T) {
 	dir := t.TempDir()
 	for _, rel := range RequiredRootDocs {

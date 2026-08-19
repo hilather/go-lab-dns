@@ -110,6 +110,7 @@ func RequiredCIJobs() []string {
 		"changelog",
 		"parity",
 		"config-compat",
+		"web",
 	}
 }
 

@@ -2,7 +2,7 @@
 #
 # Required jobs: format, lint, unit, race, fuzz-smoke, generated-file,
 # documentation, security-scan, container-test, changelog, parity,
-# config-compat.
+# config-compat, web.
 #
 # There is no optional or bypassable job. Tag creation is gated by
 # .github/workflows/release.yml (tag-gate).
@@ -152,7 +152,7 @@ jobs:
   container-test:
     name: container-test
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -210,3 +210,21 @@ jobs:
           name: config-compat-logs
           path: config-compat.log
           retention-days: 14
+
+  web:
+    name: web
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22.14.0"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Web unit tests
+        run: make web-test
+      - name: Web production build
+        run: make web-build
+      - name: Embed stub stays clean
+        run: git diff --exit-code -- internal/web/dist/index.html

@@ -8,13 +8,15 @@
 /internal/dnsserver/ @hilather
 /internal/dnsquery/ @hilather
 
-# REST / MCP parity
+# REST / MCP / UI parity
 /docs/05-control-plane-and-parity.md @hilather
 /docs/06-rest-api.md @hilather
 /docs/07-mcp-api.md @hilather
 /internal/control/ @hilather
 /internal/capabilities/ @hilather
 /internal/app/ @hilather
+/internal/web/ @hilather
+/web/ @hilather
 
 # Chaos and security
 /docs/03-chaos-engine.md @hilather

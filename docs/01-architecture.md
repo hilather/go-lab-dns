@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Architecture, DNS, Control Plane
+Last reviewed: 2026-08-19 (web/ nested module fence and internal/web embed stub)
 Last reviewed: 2026-08-18 (emergency disable cancels delays; plan idempotency rechecks revision)
 Related ADRs: 0001, 0002, 0003, 0004, 0005
 
@@ -116,6 +117,8 @@ internal/dnswire           third-party DNS library adapter
 internal/dnsserver         UDP/TCP listeners, admission, timeouts
 internal/control/rest      REST transport adapter
 internal/control/mcp       MCP transport adapter
+internal/web               embedded SPA assets and fallback (no app import)
+web/                       Vite operator console (nested module fence)
 internal/capabilities      capability registry and parity metadata
 internal/auth              authentication, scopes, actor identity
 internal/audit             mutation and security events

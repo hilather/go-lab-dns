@@ -219,6 +219,8 @@ github.com/hilather/go-lab-dns     # Go module path (user 2026-08-15)
   internal/dnsserver/              # UDP/TCP listeners, admission, timeouts
   internal/control/rest/           # REST transport adapter
   internal/control/mcp/            # MCP transport adapter (official SDK)
+  internal/web/                    # embed stub + SPA handler (no app import)
+  web/                             # Vite operator console (nested module fence)
   internal/capabilities/           # capability registry and parity metadata
   internal/auth/                   # authentication, scopes, actor identity
   internal/audit/                  # mutation and security events
@@ -253,6 +255,7 @@ cmd/labdns
 
 control/rest   -> capabilities, app, domainerr, auth, observability
 control/mcp    -> capabilities, app, domainerr, auth, observability
+internal/web   -> stdlib only; must not import app, chaos, dnsquery, mcp, or rest
 
 dnsquery       -> snapshot, resolver, forwarder, cache, chaos, model, observability
                   # owns the pack § DNS query flow; implements dnsserver.Handler

@@ -375,7 +375,7 @@ Implementation contracts (not a substitute for the design docs):
 
 ## Build and test
 
-Toolchain: **Go 1.26** (`go1.26.x`).
+Toolchain: **Go 1.26** (`go1.26.x`). Operator console: **Node 22.14.0** (npm lockfile in `web/`).
 
 ```text
 make format
@@ -391,13 +391,15 @@ make test-integration
 make test-container
 make security-scan
 make test-changelog
+make web-test
+make web-build
 ```
 
 `make generate` writes `testdata/generated/fixture.txt` plus the public surfaces: [api/capabilities/v1.json](api/capabilities/v1.json), [api/openapi/v1.json](api/openapi/v1.json), [api/mcp/v1.json](api/mcp/v1.json), [api/metrics/v1alpha1.json](api/metrics/v1alpha1.json), [api/cli/help.txt](api/cli/help.txt), and [api/errors/v1.json](api/errors/v1.json). `make verify-generated` fails if any of those are stale.
 
 `make test-integration` runs interop fixtures in [testdata/interop](testdata/interop), soak/flood/admission in `internal/perf`, and the bench harness. Soak defaults to 2s; use `go test ./internal/perf -soak=30m` or `LABDNS_SOAK_DURATION=30m` for a long run.
 
-Required CI jobs (no bypass): `format`, `lint`, `unit`, `race`, `fuzz-smoke`, `generated-file`, `documentation`, `security-scan`, `container-test`, `changelog`, `parity`, `config-compat`. Tag creation is gated by the Release workflow; see [docs/14-release-engineering.md](docs/14-release-engineering.md).
+Required CI jobs (no bypass): `format`, `lint`, `unit`, `race`, `fuzz-smoke`, `generated-file`, `documentation`, `security-scan`, `container-test`, `changelog`, `parity`, `config-compat`, `web`. Tag creation is gated by the Release workflow; see [docs/14-release-engineering.md](docs/14-release-engineering.md). `make web-test` is Vitest only (not Playwright) and fails closed if Node 22.14.0 is missing. `make web-build` writes `web/dist` only and does not overwrite the tracked embed stub.
 
 ---
 

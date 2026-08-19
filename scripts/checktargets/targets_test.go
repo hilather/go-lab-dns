@@ -29,6 +29,8 @@ var requiredTargets = []string{
 	"security-scan",
 	"test-changelog",
 	"release-diff",
+	"web-test",
+	"web-build",
 }
 
 var unimplementedTargets = []string{}
@@ -218,6 +220,87 @@ func TestUnimplementedTargetRecipesAreOnlyFailClosed(t *testing.T) {
 		if cmds[1] != "exit 1" {
 			t.Errorf("%s second command must be exit 1, got %q", name, cmds[1])
 		}
+	}
+}
+
+func TestWebTargetsFailClosedAndStayVitestOnly(t *testing.T) {
+	root := mustRoot(t)
+	body, err := os.ReadFile(filepath.Join(root, "Makefile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	targets := parseTargets(string(body))
+	for _, name := range []string{"web-test", "web-build", "web-generate"} {
+		recipe, ok := targets[name]
+		if !ok {
+			t.Errorf("missing target %s", name)
+			continue
+		}
+		if !strings.Contains(recipe, "command -v") {
+			t.Errorf("%s must fail closed when node is missing", name)
+		}
+		if strings.Contains(recipe, "exit 0") {
+			t.Errorf("%s must not exit 0 as a placeholder", name)
+		}
+		if strings.Contains(strings.ToLower(recipe), "playwright") {
+			t.Errorf("%s must not invoke Playwright", name)
+		}
+	}
+	build := targets["web-build"]
+	if strings.Contains(build, "internal/web") {
+		t.Error("web-build must not copy into or rm internal/web/dist")
+	}
+}
+
+func TestWebNestedModuleFence(t *testing.T) {
+	root := mustRoot(t)
+	mod, err := os.ReadFile(filepath.Join(root, "web", "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(mod), "module github.com/hilather/go-lab-dns/web") {
+		t.Fatalf("web/go.mod missing nested module fence:\n%s", mod)
+	}
+	cmd := exec.Command("go", "list", "./...")
+	cmd.Dir = root
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("go list ./...: %v\n%s", err, out)
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		if strings.Contains(line, "node_modules") {
+			t.Errorf("parent go list walked node_modules: %s", line)
+		}
+		if strings.HasPrefix(line, "github.com/hilather/go-lab-dns/web") {
+			t.Errorf("parent go list included nested web module: %s", line)
+		}
+	}
+}
+
+func TestWebCIJobHasNoPlaywright(t *testing.T) {
+	root := mustRoot(t)
+	body, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "ci.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	job, ok := yamlJobBody(string(body), "web")
+	if !ok {
+		t.Fatal("CI workflow missing web job")
+	}
+	if strings.Contains(strings.ToLower(job), "playwright") {
+		t.Error("web job must not install or run Playwright")
+	}
+	if !strings.Contains(job, "make web-test") {
+		t.Error("web job must run make web-test")
+	}
+	if !strings.Contains(job, "make web-build") {
+		t.Error("web job must run make web-build")
+	}
+	if !strings.Contains(job, "setup-node") {
+		t.Error("web job must use setup-node")
+	}
+	if !strings.Contains(job, "22.14.0") {
+		t.Error("web job must pin Node 22.14.0")
 	}
 }
 
