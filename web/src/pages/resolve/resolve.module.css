@@ -1,0 +1,71 @@
+.page section {
+  margin: 1.25rem 0;
+}
+
+.form {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 28rem;
+}
+
+.form label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.panel {
+  min-width: 0;
+}
+
+.panel h2 {
+  margin: 0 0 0.75rem;
+}
+
+.panel dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+
+.panel dt {
+  font-weight: 600;
+}
+
+.panel dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.rrsets {
+  margin-top: 1rem;
+}
+
+.rrsets h3 {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 1rem;
+}
+
+.rrsets ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.875rem;
+}
