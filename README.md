@@ -313,6 +313,7 @@ Full catalog: [docs/README.md](docs/README.md).
 | [docs/03-chaos-engine.md](docs/03-chaos-engine.md) | Policies, selectors, effects, safety |
 | [docs/04-state-and-configuration.md](docs/04-state-and-configuration.md) | YAML schema, revisions, plan/apply/export/reset |
 | [docs/05-control-plane-and-parity.md](docs/05-control-plane-and-parity.md) | Shared capability registry |
+| [docs/22-web-ui.md](docs/22-web-ui.md) | Operator UI bindings and dispositions |
 | [docs/implementation-design.md](docs/implementation-design.md) | Implementation design (ingested) |
 
 ### Interfaces

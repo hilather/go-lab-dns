@@ -11,6 +11,9 @@ import (
 // designTableHeading is the implementation-design freeze the harness diffs against.
 const designTableHeading = "### Capability list (REST ↔ MCP)"
 
+// docs22UIMapHeading is the Capability → UI map the harness diffs against.
+const docs22UIMapHeading = "## Capability → UI map"
+
 type tableRow struct {
 	Title     string
 	REST      []string
@@ -101,35 +104,44 @@ func TestParityMCPMutationsHaveREST(t *testing.T) {
 }
 
 func TestParityUIBindingsComplete(t *testing.T) {
-	for _, c := range All() {
+	want := frozenUIBindings()
+	if len(want) != TableRowCount {
+		t.Fatalf("frozen UI map=%d want %d", len(want), TableRowCount)
+	}
+	docs := parseDocs22UIMap(t)
+	if len(docs) != TableRowCount {
+		t.Fatalf("docs/22 UI map rows=%d want %d (row missing or added)", len(docs), TableRowCount)
+	}
+	got := All()
+	if len(got) != TableRowCount {
+		t.Fatalf("catalog rows=%d want %d", len(got), TableRowCount)
+	}
+	for i, c := range got {
 		wantDisp := DispositionParityRequired
 		if c.RESTOnly {
 			wantDisp = DispositionRESTOnlyProtocol
 		}
-		if got := c.Disposition(); got != wantDisp {
-			t.Errorf("%s Disposition()=%s want %s", c.ID, got, wantDisp)
-		}
-		if c.RESTOnly {
-			continue
+		if gotDisp := c.Disposition(); gotDisp != wantDisp {
+			t.Errorf("%s Disposition()=%s want %s", c.ID, gotDisp, wantDisp)
 		}
 		if c.UI == nil {
-			t.Errorf("%s is PARITY_REQUIRED without UI binding", c.ID)
+			t.Errorf("%s missing UI binding", c.ID)
 			continue
 		}
-		if c.UI.Route == "" {
-			t.Errorf("%s UI.Route empty", c.ID)
+		frozen, ok := want[c.ID]
+		if !ok {
+			t.Errorf("%s missing from frozen UI map", c.ID)
+		} else if c.UI.Route != frozen.Route || c.UI.Action != frozen.Action {
+			t.Errorf("%s UI={%s %s} frozen={%s %s}", c.ID, c.UI.Route, c.UI.Action, frozen.Route, frozen.Action)
 		}
-		if c.UI.Action != "view" && c.UI.Action != "mutate" {
-			t.Errorf("%s UI.Action=%q want view|mutate", c.ID, c.UI.Action)
+		row := docs[i]
+		if c.Title != row.Title {
+			t.Errorf("row %d title=%q docs/22=%q (renamed?)", i, c.Title, row.Title)
+			continue
 		}
-	}
-	live := MustLookup(HealthLive)
-	if live.UI == nil || live.UI.Route != "/" || live.UI.Action != "view" {
-		t.Errorf("health.live UI=%+v want route=/ action=view", live.UI)
-	}
-	ready := MustLookup(HealthReady)
-	if ready.UI == nil || ready.UI.Route != "/" || ready.UI.Action != "view" {
-		t.Errorf("health.ready UI=%+v want route=/ action=view", ready.UI)
+		if c.UI.Route != row.Route || c.UI.Action != row.Action {
+			t.Errorf("%s UI={%s %s} docs/22={%s %s}", c.ID, c.UI.Route, c.UI.Action, row.Route, row.Action)
+		}
 	}
 }
 
@@ -178,6 +190,89 @@ func TestDocs06UsesFrozenChaosTemplates(t *testing.T) {
 		strings.Contains(body, "/v1/chaos/policies/{policyId}:deactivate") {
 		t.Fatal("docs/06 still uses {policyId} on activate/deactivate; catalog spelling is {id}")
 	}
+}
+
+type uiMapRow struct {
+	Title  string
+	Route  string
+	Action string
+}
+
+func frozenUIBindings() map[ID]UIBinding {
+	return map[ID]UIBinding{
+		HealthLive:         {Route: "/", Action: "view"},
+		HealthReady:        {Route: "/", Action: "view"},
+		Version:            {Route: "/", Action: "view"},
+		CapabilitiesID:     {Route: "/capabilities", Action: "view"},
+		Status:             {Route: "/", Action: "view"},
+		SchemaConfig:       {Route: "/schema", Action: "view"},
+		StateGet:           {Route: "/state", Action: "view"},
+		StateValidate:      {Route: "/state", Action: "mutate"},
+		ChangePlan:         {Route: "/changes", Action: "mutate"},
+		ChangeApply:        {Route: "/changes", Action: "mutate"},
+		StateExport:        {Route: "/state", Action: "view"},
+		StateReset:         {Route: "/reset", Action: "mutate"},
+		Zones:              {Route: "/zones", Action: "view"},
+		Records:            {Route: "/zones/:zoneId", Action: "view"},
+		Resolve:            {Route: "/resolve", Action: "view"},
+		ResolveExplain:     {Route: "/resolve", Action: "view"},
+		ForwardingPolicies: {Route: "/forwarding", Action: "view"},
+		UpstreamPools:      {Route: "/forwarding", Action: "view"},
+		UpstreamsStatus:    {Route: "/forwarding", Action: "view"},
+		CacheStatus:        {Route: "/cache", Action: "view"},
+		CacheFlush:         {Route: "/cache", Action: "mutate"},
+		ChaosStatus:        {Route: "/chaos", Action: "view"},
+		ChaosPolicies:      {Route: "/chaos", Action: "view"},
+		ChaosSimulate:      {Route: "/chaos", Action: "view"},
+		ChaosActivate:      {Route: "/chaos/:policyId", Action: "mutate"},
+		ChaosSetExpiry:     {Route: "/chaos/:policyId", Action: "mutate"},
+		ChaosEmergency:     {Route: "/", Action: "mutate"},
+		AuditList:          {Route: "/audit", Action: "view"},
+		AuditGet:           {Route: "/audit/:eventId", Action: "view"},
+		DocsDNSSemantics:   {Route: "/docs/:id", Action: "view"},
+		DocsChaosSafety:    {Route: "/docs/:id", Action: "view"},
+	}
+}
+
+func parseDocs22UIMap(t *testing.T) []uiMapRow {
+	t.Helper()
+	body := readRepoFile(t, "docs", "22-web-ui.md")
+	idx := strings.Index(body, docs22UIMapHeading)
+	if idx < 0 {
+		t.Fatal("docs/22-web-ui.md: missing Capability → UI map heading")
+	}
+	lines := strings.Split(body[idx:], "\n")
+	var rows []uiMapRow
+	headerSeen := false
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "|") {
+			if headerSeen && len(rows) > 0 {
+				break
+			}
+			continue
+		}
+		cells := splitTableRow(line)
+		if len(cells) < 3 {
+			continue
+		}
+		if cells[0] == "Capability" {
+			headerSeen = true
+			continue
+		}
+		if strings.HasPrefix(cells[0], "---") {
+			continue
+		}
+		toks := backticks(cells[2])
+		if len(toks) < 2 {
+			t.Fatalf("docs/22 %q: UI column %q want `route` `action`", cells[0], cells[2])
+		}
+		rows = append(rows, uiMapRow{Title: cells[0], Route: toks[0], Action: toks[1]})
+	}
+	if len(rows) == 0 {
+		t.Fatal("parsed zero UI map rows from docs/22-web-ui.md")
+	}
+	return rows
 }
 
 func parseDesignCapabilityTable(t *testing.T) []tableRow {
