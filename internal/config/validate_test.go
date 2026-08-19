@@ -189,8 +189,12 @@ func TestValidateAllowedOrigins(t *testing.T) {
 		"https://dns-mgmt.lab.example/",
 		"https://dns-mgmt.lab.example/path",
 		"https://dns-mgmt.lab.example?x=1",
+		"https://dns-mgmt.lab.example#x",
+		"https://host#x",
 		"https://user:pass@dns-mgmt.lab.example",
 		"ftp://dns-mgmt.lab.example",
+		"https://2001:db8::1",
+		"https://:8080",
 		"",
 	}
 	for _, origin := range cases {

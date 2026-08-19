@@ -41,6 +41,7 @@
 - `docs/19-acceptance-criteria.md`
 - `docs/20-threat-model.md`
 - `docs/21-standards-and-references.md`
+- `docs/22-web-ui.md`
 
 ## Architecture decisions
 

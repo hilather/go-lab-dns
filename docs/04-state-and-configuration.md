@@ -328,7 +328,7 @@ Published JSON Schema: [api/jsonschema/labdns.dev.v1alpha1.json](https://github.
 | `spec.listeners.management.restPath` | empty | `/v1` |
 | `spec.listeners.management.mcpPath` | empty | `/mcp` |
 | `spec.management.auth.profile` | empty | `dev-loopback-unauth` |
-| `spec.ui.enabled` | omitted `spec.ui` or omitted `enabled` | `true` (decode-time only, including documents with no `spec.access`; Go zero value stays `false` because it cannot be distinguished from an explicit `false`) |
+| `spec.ui.enabled` | omitted `spec.ui` or omitted `enabled` | `true` (decode, and TargetUI apply of a value that omits `enabled`, including documents with no `spec.access`; not in `materializeDefaults`. Go zero value stays `false` because it cannot be distinguished from an explicit `false`) |
 | `spec.management.allowedOrigins` | omitted | empty (not materialized as a present empty array) |
 | `spec.forwarding.policies[].failover.*` | omitted / Go zero | **not materialized**: bools stay `false` (no failover, no UDP→TCP retry); `timeout` 0 is **not** unlimited — `forwarder.Exchange` uses a 500ms per-attempt budget (250ms connect cap) so it stacks under the 2s query timeout |
 | `spec.cache.*` | omitted / Go zero | **not materialized** by CFG; an enabled cache with `maxEntries<=0` is rejected. Zero TTL bounds mean no clamp on that side |

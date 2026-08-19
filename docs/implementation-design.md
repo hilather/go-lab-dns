@@ -918,6 +918,7 @@ const (
     TargetAccess           TargetKind = "access"        // update only
     TargetObservability    TargetKind = "observability" // update only
     TargetManagement       TargetKind = "management"    // update only
+    TargetUI               TargetKind = "ui"            // update only
     TargetChaosActivation  TargetKind = "chaosActivation" // update: enabled/expiresAt
 )
 

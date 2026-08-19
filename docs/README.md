@@ -38,6 +38,7 @@ This page is the catalog. Normative design documents win over task summaries.
 |---|---|
 | [06-rest-api.md](06-rest-api.md) | REST `/v1` |
 | [07-mcp-api.md](07-mcp-api.md) | MCP tools and protocol pin |
+| [22-web-ui.md](22-web-ui.md) | Embedded operator console |
 | [09-observability.md](09-observability.md) | Metrics, logs, health |
 | [17-error-model.md](17-error-model.md) | Domain errors |
 

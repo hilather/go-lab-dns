@@ -3,7 +3,7 @@
 Status: Proposed normative design (not yet implemented)
 Owners: Control Plane, REST, Security, UI
 Last reviewed: 2026-08-19
-Related ADRs: 0004, 0008
+Related ADRs: 0004 (embedded-UI ADR is not yet in this tree)
 
 ## Problem statement
 
@@ -353,7 +353,7 @@ GitHub job id `web`. Node 22.14.0 pinned. `make web-test` must fail closed if No
 
 ## Implementation plan
 
-Work packages (see [tasks/18-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/tasks/18-web-ui.md)):
+Work packages (task IDs UI-001–UI-004; the task file is not in this tree yet):
 
 | Order | ID | Outcome |
 |---:|---|---|
@@ -402,4 +402,3 @@ Left for implementers only if a slice is blocked:
 - REST envelopes: [docs/06-rest-api.md](06-rest-api.md)
 - Auth/RBAC: [docs/08-security-architecture.md](08-security-architecture.md)
 - Tests: [docs/10-testing-strategy.md](10-testing-strategy.md)
-- ADR: [docs/adr/0008-embedded-operator-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/adr/0008-embedded-operator-web-ui.md)

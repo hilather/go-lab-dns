@@ -696,7 +696,7 @@ func injectUIEnabled(raw json.RawMessage) json.RawMessage {
 	if _, exists := m["enabled"]; exists {
 		return raw
 	}
-	m["enabled"] = true
+	m["enabled"] = model.DefaultUIEnabled
 	b, err := json.Marshal(m)
 	if err != nil {
 		return raw

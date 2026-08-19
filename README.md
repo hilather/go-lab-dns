@@ -223,7 +223,7 @@ curl -sS -X POST http://127.0.0.1:8080/v1/state:reset \
 
 Reset rereads the mounted bootstrap, compiles it, and swaps only on success. A bad file leaves the live snapshot untouched.
 
-Operations are `add` / `update` / `remove` against `zone`, `record`, `forwardingPolicy`, `upstreamPool`, `upstream`, `clientGroup`, `chaosPolicy`, `chaosSafety`, `cache`, `defaults`, `listeners`, `access`, `observability`, `management`, or `chaosActivation`. There is no JSON Patch profile.
+Operations are `add` / `update` / `remove` against `zone`, `record`, `forwardingPolicy`, `upstreamPool`, `upstream`, `clientGroup`, `chaosPolicy`, `chaosSafety`, `cache`, `defaults`, `listeners`, `access`, `observability`, `management`, `ui`, or `chaosActivation`. There is no JSON Patch profile.
 
 ### MCP (`/mcp`)
 
@@ -321,6 +321,7 @@ Full catalog: [docs/README.md](docs/README.md).
 |---|---|
 | [docs/06-rest-api.md](docs/06-rest-api.md) | REST `/v1` |
 | [docs/07-mcp-api.md](docs/07-mcp-api.md) | MCP tools, resources, protocol pin |
+| [docs/22-web-ui.md](docs/22-web-ui.md) | Embedded operator console |
 | [docs/17-error-model.md](docs/17-error-model.md) | Domain errors / problem+json |
 | [docs/09-observability.md](docs/09-observability.md) | Metrics, logs, health, tracing |
 

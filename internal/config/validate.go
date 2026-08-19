@@ -755,7 +755,17 @@ func validHTTPOrigin(s string) bool {
 	if u.Path != "" || u.RawPath != "" || u.RawQuery != "" || u.Fragment != "" || u.Opaque != "" || u.ForceQuery {
 		return false
 	}
-	return s == u.Scheme+"://"+u.Host
+	if s != u.Scheme+"://"+u.Host {
+		return false
+	}
+	host := u.Hostname()
+	if host == "" {
+		return false
+	}
+	if addr, err := netip.ParseAddr(host); err == nil && addr.Is6() && !strings.HasPrefix(u.Host, "[") {
+		return false
+	}
+	return true
 }
 
 func validateCNAMELoops(cat *catalog, vs *[]domainerr.FieldViolation) {

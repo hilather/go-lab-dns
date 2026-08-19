@@ -104,6 +104,38 @@ func TestApplyTargetUIUpdateOnly(t *testing.T) {
 	_ = requireCode(t, err, domainerr.CodeValidationFailed)
 }
 
+func TestApplyTargetUIEmptyValueEnables(t *testing.T) {
+	svc, boot := mustBoot(t, copyFixture(t))
+	ctx := context.Background()
+	disabled, err := svc.Apply(ctx, actor(), ChangeIn{
+		ExpectedRevision: boot.Revision,
+		Operations: []model.Operation{{
+			Op:     model.OpUpdate,
+			Target: model.Target{Kind: model.TargetUI},
+			Value:  []byte(`{"enabled":false}`),
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if svc.Store().Load().Canonical.Spec.UI.Enabled {
+		t.Fatal("setup: ui still enabled")
+	}
+	if _, err := svc.Apply(ctx, actor(), ChangeIn{
+		ExpectedRevision: disabled.CandidateRevision,
+		Operations: []model.Operation{{
+			Op:     model.OpUpdate,
+			Target: model.Target{Kind: model.TargetUI},
+			Value:  []byte(`{}`),
+		}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got := svc.Store().Load().Canonical.Spec.UI.Enabled; got != model.DefaultUIEnabled {
+		t.Fatalf("empty TargetUI value enabled=%v, want %v", got, model.DefaultUIEnabled)
+	}
+}
+
 func TestRevisionConflict(t *testing.T) {
 	path := copyFixture(t)
 	svc, boot := mustBoot(t, path)
