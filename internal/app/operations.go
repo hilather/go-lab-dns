@@ -110,6 +110,15 @@ func applyOne(st *model.State, op model.Operation, i int) error {
 			st.Spec.Management = v
 			return nil
 		})
+	case model.TargetUI:
+		return applySingleton(op, path, true, func(raw json.RawMessage) error {
+			var v model.UISpec
+			if err := decodeValue(injectUIEnabled(raw), &v, path+".value"); err != nil {
+				return err
+			}
+			st.Spec.UI = v
+			return nil
+		})
 	case model.TargetChaosActivation:
 		return applyChaosActivation(st, op, path)
 	default:
@@ -677,4 +686,20 @@ func materializeOpDefaults(v any) {
 			materializeOpDefaults(g)
 		}
 	}
+}
+
+func injectUIEnabled(raw json.RawMessage) json.RawMessage {
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil || m == nil {
+		return raw
+	}
+	if _, exists := m["enabled"]; exists {
+		return raw
+	}
+	m["enabled"] = true
+	b, err := json.Marshal(m)
+	if err != nil {
+		return raw
+	}
+	return b
 }

@@ -78,6 +78,7 @@ func bootstrapToRuntime(boot, runtime *model.State) ([]model.Operation, error) {
 	ops = append(ops, singletonOps(model.TargetCache, boot.Spec.Cache, runtime.Spec.Cache)...)
 	ops = append(ops, singletonOps(model.TargetObservability, boot.Spec.Observability, runtime.Spec.Observability)...)
 	ops = append(ops, singletonOps(model.TargetManagement, boot.Spec.Management, runtime.Spec.Management)...)
+	ops = append(ops, singletonOps(model.TargetUI, boot.Spec.UI, runtime.Spec.UI)...)
 	ops = append(ops, singletonOps(model.TargetChaosSafety, boot.Spec.Chaos.Safety, runtime.Spec.Chaos.Safety)...)
 	if !bytes.Equal(mustJSON(boot.Spec.Access), mustJSON(runtime.Spec.Access)) {
 		// Replace the whole access object so group add/remove stay apply-able

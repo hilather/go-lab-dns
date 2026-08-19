@@ -43,6 +43,7 @@
         "cache": { "$ref": "#/$defs/cache" },
         "chaos": { "$ref": "#/$defs/chaos" },
         "observability": { "$ref": "#/$defs/observability" },
+        "ui": { "$ref": "#/$defs/ui" },
         "management": { "$ref": "#/$defs/management" }
       }
     },
@@ -373,11 +374,26 @@
         "logQNAME": { "type": "boolean" }
       }
     },
+    "ui": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Materialized default true when spec.ui or enabled is omitted. Explicit false is preserved."
+        }
+      }
+    },
     "management": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "auth": { "$ref": "#/$defs/auth" }
+        "auth": { "$ref": "#/$defs/auth" },
+        "allowedOrigins": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Exact http(s)://host[:port] Origin strings. Omitted is empty. Invalid entries fail validation."
+        }
       }
     },
     "auth": {

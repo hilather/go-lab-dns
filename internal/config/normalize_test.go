@@ -95,6 +95,22 @@ func TestNormalizeDoesNotFlipExplicitAllowForwardFalse(t *testing.T) {
 	}
 }
 
+func TestNormalizeDoesNotFlipExplicitUIEnabledFalse(t *testing.T) {
+	in := &model.State{
+		APIVersion: model.APIVersionV1Alpha1,
+		Kind:       model.KindLabDNS,
+		Metadata:   model.Metadata{Name: "x"},
+		Spec:       model.Spec{UI: model.UISpec{Enabled: false}},
+	}
+	got, err := Normalize(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Spec.UI.Enabled {
+		t.Fatal("Normalize must not treat explicit/zero UI.Enabled as true")
+	}
+}
+
 func TestNormalizeIdempotentAndExpandsOwners(t *testing.T) {
 	in := &model.State{
 		APIVersion: model.APIVersionV1Alpha1,

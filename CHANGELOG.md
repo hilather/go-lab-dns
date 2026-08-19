@@ -6,11 +6,11 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Added
 
-- None.
+- Additive v1alpha1 `spec.ui.enabled` (default **true** when omitted, including documents with no `spec.access`; explicit `false` is preserved) and `spec.management.allowedOrigins` (exact `http(s)://host[:port]` Origin strings). New update-only target kind `ui` (`dns.admin`) so plan/apply/export cover UI drift.
 
 ### Changed
 
-- None.
+- Canonical JSON materializes `spec.ui.enabled: true` when `spec.ui` is omitted. Content-addressed `sha256:` revisions therefore change for previously hashed documents that omitted `spec.ui`. Operators with stored `expectedRevision` from 1.0.0-rc.* must re-GET state after upgrade. Chaos `hash-v1` vectors are unaffected.
 
 ### Fixed
 

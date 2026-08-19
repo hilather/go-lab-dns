@@ -1,0 +1,7 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: ui-enabled-yes
+spec:
+  ui:
+    enabled: "yes"

@@ -364,6 +364,7 @@ func specFieldsSchema() map[string]any {
 			"cache":         map[string]any{"type": "object"},
 			"chaos":         map[string]any{"type": "object"},
 			"observability": map[string]any{"type": "object"},
+			"ui":            map[string]any{"type": "object"},
 			"management":    map[string]any{"type": "object"},
 		},
 	}

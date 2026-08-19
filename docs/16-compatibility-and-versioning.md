@@ -7,6 +7,7 @@ Last reviewed: 2026-08-15 (OBS-001 metrics catalog)
 Last reviewed: 2026-08-15 (REL-001 release-diff surfaces)
 Last reviewed: 2026-08-15 (PERF-001 interop matrix)
 Last reviewed: 2026-08-15 (GA-001 known limitations)
+Last reviewed: 2026-08-19 (Canonical revision-hash change from materialized spec.ui)
 
 ## Public compatibility surfaces
 
@@ -31,6 +32,8 @@ A DNS correctness fix may alter observable output. Release notes must describe i
 ## Configuration versions
 
 Use `apiVersion` and `kind`. First GA ships **`labdns.dev/v1alpha1` only**. `internal/config.Migrator` is the extension point for a later version; `Migrations()` is empty until then. Unknown `apiVersion` values fail with `unsupported_protocol_version`. Unknown fields fail rather than being silently discarded.
+
+**1.1.0 compatibility event (Canonical revision hash):** omitted `spec.ui` now materializes `{enabled: true}` into Canonical JSON. Content-addressed `sha256:` revisions therefore change for documents that previously omitted `spec.ui`, even when no other fields changed. `hash-v1` chaos vectors are unaffected. Operators storing `expectedRevision` from 1.0.0-rc.* must re-GET state after upgrade (normal after any Canonical change). `spec.management.allowedOrigins` is additive and omitted-empty.
 
 ## REST
 

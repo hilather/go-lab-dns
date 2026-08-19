@@ -80,9 +80,10 @@ type ObservabilitySpec struct {
 	LogQNAME bool `json:"logQNAME"`
 }
 
-// ManagementSpec is control-plane authentication configuration.
+// ManagementSpec is control-plane authentication and Origin policy.
 type ManagementSpec struct {
-	Auth AuthSpec `json:"auth"`
+	Auth           AuthSpec `json:"auth"`
+	AllowedOrigins []string `json:"allowedOrigins,omitempty"`
 }
 
 // AuthSpec names an auth profile and optional secret references.

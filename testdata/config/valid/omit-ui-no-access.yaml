@@ -1,0 +1,18 @@
+# Omitted spec.ui materializes enabled: true even when spec.access is absent.
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: omit-ui-no-access
+spec:
+  defaults:
+    ttl: 30s
+    negativeTTL: 10s
+  zones:
+    - id: lab-zone
+      name: lab.example.net.
+      mode: overlay
+      records:
+        - id: ns1-a
+          owner: ns1
+          type: A
+          values: [10.42.0.53]

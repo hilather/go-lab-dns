@@ -72,6 +72,38 @@ func TestPlanDoesNotSwapApplyDoes(t *testing.T) {
 	}
 }
 
+func TestApplyTargetUIUpdateOnly(t *testing.T) {
+	svc, boot := mustBoot(t, copyFixture(t))
+	ctx := context.Background()
+	if !boot.Canonical.Spec.UI.Enabled {
+		t.Fatal("omitted bootstrap spec.ui must be enabled")
+	}
+	applied, err := svc.Apply(ctx, actor(), ChangeIn{
+		ExpectedRevision: boot.Revision,
+		Operations: []model.Operation{{
+			Op:     model.OpUpdate,
+			Target: model.Target{Kind: model.TargetUI},
+			Value:  []byte(`{"enabled":false}`),
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	live := svc.Store().Load()
+	if live.Canonical.Spec.UI.Enabled {
+		t.Fatal("apply did not disable ui")
+	}
+	_, err = svc.Apply(ctx, actor(), ChangeIn{
+		ExpectedRevision: applied.CandidateRevision,
+		Operations: []model.Operation{{
+			Op:     model.OpAdd,
+			Target: model.Target{Kind: model.TargetUI},
+			Value:  []byte(`{"enabled":true}`),
+		}},
+	})
+	_ = requireCode(t, err, domainerr.CodeValidationFailed)
+}
+
 func TestRevisionConflict(t *testing.T) {
 	path := copyFixture(t)
 	svc, boot := mustBoot(t, path)

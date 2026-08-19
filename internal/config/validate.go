@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -729,6 +730,32 @@ func validateManagement(m *model.ManagementSpec, vs *[]domainerr.FieldViolation)
 	default:
 		*vs = append(*vs, domainerr.FieldViolation{Path: "spec.management.auth.profile", Code: violationInvalidValue, Message: "profile must be dev-loopback-unauth or bearer"})
 	}
+	for i, origin := range m.AllowedOrigins {
+		if !validHTTPOrigin(origin) {
+			*vs = append(*vs, domainerr.FieldViolation{
+				Path:    indexPath("spec.management.allowedOrigins", i),
+				Code:    violationInvalidValue,
+				Message: "origin must be an exact http(s)://host[:port] Origin with no path, query, or fragment",
+			})
+		}
+	}
+}
+
+func validHTTPOrigin(s string) bool {
+	u, err := url.Parse(s)
+	if err != nil {
+		return false
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+	if u.Host == "" || u.User != nil {
+		return false
+	}
+	if u.Path != "" || u.RawPath != "" || u.RawQuery != "" || u.Fragment != "" || u.Opaque != "" || u.ForceQuery {
+		return false
+	}
+	return s == u.Scheme+"://"+u.Host
 }
 
 func validateCNAMELoops(cat *catalog, vs *[]domainerr.FieldViolation) {

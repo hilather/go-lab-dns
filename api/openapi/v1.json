@@ -181,6 +181,9 @@
           "observability": {
             "type": "object"
           },
+          "ui": {
+            "type": "object"
+          },
           "zones": {
             "items": {
               "type": "object"

@@ -48,6 +48,7 @@ func TestDecodeUnknownFieldEveryLevel(t *testing.T) {
 		{"zone", `{"apiVersion":"labdns.dev/v1alpha1","kind":"LabDNS","metadata":{"name":"x"},"spec":{"zones":[{"id":"z","name":"lab.example.net.","mode":"overlay","weird":1,"records":[]}]}}`, "spec.zones[0].weird"},
 		{"record", `{"apiVersion":"labdns.dev/v1alpha1","kind":"LabDNS","metadata":{"name":"x"},"spec":{"zones":[{"id":"z","name":"lab.example.net.","mode":"overlay","records":[{"id":"r","owner":"a","type":"A","values":["10.0.0.1"],"zzz":1}]}]}}`, "spec.zones[0].records[0].zzz"},
 		{"chaos", `{"apiVersion":"labdns.dev/v1alpha1","kind":"LabDNS","metadata":{"name":"x"},"spec":{"chaos":{"nope":true}}}`, "spec.chaos.nope"},
+		{"ui", `{"apiVersion":"labdns.dev/v1alpha1","kind":"LabDNS","metadata":{"name":"x"},"spec":{"ui":{"theme":"dark"}}}`, "spec.ui.theme"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -78,6 +79,60 @@ func TestDecodeYAMLCommentsDropped(t *testing.T) {
 	}
 	if strings.Contains(string(y), "keep me") {
 		t.Fatalf("comment preserved:\n%s", y)
+	}
+}
+
+func TestDecodeOmittedUIEnabledTrueWithoutAccess(t *testing.T) {
+	doc := `
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: x
+spec: {}
+`
+	st, err := Decode([]byte(doc))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !st.Spec.UI.Enabled {
+		t.Fatal("omitted spec.ui with no access block must materialize enabled true")
+	}
+}
+
+func TestDecodeUIEnabledExplicitFalse(t *testing.T) {
+	doc := `
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: x
+spec:
+  ui:
+    enabled: false
+`
+	st, err := Decode([]byte(doc))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Spec.UI.Enabled {
+		t.Fatal("explicit spec.ui.enabled: false was overwritten")
+	}
+}
+
+func TestDecodeUIEnabledOmittedOnEmptyUIObject(t *testing.T) {
+	doc := `
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: x
+spec:
+  ui: {}
+`
+	st, err := Decode([]byte(doc))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !st.Spec.UI.Enabled {
+		t.Fatal("omitted enabled on spec.ui must materialize true")
 	}
 }
 
@@ -128,6 +183,29 @@ func TestDecodeRejectsEmptyAndTooLarge(t *testing.T) {
 	}
 	if _, err := Decode(big); err == nil {
 		t.Fatal("too large")
+	}
+}
+
+func TestLoadUIDisabledPreservesFalse(t *testing.T) {
+	st, err := LoadFile(testdata(t, "valid", "ui-disabled.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Spec.UI.Enabled {
+		t.Fatal("ui-disabled.yaml materialized enabled true")
+	}
+	if len(st.Spec.Management.AllowedOrigins) != 1 || st.Spec.Management.AllowedOrigins[0] != "https://dns-mgmt.lab.example" {
+		t.Fatalf("allowedOrigins=%v", st.Spec.Management.AllowedOrigins)
+	}
+}
+
+func TestLoadOmitUINoAccessEnabled(t *testing.T) {
+	st, err := LoadFile(testdata(t, "valid", "omit-ui-no-access.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !st.Spec.UI.Enabled {
+		t.Fatal("omit-ui-no-access.yaml did not materialize enabled true")
 	}
 }
 

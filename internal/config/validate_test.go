@@ -173,6 +173,36 @@ func TestValidateAlternateAddressCIDR(t *testing.T) {
 	_ = requireValidation(t, Validate(st), violationAltAddr)
 }
 
+func TestValidateAllowedOrigins(t *testing.T) {
+	st := minimalState(t)
+	st.Spec.Management.AllowedOrigins = []string{"https://dns-mgmt.lab.example"}
+	if err := Validate(st); err != nil {
+		t.Fatal(err)
+	}
+	st.Spec.Management.AllowedOrigins = []string{"http://127.0.0.1:8080", "https://[2001:db8::1]:8443"}
+	if err := Validate(st); err != nil {
+		t.Fatal(err)
+	}
+
+	cases := []string{
+		"dns-mgmt.lab.example",
+		"https://dns-mgmt.lab.example/",
+		"https://dns-mgmt.lab.example/path",
+		"https://dns-mgmt.lab.example?x=1",
+		"https://user:pass@dns-mgmt.lab.example",
+		"ftp://dns-mgmt.lab.example",
+		"",
+	}
+	for _, origin := range cases {
+		st.Spec.Management.AllowedOrigins = []string{origin}
+		if err := Validate(st); err == nil {
+			t.Fatalf("accepted invalid origin %q", origin)
+		} else {
+			_ = requireValidation(t, err, violationInvalidValue)
+		}
+	}
+}
+
 func TestValidateDoesNotRequireClientGroups(t *testing.T) {
 	st := minimalState(t)
 	st.Spec.Access.ClientGroups = nil

@@ -15,8 +15,9 @@ import (
 )
 
 // Decode auto-detects YAML vs JSON and rejects unknown fields. It does not
-// normalize or validate. ClientGroup.allowForward omitted in the document is
-// materialized to true here because the Go bool zero value is false.
+// normalize or validate. ClientGroup.allowForward and UISpec.enabled omitted
+// in the document are materialized to true here because the Go bool zero
+// value is false.
 func Decode(data []byte) (*model.State, error) {
 	if len(data) > MaxDocumentBytes {
 		return nil, domainerr.ValidationFailed("document exceeds size limit",
@@ -158,7 +159,7 @@ func stringifyKeys(v any) any {
 }
 
 // applyDecodeDefaults injects defaults that cannot be recovered from a Go zero
-// value after unmarshal. AllowForward must be handled here.
+// value after unmarshal. UI.Enabled and AllowForward must be handled here.
 func applyDecodeDefaults(v any) {
 	root, ok := v.(map[string]any)
 	if !ok {
@@ -167,6 +168,14 @@ func applyDecodeDefaults(v any) {
 	spec, _ := root["spec"].(map[string]any)
 	if spec == nil {
 		return
+	}
+	// UI defaulting is spec-level and must run before the access early-return.
+	if rawUI, exists := spec["ui"]; !exists || rawUI == nil {
+		spec["ui"] = map[string]any{"enabled": model.DefaultUIEnabled}
+	} else if ui, ok := rawUI.(map[string]any); ok {
+		if _, has := ui["enabled"]; !has {
+			ui["enabled"] = model.DefaultUIEnabled
+		}
 	}
 	access, _ := spec["access"].(map[string]any)
 	if access == nil {

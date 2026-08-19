@@ -3,6 +3,7 @@
 Status: Proposed normative behavior
 Owners: Configuration, Application
 Last reviewed: 2026-08-18 (plan idempotency rechecks expectedRevision; emergency cancel)
+Last reviewed: 2026-08-19 (spec.ui.enabled, TargetUI, management.allowedOrigins)
 Related ADRs: 0003, 0005
 
 Canonical Go types live in `internal/model`. YAML/JSON decode, default materialization, validation, canonical export, revision hashing, and the published schema live in `internal/config` and [api/jsonschema/labdns.dev.v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/jsonschema/labdns.dev.v1alpha1.json). `compiler.Compile` orchestrates normalize/validate plus zone, forwarding, and access indexes into an immutable `snapshot.Snapshot`. `internal/app.Service` is the HTTP-less mutation core: copy candidate, apply `Operation`s, normalize, validate, compile, diff/impact, then dry-run (`Plan`) or atomic `Store.Swap` (`Apply`). REST/MCP adapters are not in this slice.
@@ -276,7 +277,8 @@ JSON object names match the YAML keys in the sample above. Additional frozen fie
 | Failover | `timeout`, `onTimeout`, `onTransportError`, `onSERVFAIL`, `onREFUSED`, `udpTruncateRetryTCP` |
 | Cache | `enabled`, `maxEntries`, `minimumTTL`, `maximumTTL`, `maximumNegativeTTL`, `staleServing` |
 | Chaos | `enabled`, `emergencyDisabled`, `safety`, `policies` per [docs/03-chaos-engine.md](https://github.com/hilather/go-lab-dns/blob/main/docs/03-chaos-engine.md) (`id`, `owner`, `reason`, `enabled`, `expiresAt`, `safetyClass`, `scope`, `selector`, `outcomes`, `composition`) |
-| Management | `auth.profile` (`dev-loopback-unauth` \| `bearer`), `auth.secretRef` |
+| Management | `auth.profile` (`dev-loopback-unauth` \| `bearer`), `auth.secretRef`, `allowedOrigins` (exact `http(s)://host[:port]` Origin strings; omitted is empty) |
+| UI | `enabled` (materialized default **true** when `spec.ui` or `enabled` is omitted; explicit `false` is preserved) |
 | Observability | `logQNAME` |
 
 IDs (`zone`, `record`, `forwardingPolicy`, `upstream`, `upstreamPool`, `clientGroup`, `chaosPolicy`) are **user-supplied and required**. The server does not generate them.
@@ -289,7 +291,7 @@ Typed change sets use:
 {"op":"add|update|remove","target":{"kind":"...","id":"...","zoneId":"..."},"value":{}}
 ```
 
-`target.kind` values: `zone`, `record`, `forwardingPolicy`, `upstreamPool`, `upstream`, `clientGroup`, `chaosPolicy`, `chaosSafety`, `cache`, `defaults`, `listeners`, `access`, `observability`, `management`, `chaosActivation`. `zoneId` is required when `kind` is `record`. Replace-entire-object is `update` on the singleton targets. Activate/deactivate/set-expiry is `update` + `chaosActivation`. There is no JSON Patch profile.
+`target.kind` values: `zone`, `record`, `forwardingPolicy`, `upstreamPool`, `upstream`, `clientGroup`, `chaosPolicy`, `chaosSafety`, `cache`, `defaults`, `listeners`, `access`, `observability`, `management`, `ui`, `chaosActivation`. `zoneId` is required when `kind` is `record`. Replace-entire-object is `update` on the singleton targets (`ui` is update-only and requires `dns.admin`). Activate/deactivate/set-expiry is `update` + `chaosActivation`. There is no JSON Patch profile.
 
 ## Schema rules
 
@@ -326,6 +328,8 @@ Published JSON Schema: [api/jsonschema/labdns.dev.v1alpha1.json](https://github.
 | `spec.listeners.management.restPath` | empty | `/v1` |
 | `spec.listeners.management.mcpPath` | empty | `/mcp` |
 | `spec.management.auth.profile` | empty | `dev-loopback-unauth` |
+| `spec.ui.enabled` | omitted `spec.ui` or omitted `enabled` | `true` (decode-time only, including documents with no `spec.access`; Go zero value stays `false` because it cannot be distinguished from an explicit `false`) |
+| `spec.management.allowedOrigins` | omitted | empty (not materialized as a present empty array) |
 | `spec.forwarding.policies[].failover.*` | omitted / Go zero | **not materialized**: bools stay `false` (no failover, no UDP→TCP retry); `timeout` 0 is **not** unlimited — `forwarder.Exchange` uses a 500ms per-attempt budget (250ms connect cap) so it stacks under the 2s query timeout |
 | `spec.cache.*` | omitted / Go zero | **not materialized** by CFG; an enabled cache with `maxEntries<=0` is rejected. Zero TTL bounds mean no clamp on that side |
 

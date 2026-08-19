@@ -33,7 +33,7 @@ func TestTargetKindsLocked(t *testing.T) {
 	assertClosedStringEnum(t, "TargetKind", AllTargetKinds, []TargetKind{
 		"zone", "record", "forwardingPolicy", "upstreamPool", "upstream",
 		"clientGroup", "chaosPolicy", "chaosSafety", "cache", "defaults",
-		"listeners", "access", "observability", "management", "chaosActivation",
+		"listeners", "access", "observability", "management", "ui", "chaosActivation",
 	})
 }
 
@@ -92,6 +92,16 @@ func TestAllowForwardMaterializedDefault(t *testing.T) {
 	var zero ClientGroup
 	if zero.AllowForward {
 		t.Fatal("unmaterialized ClientGroup.AllowForward zero value is true; want false")
+	}
+}
+
+func TestUIEnabledMaterializedDefault(t *testing.T) {
+	if DefaultUIEnabled != true {
+		t.Fatalf("DefaultUIEnabled=%v, want true (materialized default when spec.ui is omitted)", DefaultUIEnabled)
+	}
+	var zero UISpec
+	if zero.Enabled {
+		t.Fatal("unmaterialized UISpec.Enabled zero value is true; want false")
 	}
 }
 

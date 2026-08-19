@@ -95,6 +95,40 @@ func TestExportBootstrapToRuntimeOps(t *testing.T) {
 	}
 }
 
+func TestExportTargetUIDrift(t *testing.T) {
+	svc, boot := mustBoot(t, copyFixture(t))
+	ctx := context.Background()
+	if !boot.Canonical.Spec.UI.Enabled {
+		t.Fatal("omitted bootstrap spec.ui must be enabled")
+	}
+	if _, err := svc.Apply(ctx, actor(), ChangeIn{
+		ExpectedRevision: boot.Revision,
+		Operations: []model.Operation{{
+			Op:     model.OpUpdate,
+			Target: model.Target{Kind: model.TargetUI},
+			Value:  []byte(`{"enabled":false}`),
+		}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	ex, err := svc.Export(ctx, actor(), ExportJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, op := range ex.BootstrapToRuntime {
+		if op.Target.Kind == model.TargetUI && op.Op == model.OpUpdate {
+			found = true
+			if !bytes.Contains(op.Value, []byte(`"enabled":false`)) && !bytes.Contains(op.Value, []byte(`"enabled": false`)) {
+				t.Fatalf("ui op value=%s", op.Value)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("missing TargetUI op in %+v", ex.BootstrapToRuntime)
+	}
+}
+
 func TestExportUnknownFormat(t *testing.T) {
 	path := copyFixture(t)
 	svc, _ := mustBoot(t, path)

@@ -32,6 +32,7 @@ const (
 	TargetAccess           TargetKind = "access"
 	TargetObservability    TargetKind = "observability"
 	TargetManagement       TargetKind = "management"
+	TargetUI               TargetKind = "ui"
 	TargetChaosActivation  TargetKind = "chaosActivation"
 )
 
@@ -51,6 +52,7 @@ var AllTargetKinds = []TargetKind{
 	TargetAccess,
 	TargetObservability,
 	TargetManagement,
+	TargetUI,
 	TargetChaosActivation,
 }
 

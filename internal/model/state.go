@@ -32,5 +32,17 @@ type Spec struct {
 	Cache         CacheSpec         `json:"cache"`
 	Chaos         ChaosSpec         `json:"chaos"`
 	Observability ObservabilitySpec `json:"observability"`
+	UI            UISpec            `json:"ui"`
 	Management    ManagementSpec    `json:"management"`
+}
+
+// DefaultUIEnabled is the materialized default for UISpec.Enabled when
+// spec.ui or enabled is omitted. The Go zero value remains false until
+// config materializes the field.
+const DefaultUIEnabled = true
+
+// UISpec toggles the embedded operator console. Serving vs 404 of SPA
+// assets is read from the active snapshot; REST and MCP stay up.
+type UISpec struct {
+	Enabled bool `json:"enabled"`
 }

@@ -83,7 +83,7 @@ func authorizeOp(actor Actor, op model.Operation, current *model.State, prot Pro
 		return authorizeChaosPolicy(actor, op, current)
 	case model.TargetChaosActivation:
 		return authorizeChaosActivation(actor, op, current)
-	case model.TargetChaosSafety, model.TargetManagement, model.TargetAccess,
+	case model.TargetChaosSafety, model.TargetManagement, model.TargetUI, model.TargetAccess,
 		model.TargetListeners, model.TargetCache, model.TargetDefaults, model.TargetObservability:
 		if !admin {
 			return domainerr.Forbidden("target " + string(op.Target.Kind) + " requires " + ScopeDNSAdmin)
@@ -358,7 +358,7 @@ func scopesForOp(op model.Operation, current *model.State) []string {
 			return []string{ScopeChaosActivate, ScopeChaosEmergency}
 		}
 		return []string{ScopeChaosActivate}
-	case model.TargetChaosSafety, model.TargetManagement, model.TargetAccess,
+	case model.TargetChaosSafety, model.TargetManagement, model.TargetUI, model.TargetAccess,
 		model.TargetListeners, model.TargetCache, model.TargetDefaults,
 		model.TargetObservability, model.TargetClientGroup:
 		return []string{ScopeDNSAdmin}
