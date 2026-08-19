@@ -2,7 +2,7 @@
 
 Status: Implemented (API-001)
 Owners: REST, Application
-Last reviewed: 2026-08-19 (session cookie, CSRF, SPA pre-auth)
+Last reviewed: 2026-08-19 (serve wires embedded UI handler)
 Related ADRs: 0004
 
 ## Goals
@@ -108,7 +108,7 @@ GET /v1/audit/{eventId}
 POST   /v1/session
 GET    /v1/session
 DELETE /v1/session
-GET    /                 (SPA pre-auth; 404 until the embed handler is wired)
+GET    /                 (SPA pre-auth; `cmd/labdns` injects `web.Handler()`)
 ```
 
 `POST /v1/session` with **no cookie header** (or with Bearer) authenticates with Identify (loopback unauth or Bearer) and issues cookie `labdns_session` (`HttpOnly`, `SameSite=Lax`, `Path=/`, host-only, `Secure` iff TLS) plus JSON `{csrf, actor}`. `Cache-Control: no-store`. A present but unknown/expired cookie without Bearer is 401 and does not Identify. At 256 distinct sessions, new creates fail `rate_limited` with detail `session table full` (retryable); rotation of an existing session does not consume a slot.

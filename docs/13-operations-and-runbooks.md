@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Operations
+Last reviewed: 2026-08-19 (operator console GET / and Vite proxy)
 Last reviewed: 2026-08-15 (OBS-001 diagnostic queries)
 Last reviewed: 2026-08-15 (DEP-001 SIGUSR1 CLI + graceful shutdown)
 Last reviewed: 2026-08-18 (REST/MCP emergency disable cancels delays)
@@ -144,6 +145,30 @@ There is no runtime database to back up. Recovery inputs are:
 - External audit and telemetry data.
 
 Container recreation restores bootstrap desired state and intentionally discards runtime drift.
+
+## Operator console
+
+The embedded operator UI is served on the management listener (`GET /`) when `spec.ui.enabled` is true (the default). Session and CSRF behavior is in [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md) and [docs/06-rest-api.md](https://github.com/hilather/go-lab-dns/blob/main/docs/06-rest-api.md).
+
+### Production / `labdns serve`
+
+1. Bind management on loopback (YAML `spec.listeners.management.address`, default `:8080`; GitOps compose maps `127.0.0.1:8080:8080`).
+2. Open `http://127.0.0.1:8080/` in a browser. Off-loopback clients can load the login HTML without a bearer; `/v1` APIs still require a live `labdns_session` cookie or `Authorization: Bearer`.
+3. On loopback `dev-loopback-unauth`, choose **Continue as local administrator** (`POST /v1/session` with no `Authorization`). Off-loopback, paste a bearer token into the password field; the SPA discards the token after login. CSRF stays in module memory, never `localStorage`, `sessionStorage`, IndexedDB, or the URL.
+4. The overview dashboard shows `GET /v1/status` (revision, ready/degraded) and `GET /v1/version`.
+5. `spec.ui.enabled: false` 404s SPA paths only; REST and MCP remain. `--management-listen=off` unbinds REST, MCP, and the UI together.
+
+Local `go test` / `go run` embed the committed stub at `internal/web/dist/index.html`, not a production Vite bundle. Production images copy `web/dist` in Docker.
+
+### Local SPA development (Vite proxy)
+
+For operator-console work against a live process:
+
+1. Start LabDNS: `labdns serve --config testdata/config/valid/pack-sample.yaml` (management `:8080`).
+2. In `web/`, run `npm ci && npm run dev`. Vite proxies `/v1` and `/mcp` to `http://127.0.0.1:8080`.
+3. Open the Vite dev URL (default `http://127.0.0.1:5173/`) and log in as above.
+
+Do not put bearer tokens or CSRF secrets in the URL, Web Storage, IndexedDB, or browser logs.
 
 ## Testing strategy
 

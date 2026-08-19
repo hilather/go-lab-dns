@@ -306,6 +306,29 @@ func TestSessionUIDisabledOrNilIs404Not401(t *testing.T) {
 	}
 }
 
+func TestSessionNonLoopbackGETRootHTMLWithoutBearer(t *testing.T) {
+	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
+	ui := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte("<!doctype html><html><body>LabDNS</body></html>"))
+	})
+	s, err := New(Config{Service: svc, RatePerSec: -1, UI: ui})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := s.Handler()
+	html := doRemote(t, h, http.MethodGet, "/", "", "192.0.2.10:9", "")
+	requireStatus(t, html, http.StatusOK)
+	if !strings.Contains(html.Header().Get("Content-Type"), "text/html") {
+		t.Fatalf("content-type=%q", html.Header().Get("Content-Type"))
+	}
+	if !strings.Contains(html.Body.String(), "LabDNS") {
+		t.Fatalf("body=%s", html.Body.String())
+	}
+	state := doRemote(t, h, http.MethodGet, "/v1/state", "", "192.0.2.10:9", "")
+	requireProblem(t, state, http.StatusUnauthorized, "unauthenticated")
+}
+
 func TestSessionSecurityHeadersOnAPI(t *testing.T) {
 	s, _ := newTestServer(t)
 	rec := doLoopback(t, s.Handler(), http.MethodGet, "/v1/version", "")

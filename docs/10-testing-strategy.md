@@ -2,6 +2,7 @@
 
 Status: Proposed normative quality gate
 Owners: All teams
+Last reviewed: 2026-08-19 (login storage-negative tests; GET / HTML vs /v1/state 401)
 Last reviewed: 2026-08-19 (make web-test / web-build and CI job web)
 Last reviewed: 2026-08-15 (REL-001 release-diff and required CI)
 Last reviewed: 2026-08-15 (PERF-001 benches, soak, interop)
@@ -87,7 +88,7 @@ For each capability:
 
 ### Operator UI tests
 
-`make web-test` runs Vitest in `web/` (fail closed if Node is missing; not Playwright). `make web-build` emits `web/dist` only. GitHub job id `web` is required. Session-memory tests must prove CSRF is not written to `localStorage`.
+`make web-test` runs Vitest in `web/` (fail closed if Node is missing; not Playwright). `make web-build` emits `web/dist` only. GitHub job id `web` is required. Session-memory and login tests must prove CSRF and bearer tokens are not written to `localStorage` or `sessionStorage`. REST/cmd tests prove non-loopback `GET /` is 200 HTML without a bearer when the UI is enabled, and `GET /v1/state` is 401.
 
 ### Race and leak tests
 

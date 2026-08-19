@@ -1,8 +1,8 @@
 # Operator Web UI
 
-Status: Proposed normative design (not yet implemented)
+Status: Partially implemented (UI-001 login, shell, dashboard, serve embed)
 Owners: Control Plane, REST, Security, UI
-Last reviewed: 2026-08-19 (session/CSRF handlers; CSRF omitted on first POST /v1/session only)
+Last reviewed: 2026-08-19 (login, shell, dashboard, serve UI handler)
 Related ADRs: 0004 (embedded-UI ADR is not yet in this tree)
 
 ## Problem statement

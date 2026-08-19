@@ -7,3 +7,105 @@ body {
 #root {
   min-height: 100vh;
 }
+
+.loading,
+.login,
+.shell {
+  padding: 1rem 1.25rem;
+}
+
+.login {
+  max-width: 28rem;
+}
+
+.login form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.login label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.shell-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: center;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 0.75rem;
+}
+
+.product {
+  font-weight: 700;
+  margin: 0;
+}
+
+.revision,
+.status {
+  margin: 0;
+}
+
+.emergency-slot {
+  flex: 1 1 auto;
+  min-height: 1.5rem;
+}
+
+.nav-list {
+  display: flex;
+  gap: 1rem;
+  list-style: none;
+  padding: 0.75rem 0;
+  margin: 0;
+}
+
+.nav-list a {
+  color: inherit;
+}
+
+.nav-list a.active {
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.shell-main {
+  padding-top: 0.5rem;
+}
+
+.dashboard section {
+  margin: 1.25rem 0;
+}
+
+.dashboard dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+
+.dashboard dt {
+  font-weight: 600;
+}
+
+.dashboard dd {
+  margin: 0;
+}
+
+.problem {
+  color: #7a1212;
+}
+
+.status-symbol {
+  font-style: normal;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+input[type='password'] {
+  padding: 0.35rem 0.5rem;
+}

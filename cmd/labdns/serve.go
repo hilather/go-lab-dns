@@ -26,6 +26,7 @@ import (
 	"github.com/hilather/go-lab-dns/internal/model"
 	"github.com/hilather/go-lab-dns/internal/observability"
 	"github.com/hilather/go-lab-dns/internal/snapshot"
+	"github.com/hilather/go-lab-dns/internal/web"
 )
 
 var _ dnsserver.Metrics = observability.DNSTransport{}
@@ -233,7 +234,7 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 			Sessions:  sessions,
 			Origins:   origins,
 			UIEnabled: uiEnabled,
-			UI:        nil,
+			UI:        web.Handler(),
 			Mounts:    map[string]http.Handler{mcpPath: mcpSrv.Handler()},
 		})
 		if err != nil {
