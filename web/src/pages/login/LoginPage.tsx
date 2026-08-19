@@ -4,7 +4,20 @@ import { APIError, createSession, getSession } from '../../auth/sessionApi'
 
 export function isLoopbackHost(hostname: string): boolean {
   const h = hostname.replace(/^\[|\]$/g, '')
-  return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '0:0:0:0:0:0:0:1'
+  if (h === 'localhost' || h === '::1' || h === '0:0:0:0:0:0:0:1') {
+    return true
+  }
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(h)
+  const ipv4 = mapped?.[1] ?? h
+  const parts = ipv4.split('.')
+  if (parts.length !== 4) {
+    return false
+  }
+  const nums = parts.map((p) => Number(p))
+  if (nums.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) {
+    return false
+  }
+  return nums[0] === 127
 }
 
 export function LoginPage() {
@@ -12,17 +25,30 @@ export function LoginPage() {
   const [token, setToken] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [checking, setChecking] = useState(true)
   const loopback = isLoopbackHost(window.location.hostname)
+  const disabled = checking || busy
 
   useEffect(() => {
-    let cancelled = false
-    void getSession().then((sess) => {
-      if (!cancelled && sess) {
-        navigate('/', { replace: true })
-      }
-    })
+    const ac = new AbortController()
+    void getSession({ signal: ac.signal })
+      .then((sess) => {
+        if (ac.signal.aborted) {
+          return
+        }
+        if (sess) {
+          navigate('/', { replace: true })
+          return
+        }
+        setChecking(false)
+      })
+      .catch(() => {
+        if (!ac.signal.aborted) {
+          setChecking(false)
+        }
+      })
     return () => {
-      cancelled = true
+      ac.abort()
     }
   }, [navigate])
 
@@ -69,24 +95,23 @@ export function LoginPage() {
       ) : null}
       {loopback ? (
         <p>
-          <button type="button" disabled={busy} onClick={onContinue}>
+          <button type="button" disabled={disabled} onClick={onContinue}>
             Continue as local administrator
           </button>
         </p>
       ) : null}
-      <form onSubmit={onBearer}>
+      <form method="post" action="/login" onSubmit={onBearer}>
         <label>
           Bearer token
           <input
             type="password"
-            name="token"
             autoComplete="off"
             value={token}
-            disabled={busy}
+            disabled={disabled}
             onChange={(e) => setToken(e.target.value)}
           />
         </label>
-        <button type="submit" disabled={busy}>
+        <button type="submit" disabled={disabled}>
           Sign in
         </button>
       </form>

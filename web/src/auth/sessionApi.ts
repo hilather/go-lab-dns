@@ -2,6 +2,15 @@ import { clear, getCsrf, setCsrf } from './sessionMemory'
 
 export const CSRF_HEADER = 'X-LabDNS-CSRF'
 
+// Bumped on createSession so a stale GET 401 cannot clear() a newer CSRF.
+let sessionGen = 0
+
+function isAbortError(err: unknown): boolean {
+  return err instanceof DOMException
+    ? err.name === 'AbortError'
+    : err instanceof Error && err.name === 'AbortError'
+}
+
 export type SessionActor = {
   id: string
   class: string
@@ -55,10 +64,26 @@ async function parseSession(res: Response): Promise<SessionResponse> {
   return body
 }
 
-export async function getSession(): Promise<SessionResponse | null> {
-  const res = await fetch('/v1/session', { method: 'GET', credentials: 'include' })
+export type GetSessionOpts = {
+  signal?: AbortSignal
+}
+
+export async function getSession(opts?: GetSessionOpts): Promise<SessionResponse | null> {
+  const gen = sessionGen
+  const signal = opts?.signal
+  let res: Response
+  try {
+    res = await fetch('/v1/session', { method: 'GET', credentials: 'include', signal })
+  } catch (err) {
+    if (signal?.aborted || isAbortError(err)) {
+      return null
+    }
+    throw err
+  }
   if (res.status === 401) {
-    clear()
+    if (!signal?.aborted && gen === sessionGen) {
+      clear()
+    }
     return null
   }
   if (!res.ok) {
@@ -68,9 +93,14 @@ export async function getSession(): Promise<SessionResponse | null> {
 }
 
 export async function createSession(bearer?: string): Promise<SessionResponse> {
+  sessionGen += 1
   const headers = new Headers()
   if (bearer) {
     headers.set('Authorization', `Bearer ${bearer}`)
+  }
+  const csrf = getCsrf()
+  if (csrf !== '') {
+    headers.set(CSRF_HEADER, csrf)
   }
   const res = await fetch('/v1/session', {
     method: 'POST',

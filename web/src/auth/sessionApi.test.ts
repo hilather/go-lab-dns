@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { clear, getCsrf } from './sessionMemory'
+import { clear, getCsrf, setCsrf } from './sessionMemory'
 import { createSession, CSRF_HEADER, deleteSession, getJSON, getSession } from './sessionApi'
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -96,5 +96,69 @@ describe('sessionApi storage', () => {
     const body = await getJSON('/v1/status')
     expect(body).toEqual({ ready: true })
     expect(setItem).not.toHaveBeenCalled()
+  })
+
+  it('omits CSRF on first-login POST', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(200, { csrf: 'first', actor: { id: 'loopback', class: 'ui-session' } }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    await createSession()
+    const headers = new Headers((fetchMock.mock.calls[0]?.[1] as RequestInit).headers)
+    expect(headers.get(CSRF_HEADER)).toBeNull()
+  })
+
+  it('sends CSRF on cookie-present POST when memory has a token', async () => {
+    setCsrf('existing-csrf')
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(200, { csrf: 'rotated', actor: { id: 'loopback', class: 'ui-session' } }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    await createSession()
+    const headers = new Headers((fetchMock.mock.calls[0]?.[1] as RequestInit).headers)
+    expect(headers.get(CSRF_HEADER)).toBe('existing-csrf')
+    expect(getCsrf()).toBe('rotated')
+  })
+
+  it('in-flight GET 401 after createSession does not clear the new CSRF', async () => {
+    let resolveGet: ((value: Response) => void) | undefined
+    const getPending = new Promise<Response>((resolve) => {
+      resolveGet = resolve
+    })
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
+      if ((init?.method ?? 'GET') === 'GET') {
+        return getPending
+      }
+      return Promise.resolve(
+        jsonResponse(200, { csrf: 'new-csrf', actor: { id: 'loopback', class: 'ui-session' } }),
+      )
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const inFlight = getSession()
+    await createSession()
+    expect(getCsrf()).toBe('new-csrf')
+    resolveGet?.(jsonResponse(401, { code: 'unauthenticated', detail: 'authentication required' }))
+    await inFlight
+    expect(getCsrf()).toBe('new-csrf')
+  })
+
+  it('aborted GET does not clear CSRF', async () => {
+    setCsrf('keep-me')
+    const ac = new AbortController()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, init?: RequestInit) => {
+        return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            reject(new DOMException('aborted', 'AbortError'))
+          })
+        })
+      }),
+    )
+    const pending = getSession({ signal: ac.signal })
+    ac.abort()
+    await expect(pending).resolves.toBeNull()
+    expect(getCsrf()).toBe('keep-me')
   })
 })

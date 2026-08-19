@@ -1,55 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useOutletContext } from 'react-router'
 import { getJSON } from '../../auth/sessionApi'
-import { readyKind, readyLabel, shortRevision } from '../../status'
-
-type VersionView = {
-  version?: string
-  commit?: string
-  buildTime?: string
-}
-
-type StatusView = {
-  ready?: boolean
-  degraded?: boolean
-  version?: VersionView
-  revisions?: {
-    bootstrapRevision?: string
-    runtimeRevision?: string
-    generation?: number
-    drifted?: boolean
-    loadedAt?: string
-  }
-  listeners?: { name?: string; address?: string }[]
-  cache?: {
-    enabled?: boolean
-    maxEntries?: number
-    entries?: number
-    hits?: number
-    misses?: number
-    evicts?: number
-  }
-  upstreams?: {
-    id?: string
-    poolId?: string
-    endpoint?: string
-    transport?: string
-    healthy?: boolean
-  }[]
-  chaos?: {
-    enabled?: boolean
-    emergencyDisabled?: boolean
-    activePolicies?: number
-    nearestExpiry?: string
-  }
-  warnings?: { code?: string; message?: string }[]
-}
-
-function asStatus(v: unknown): StatusView {
-  if (v && typeof v === 'object') {
-    return v as StatusView
-  }
-  return {}
-}
+import type { ShellContext } from '../../components/Shell'
+import { readyKind, readyLabel, shortRevision, type VersionView } from '../../status'
 
 function asVersion(v: unknown): VersionView {
   if (v && typeof v === 'object') {
@@ -58,10 +11,18 @@ function asVersion(v: unknown): VersionView {
   return {}
 }
 
+function yn(v: boolean | undefined, known: boolean): string {
+  if (!known) {
+    return '—'
+  }
+  return v ? 'Yes' : 'No'
+}
+
 export function DashboardPage() {
-  const [status, setStatus] = useState<StatusView | null>(null)
+  const { status } = useOutletContext<ShellContext>()
   const [version, setVersion] = useState<VersionView | null>(null)
   const [error, setError] = useState('')
+  const known = status !== null
 
   useEffect(() => {
     let cancelled = false
@@ -76,37 +37,8 @@ export function DashboardPage() {
           setError(err instanceof Error ? err.message : 'version request failed')
         }
       })
-
-    const load = () => {
-      if (document.visibilityState !== 'visible') {
-        return
-      }
-      void getJSON('/v1/status')
-        .then((body) => {
-          if (cancelled) {
-            return
-          }
-          setStatus(asStatus(body))
-          setError('')
-        })
-        .catch((err: unknown) => {
-          if (!cancelled) {
-            setError(err instanceof Error ? err.message : 'status request failed')
-          }
-        })
-    }
-    load()
-    const id = window.setInterval(load, 2000)
-    const onVis = () => {
-      if (document.visibilityState === 'visible') {
-        load()
-      }
-    }
-    document.addEventListener('visibilitychange', onVis)
     return () => {
       cancelled = true
-      window.clearInterval(id)
-      document.removeEventListener('visibilitychange', onVis)
     }
   }, [])
 
@@ -125,20 +57,24 @@ export function DashboardPage() {
         <h2>Process</h2>
         <dl>
           <dt>Ready</dt>
-          <dd className={`status status-${kind}`}>
-            <span className="status-symbol" aria-hidden="true">
-              {kind === 'ready' ? '●' : kind === 'degraded' ? '▲' : '○'}
-            </span>{' '}
-            {readyLabel(kind)}
-          </dd>
+          {known ? (
+            <dd className={`status status-${kind}`}>
+              <span className="status-symbol" aria-hidden="true">
+                {kind === 'ready' ? '●' : kind === 'degraded' ? '▲' : '○'}
+              </span>{' '}
+              {readyLabel(kind)}
+            </dd>
+          ) : (
+            <dd>—</dd>
+          )}
           <dt>Runtime revision</dt>
-          <dd title={rev}>{shortRevision(rev)}</dd>
+          <dd title={rev}>{known ? shortRevision(rev) : '—'}</dd>
           <dt>Bootstrap revision</dt>
-          <dd>{shortRevision(status?.revisions?.bootstrapRevision)}</dd>
+          <dd>{known ? shortRevision(status?.revisions?.bootstrapRevision) : '—'}</dd>
           <dt>Generation</dt>
           <dd>{status?.revisions?.generation ?? '—'}</dd>
           <dt>Drifted</dt>
-          <dd>{status?.revisions?.drifted ? 'Yes' : 'No'}</dd>
+          <dd>{yn(status?.revisions?.drifted, known)}</dd>
         </dl>
       </section>
       <section>
@@ -154,7 +90,9 @@ export function DashboardPage() {
       </section>
       <section>
         <h2>Listeners</h2>
-        {status?.listeners && status.listeners.length > 0 ? (
+        {status === null ? (
+          <p>—</p>
+        ) : status.listeners && status.listeners.length > 0 ? (
           <ul>
             {status.listeners.map((l) => (
               <li key={`${l.name ?? ''}:${l.address ?? ''}`}>
@@ -170,7 +108,7 @@ export function DashboardPage() {
         <h2>Cache</h2>
         <dl>
           <dt>Enabled</dt>
-          <dd>{status?.cache?.enabled ? 'Yes' : 'No'}</dd>
+          <dd>{yn(status?.cache?.enabled, known)}</dd>
           <dt>Entries</dt>
           <dd>
             {status?.cache?.entries ?? '—'} / {status?.cache?.maxEntries ?? '—'}
@@ -183,7 +121,9 @@ export function DashboardPage() {
       </section>
       <section>
         <h2>Upstreams</h2>
-        {status?.upstreams && status.upstreams.length > 0 ? (
+        {status === null ? (
+          <p>—</p>
+        ) : status.upstreams && status.upstreams.length > 0 ? (
           <ul>
             {status.upstreams.map((u) => (
               <li key={u.id ?? u.endpoint}>
@@ -199,9 +139,9 @@ export function DashboardPage() {
         <h2>Chaos</h2>
         <dl>
           <dt>Enabled</dt>
-          <dd>{status?.chaos?.enabled ? 'Yes' : 'No'}</dd>
+          <dd>{yn(status?.chaos?.enabled, known)}</dd>
           <dt>Emergency disabled</dt>
-          <dd>{status?.chaos?.emergencyDisabled ? 'Yes' : 'No'}</dd>
+          <dd>{yn(status?.chaos?.emergencyDisabled, known)}</dd>
           <dt>Active policies</dt>
           <dd>{status?.chaos?.activePolicies ?? '—'}</dd>
         </dl>

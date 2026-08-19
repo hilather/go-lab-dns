@@ -2,27 +2,30 @@ import { useEffect, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router'
 import { APIError, deleteSession, getJSON, getSession } from '../auth/sessionApi'
 import { NAV } from '../nav'
-import { readyKind, readyLabel, shortRevision } from '../status'
+import { readyKind, readyLabel, shortRevision, type StatusView } from '../status'
 import { Nav } from './Nav'
 
-type StatusChrome = {
-  ready?: boolean
-  degraded?: boolean
-  revisions?: { runtimeRevision?: string }
+export type ShellContext = {
+  status: StatusView | null
+}
+
+function asStatus(v: unknown): StatusView {
+  if (v && typeof v === 'object') {
+    return v as StatusView
+  }
+  return {}
 }
 
 export function Shell() {
   const navigate = useNavigate()
   const [sessionOK, setSessionOK] = useState<boolean | null>(null)
-  const [ready, setReady] = useState(false)
-  const [degraded, setDegraded] = useState(false)
-  const [revision, setRevision] = useState('')
+  const [status, setStatus] = useState<StatusView | null>(null)
 
   useEffect(() => {
-    let cancelled = false
-    void getSession()
+    const ac = new AbortController()
+    void getSession({ signal: ac.signal })
       .then((sess) => {
-        if (cancelled) {
+        if (ac.signal.aborted) {
           return
         }
         if (!sess) {
@@ -33,13 +36,13 @@ export function Shell() {
         setSessionOK(true)
       })
       .catch(() => {
-        if (!cancelled) {
+        if (!ac.signal.aborted) {
           setSessionOK(false)
           navigate('/login', { replace: true })
         }
       })
     return () => {
-      cancelled = true
+      ac.abort()
     }
   }, [navigate])
 
@@ -57,10 +60,7 @@ export function Shell() {
           if (cancelled) {
             return
           }
-          const st = body as StatusChrome
-          setReady(st.ready === true)
-          setDegraded(st.degraded === true)
-          setRevision(st.revisions?.runtimeRevision ?? '')
+          setStatus(asStatus(body))
         })
         .catch((err: unknown) => {
           if (cancelled) {
@@ -99,7 +99,8 @@ export function Shell() {
     return <p className="loading">Loading LabDNS…</p>
   }
 
-  const kind = readyKind(ready, degraded)
+  const kind = readyKind(status?.ready, status?.degraded)
+  const revision = status?.revisions?.runtimeRevision ?? ''
   return (
     <div className="shell">
       <header className="shell-header">
@@ -120,7 +121,7 @@ export function Shell() {
       </header>
       <Nav items={NAV} />
       <main className="shell-main">
-        <Outlet />
+        <Outlet context={{ status } satisfies ShellContext} />
       </main>
     </div>
   )
