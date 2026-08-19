@@ -109,3 +109,30 @@ input {
 input[type='password'] {
   padding: 0.35rem 0.5rem;
 }
+
+dialog.confirm-dialog {
+  padding: 1rem 1.25rem;
+  border: 1px solid #ccc;
+}
+
+dialog.confirm-dialog::backdrop {
+  background: rgb(0 0 0 / 30%);
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.scope-gate {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.scope-missing {
+  font-size: 0.875rem;
+}

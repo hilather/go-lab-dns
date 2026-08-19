@@ -35,7 +35,7 @@ help:
 		'  web-npm-ci          npm ci in web/ (shared by web-test and web-build)' \
 		'  web-test            Vitest unit tests in web/ (fail closed if Node is missing; not Playwright)' \
 		'  web-build           Vite production build to web/dist only (fail closed if Node is missing)' \
-		'  web-generate        OpenAPI TypeScript client (unimplemented until UI-002)'
+		'  web-generate        write web/src/api/openapi.d.ts from api/openapi/v1.json'
 
 format:
 	$(GO) fmt ./...

@@ -2,7 +2,7 @@
 
 Status: Proposed normative quality gate
 Owners: All teams
-Last reviewed: 2026-08-19 (login storage-negative tests; GET / HTML vs /v1/state 401)
+Last reviewed: 2026-08-19 (openapi-fetch client; revision-aware query keys)
 Last reviewed: 2026-08-19 (make web-test / web-build and CI job web)
 Last reviewed: 2026-08-15 (REL-001 release-diff and required CI)
 Last reviewed: 2026-08-15 (PERF-001 benches, soak, interop)
@@ -88,7 +88,7 @@ For each capability:
 
 ### Operator UI tests
 
-`make web-test` runs Vitest in `web/` (fail closed if Node is missing; not Playwright). `make web-build` emits `web/dist` only. GitHub job id `web` is required. Session-memory and login tests must prove CSRF and bearer tokens are not written to `localStorage` or `sessionStorage`. REST/cmd tests prove non-loopback `GET /` is 200 HTML without a bearer when the UI is enabled, and `GET /v1/state` is 401.
+`make web-test` runs Vitest in `web/` (fail closed if Node is missing; not Playwright) and fails if committed `web/src/api/openapi.d.ts` is stale versus `api/openapi/v1.json`. `make web-generate` writes that file; `make generate` stays Go-only. `make web-build` emits `web/dist` only. GitHub job id `web` is required. Session-memory and login tests must prove CSRF and bearer tokens are not written to `localStorage` or `sessionStorage`. Query-key tests must prove snapshot keys include revision and invalidate on revision change without touching live upstream/cache/chaos keys. REST/cmd tests prove non-loopback `GET /` is 200 HTML without a bearer when the UI is enabled, and `GET /v1/state` is 401.
 
 ### Race and leak tests
 
