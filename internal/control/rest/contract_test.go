@@ -24,12 +24,18 @@ func TestRoutesRegisteredFromRegistry(t *testing.T) {
 		seen[rt.method+" "+rt.path] = true
 	}
 	for _, c := range capabilities.All() {
+		if c.ID == capabilities.UIAssets {
+			continue
+		}
 		for _, b := range c.REST {
 			ref := strings.ToUpper(b.Method) + " " + b.Path
 			if !seen[ref] {
 				t.Errorf("missing registry route %s", ref)
 			}
 		}
+	}
+	if seen["GET /"] {
+		t.Fatal("GET / must not be a compiled registry route")
 	}
 }
 

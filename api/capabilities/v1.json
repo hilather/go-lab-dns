@@ -1046,6 +1046,49 @@
       "serviceMethods": [
         "Docs"
       ]
+    },
+    {
+      "id": "session",
+      "title": "Session create/get/delete",
+      "version": "v1",
+      "description": "Browser session cookie and CSRF secret. REST only.",
+      "outputSchema": {
+        "name": "Session"
+      },
+      "mutating": false,
+      "idempotent": true,
+      "restOnly": true,
+      "rest": [
+        {
+          "method": "POST",
+          "path": "/v1/session"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/session"
+        },
+        {
+          "method": "DELETE",
+          "path": "/v1/session"
+        }
+      ],
+      "mcp": null
+    },
+    {
+      "id": "ui.assets",
+      "title": "UI assets",
+      "version": "v1",
+      "description": "Embedded operator SPA. REST only.",
+      "mutating": false,
+      "idempotent": true,
+      "restOnly": true,
+      "rest": [
+        {
+          "method": "GET",
+          "path": "/"
+        }
+      ],
+      "mcp": null
     }
   ]
 }

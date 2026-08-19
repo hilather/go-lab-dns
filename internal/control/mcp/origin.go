@@ -15,3 +15,10 @@ func validateOrigin(r *http.Request, allowed []string) error {
 func originAllowed(origin string, extra []string) bool {
 	return auth.OriginAllowed(origin, extra)
 }
+
+func (s *Server) origins() []string {
+	if s.cfg.Origins != nil {
+		return s.cfg.Origins()
+	}
+	return s.cfg.AllowedOrigins
+}

@@ -41,6 +41,11 @@ const (
 	CapChangeApply   = "change.apply"
 )
 
+// EffectiveScopes is the scope set HasScope consults (explicit scopes, role expansion, or class).
+func (a Actor) EffectiveScopes() []string {
+	return a.effectiveScopes()
+}
+
 func (a Actor) effectiveScopes() []string {
 	if len(a.Scopes) > 0 {
 		if a.Role == RoleAdministrator || contains(a.Scopes, ScopeDNSAdmin) {

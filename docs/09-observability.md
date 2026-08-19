@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: Observability, Operations
-Last reviewed: 2026-08-15 (OBS-001 catalog, Status DTO, health)
+Last reviewed: 2026-08-19 (event ui.session)
 
 ## Goals
 
@@ -23,7 +23,7 @@ zone_id policy_id upstream_id duration_ms
 
 Do not log complete QNAMEs or client addresses by default. Optional debug (`spec.observability.logQNAME`) must be time-bounded, access-controlled, and documented. The same gate may include a client address; it is off unless that flag is set.
 
-Event names are frozen in [`api/metrics/v1alpha1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/metrics/v1alpha1.json) (`events[]`).
+Event names are frozen in [`api/metrics/v1alpha1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/metrics/v1alpha1.json) (`events[]`). Browser session create/delete logs `ui.session` (`EventUISession`) with token **id**, never cookie, CSRF, or bearer value. SPA asset hits do not increment a capability metric.
 
 ## Metrics
 

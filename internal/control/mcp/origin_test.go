@@ -67,6 +67,23 @@ func TestOriginAllowlist(t *testing.T) {
 	requireRPCError(t, bad, http.StatusForbidden, "forbidden")
 }
 
+func TestOriginFuncAllowlist(t *testing.T) {
+	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
+	s, err := New(Config{Service: svc, Origins: func() []string { return []string{"https://mgmt.lab.example"} }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok := doRaw(t, s.Handler(), rpcCall(1, "ping", nil), map[string]string{
+		"Content-Type":        "application/json",
+		"Accept":              "application/json, text/event-stream",
+		headerProtocolVersion: ProtocolVersion,
+		headerOrigin:          "https://mgmt.lab.example",
+	}, "127.0.0.1:1")
+	if ok.Code == http.StatusForbidden {
+		t.Fatalf("Origins func allowlist rejected: %s", ok.Body.String())
+	}
+}
+
 func TestOriginAllowedHelper(t *testing.T) {
 	if originAllowed("https://evil.example", nil) {
 		t.Fatal("evil origin allowed")

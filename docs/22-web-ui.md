@@ -2,7 +2,7 @@
 
 Status: Proposed normative design (not yet implemented)
 Owners: Control Plane, REST, Security, UI
-Last reviewed: 2026-08-19 (config + UIBinding; disposition derived from RESTOnly)
+Last reviewed: 2026-08-19 (session/CSRF handlers; CSRF omitted on first POST /v1/session only)
 Related ADRs: 0004 (embedded-UI ADR is not yet in this tree)
 
 ## Problem statement
@@ -28,7 +28,7 @@ REST and MCP already share one capability model. Humans in the mcp-integration-l
 - maildev-style WebSockets, a design-system kit, or unsafe-inline scripts.
 - Server-sent events in the first UI increment (revision-based polling is enough; SSE is a documented follow-on).
 - Changing DNS wire behavior, chaos effects, or GitOps persistence.
-- Publishing `/v1/session` or `GET /` catalog rows before handlers exist.
+- Shipping REST/MCP-only operator workflows once the console exists (session/assets are REST_ONLY_PROTOCOL).
 
 ## Invariants
 
@@ -114,7 +114,7 @@ Health live/ready stay process probes (not MCP tools). Their `UI` points at the 
 
 Every current table row in [docs/05-control-plane-and-parity.md](05-control-plane-and-parity.md) maps as follows. New REST/MCP rows added later must extend this table in the same change. Registry `UIBinding.Route` / `Action` is the machine spelling; the notes column is operator UX.
 
-Session create/get/delete and UI assets are **not** catalog rows yet. Do not publish those REST paths until handlers exist.
+Session create/get/delete and UI assets are `REST_ONLY_PROTOCOL` catalog rows (`session`, `ui.assets`) with `UI` omitted. `compileRoutes` skips `ui.assets` so `GET /` is the pre-auth SPA branch, not an authenticated registry dispatch.
 
 | Capability | REST | UI route / action | Notes |
 |---|---|---|---|
@@ -237,15 +237,18 @@ DELETE /v1/session
 
 Behavior (aligned with LabMail/LabLDAP, LabDNS cookie names):
 
-- `POST /v1/session` authenticates with the existing management authenticator (loopback unauth or `Authorization: Bearer`). On success: random session ID in cookie `labdns_session` (`HttpOnly`, `SameSite=Lax`, `Secure` iff management TLS, `Path=/`) and a CSRF secret in the JSON body. `Cache-Control: no-store`.
-- Cookie-authenticated requests send `X-LabDNS-CSRF`. Required on every non-GET, including `POST /v1/session` logout-adjacent and `DELETE /v1/session`. GET does not require CSRF.
-- `GET /v1/session` returns the CSRF secret for a valid cookie (reload recovery). Reload keeps the cookie and drops in-memory CSRF until this GET succeeds. If GET fails, show `/login`.
-- `DELETE /v1/session` revokes the server session then the UI drops CSRF and Query cache.
-- Session table is in-process memory (ADR 0003). Restart logs the operator in again. Clear sessions when compiled auth identity (token file digest / profile) changes. A failed secret reread keeps the previous verifier and live sessions (same as LabMail).
+- `POST /v1/session` with **no live cookie** (or an unknown/expired cookie) authenticates with Identify (loopback unauth or `Authorization: Bearer`). CSRF is **omitted** on that first login only. On success: 32-byte random session ID in cookie `labdns_session` (`HttpOnly`, `SameSite=Lax`, `Secure` iff `r.TLS != nil`, `Path=/`, host-only) and a 32-byte CSRF secret in the JSON body (hex). `Cache-Control: no-store`.
+- Cookie-present `POST /v1/session` **without** Bearer requires `X-LabDNS-CSRF` and **rotates** ID/CSRF for the **existing session Actor**. It must **not** call Identify (loopback Identify would upgrade a viewer UI session to administrator). Identity switch requires `Authorization: Bearer`.
+- `Authorization: Bearer` wins: cookie and CSRF are ignored for that request. `POST /v1/session` with Bearer creates a **new** session for that token's Actor (old cookie session is left to expire or `DELETE`).
+- Cookie-authenticated requests send `X-LabDNS-CSRF`. Required on every cookie non-GET, including cookie-present `POST /v1/session` and `DELETE /v1/session`. GET/HEAD never require CSRF.
+- `GET /v1/session` returns the CSRF secret for a valid cookie (reload recovery). If GET fails, show `/login`.
+- `DELETE /v1/session` revokes the server session (`Max-Age=0`) then the UI drops CSRF and Query cache.
+- Session table is in-process memory (ADR 0003), max **256**, **12h sliding** TTL on any successful Lookup. At cap, reject **new** POST with `rate_limited` (429, detail `session table full`). Rotation does not consume a slot. Restart logs the operator in again. `ResetIfDigestChanged` exists for a later token-reread; 1.1.0 never calls it.
 - Audit `transport` for cookie calls is `rest` with actor class `ui-session`. The underlying token ID remains the durable identity when a bearer was exchanged.
 - MCP stays bearer-only. Cookies are ignored on `/mcp`.
+- SPA `GET`/`HEAD` outside `/v1` and `/mcp` is served **before** authenticate. `ui.enabled: false` or a nil UI handler 404s those paths; they must **never** 401.
 
-Loopback unauth does **not** skip CSRF for the SPA. Curl/SDK without Origin and without cookies still uses bearer or loopback as today.
+Loopback unauth does **not** skip CSRF for the SPA after login. Curl/SDK without Origin and without cookies still uses bearer or loopback as today.
 
 ## Configuration
 
@@ -273,7 +276,7 @@ Materialize the default in `internal/config` with valid/invalid/round-trip/compa
 
 ## HTTP serving, CSP, headers
 
-`internal/web` on the management mux, registered **after** `/v1` and `/mcp` so API paths win.
+SPA assets are served from a **pre-auth** branch in `serveHTTP` after Origin check and security headers, for GET/HEAD whose path is not under `/v1` or `/mcp`. `/v1` and `/mcp` never fall through. `compileRoutes` omits `ui.assets`.
 
 - Hashed assets: `Cache-Control: public, max-age=31536000, immutable`.
 - `index.html`: `Cache-Control: no-store`, SPA fallback for non-file paths that are not `/v1`, `/mcp`, or well-known probes.
@@ -329,9 +332,9 @@ Same scopes as [docs/08-security-architecture.md](08-security-architecture.md). 
 
 ## Observability
 
-- Capability metrics already labeled by capability; session routes get registry IDs.
-- Optional bounded counter `labdns_ui_assets_total{result}` if it stays in the metrics catalog with a label allowlist. Do not add high-cardinality paths.
-- Structured log `event=ui.session` with token **id**, not value.
+- Capability metrics already labeled by capability; session routes increment `labdns_capability_calls_total{capability="session",transport="rest"}`.
+- No SPA request metrics in 1.1.0 (pre-auth branch never calls `observe()`; `ui.assets` is omitted from the live mux).
+- Structured log `event=ui.session` with token **id**, not value. Cookie and CSRF are never logged.
 
 ## Testing strategy
 

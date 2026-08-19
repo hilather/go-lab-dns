@@ -697,6 +697,8 @@ Strict union of `docs/05` + `docs/06` + `docs/07` plus the pack-03 runtime ops t
 | Audit get | `GET /v1/audit/{eventId}` | `dns_audit_get` | `dns.audit.read` |
 | Docs: DNS semantics | `GET /v1/docs/dns-semantics` | `dns_docs_get` (`id=dns-semantics`), `labdns://docs/dns-semantics` | `dns.read` |
 | Docs: chaos safety | `GET /v1/docs/chaos-safety` | `dns_docs_get` (`id=chaos-safety`), `labdns://docs/chaos-safety` | `dns.read` |
+| Session create/get/delete | `POST /v1/session`, `GET /v1/session`, `DELETE /v1/session` | *not a tool* (REST only; cookie + CSRF) | none |
+| UI assets | `GET /` | *not a tool* (REST only; SPA pre-auth; not a live mux registry route) | none |
 
 `GET /v1/status` is the single **agent-readable status DTO** (`docs/09`). OBS-001 fills it; it does not invent a second schema.
 

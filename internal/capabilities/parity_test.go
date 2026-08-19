@@ -105,24 +105,32 @@ func TestParityMCPMutationsHaveREST(t *testing.T) {
 
 func TestParityUIBindingsComplete(t *testing.T) {
 	want := frozenUIBindings()
-	if len(want) != TableRowCount {
-		t.Fatalf("frozen UI map=%d want %d", len(want), TableRowCount)
+	uiBound := TableRowCount - 2 // session and ui.assets omit UI
+	if len(want) != uiBound {
+		t.Fatalf("frozen UI map=%d want %d", len(want), uiBound)
 	}
 	docs := parseDocs22UIMap(t)
-	if len(docs) != TableRowCount {
-		t.Fatalf("docs/22 UI map rows=%d want %d (row missing or added)", len(docs), TableRowCount)
+	if len(docs) != uiBound {
+		t.Fatalf("docs/22 UI map rows=%d want %d (row missing or added)", len(docs), uiBound)
 	}
 	got := All()
 	if len(got) != TableRowCount {
 		t.Fatalf("catalog rows=%d want %d", len(got), TableRowCount)
 	}
-	for i, c := range got {
+	docsIdx := 0
+	for _, c := range got {
 		wantDisp := DispositionParityRequired
 		if c.RESTOnly {
 			wantDisp = DispositionRESTOnlyProtocol
 		}
 		if gotDisp := c.Disposition(); gotDisp != wantDisp {
 			t.Errorf("%s Disposition()=%s want %s", c.ID, gotDisp, wantDisp)
+		}
+		if c.ID == Session || c.ID == UIAssets {
+			if c.UI != nil {
+				t.Errorf("%s UI should be omitted", c.ID)
+			}
+			continue
 		}
 		if c.UI == nil {
 			t.Errorf("%s missing UI binding", c.ID)
@@ -134,14 +142,22 @@ func TestParityUIBindingsComplete(t *testing.T) {
 		} else if c.UI.Route != frozen.Route || c.UI.Action != frozen.Action {
 			t.Errorf("%s UI={%s %s} frozen={%s %s}", c.ID, c.UI.Route, c.UI.Action, frozen.Route, frozen.Action)
 		}
-		row := docs[i]
+		if docsIdx >= len(docs) {
+			t.Errorf("%s missing from docs/22 UI map", c.ID)
+			continue
+		}
+		row := docs[docsIdx]
+		docsIdx++
 		if c.Title != row.Title {
-			t.Errorf("row %d title=%q docs/22=%q (renamed?)", i, c.Title, row.Title)
+			t.Errorf("%s title=%q docs/22=%q (renamed?)", c.ID, c.Title, row.Title)
 			continue
 		}
 		if c.UI.Route != row.Route || c.UI.Action != row.Action {
 			t.Errorf("%s UI={%s %s} docs/22={%s %s}", c.ID, c.UI.Route, c.UI.Action, row.Route, row.Action)
 		}
+	}
+	if docsIdx != len(docs) {
+		t.Errorf("docs/22 UI map leftover rows=%d", len(docs)-docsIdx)
 	}
 }
 

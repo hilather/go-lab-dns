@@ -156,11 +156,15 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 		return nil, fmt.Errorf("compile: no DNS protocol enabled")
 	}
 	mgmtAddr, mgmtOff := managementListenAddr(snap, flags.ManagementListen)
-	var authn auth.Authenticator
+	var (
+		authn auth.Authenticator
+		pol   *auth.Policy
+	)
 	if !mgmtOff && snap.Canonical != nil {
 		// Resolve tokens before binding so a missing bearer file cannot
 		// publish DNS while management fails closed.
-		pol, err := auth.FromSpec(snap.Canonical.Spec.Management.Auth)
+		var err error
+		pol, err = auth.FromSpec(snap.Canonical.Spec.Management.Auth)
 		if err != nil {
 			stopSig()
 			return nil, fmt.Errorf("management auth: %w", err)
@@ -196,7 +200,24 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 		// The MCP Streamable HTTP adapter shares the management listener with
 		// REST: same address, same bearer policy, mounted at listeners
 		// management.mcpPath (default /mcp).
-		mcpSrv, err := mcpctl.New(mcpctl.Config{Service: svc, Auth: authn})
+		origins := func() []string {
+			cur := store.Load()
+			if cur == nil || cur.Canonical == nil {
+				return nil
+			}
+			return append([]string(nil), cur.Canonical.Spec.Management.AllowedOrigins...)
+		}
+		uiEnabled := func() bool {
+			cur := store.Load()
+			if cur == nil || cur.Canonical == nil {
+				return true
+			}
+			return cur.Canonical.Spec.UI.Enabled
+		}
+		sessions := auth.NewSessionTable(auth.SessionTableConfig{
+			Digest: auth.IdentityDigest(pol),
+		})
+		mcpSrv, err := mcpctl.New(mcpctl.Config{Service: svc, Auth: authn, Origins: origins})
 		if err != nil {
 			_ = rt.Shutdown(context.Background())
 			return nil, err
@@ -206,10 +227,14 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 			mcpPath = mcpctl.DefaultPath
 		}
 		mgmt, err := rest.New(rest.Config{
-			Addr:    mgmtAddr,
-			Service: svc,
-			Auth:    authn,
-			Mounts:  map[string]http.Handler{mcpPath: mcpSrv.Handler()},
+			Addr:      mgmtAddr,
+			Service:   svc,
+			Auth:      authn,
+			Sessions:  sessions,
+			Origins:   origins,
+			UIEnabled: uiEnabled,
+			UI:        nil,
+			Mounts:    map[string]http.Handler{mcpPath: mcpSrv.Handler()},
 		})
 		if err != nil {
 			_ = rt.Shutdown(context.Background())

@@ -23,7 +23,7 @@ const (
 // Actor is the authenticated caller shared by REST, MCP, and local signals.
 type Actor struct {
 	ID     string
-	Class  string // token | mtls | proxy | loopback | local-signal | startup
+	Class  string // token | mtls | proxy | loopback | local-signal | startup | ui-session
 	Role   string
 	Scopes []string
 	Groups []string

@@ -43,6 +43,37 @@ func TestRenderOpenAPICoversRegistry(t *testing.T) {
 	if schemas["Spec"] == nil || schemas["Problem"] == nil || schemas["State"] == nil {
 		t.Fatalf("missing Spec/Problem/State: %v", keysOf(schemas))
 	}
+	if schemas["Session"] == nil || schemas["SessionActor"] == nil {
+		t.Fatal("missing Session schemas")
+	}
+	sec, _ := doc["security"].([]any)
+	if len(sec) != 2 {
+		t.Fatalf("global security=%v", sec)
+	}
+	schemes, _ := comps["securitySchemes"].(map[string]any)
+	if schemes["cookieAuth"] == nil || schemes["bearerAuth"] == nil {
+		t.Fatalf("securitySchemes=%v", keysOf(schemes))
+	}
+	sessionPath, _ := paths["/v1/session"].(map[string]any)
+	if sessionPath["post"] == nil || sessionPath["get"] == nil || sessionPath["delete"] == nil {
+		t.Fatalf("session ops=%v", sessionPath)
+	}
+	postSess, _ := sessionPath["post"].(map[string]any)
+	if postSess["security"] == nil {
+		t.Fatal("POST /v1/session should advertise optional security")
+	}
+	applyPath, _ := paths["/v1/changes:apply"].(map[string]any)
+	postApply, _ := applyPath["post"].(map[string]any)
+	if !hasHeaderParam(postApply, "X-LabDNS-CSRF") {
+		t.Fatal("mutating ops need X-LabDNS-CSRF")
+	}
+	getState, _ := paths["/v1/state"].(map[string]any)["get"].(map[string]any)
+	if hasHeaderParam(getState, "X-LabDNS-CSRF") {
+		t.Fatal("GET must not require CSRF")
+	}
+	if paths["/"] == nil {
+		t.Fatal("missing GET / UI assets path")
+	}
 	export, _ := paths["/v1/state:export"].(map[string]any)
 	getExp, _ := export["get"].(map[string]any)
 	params, _ := getExp["parameters"].([]any)
@@ -88,6 +119,17 @@ func TestGeneratedOpenAPIMatchesRender(t *testing.T) {
 	if string(got) != string(want) {
 		t.Fatalf("%s is stale; run make generate", OpenAPIRelPath)
 	}
+}
+
+func hasHeaderParam(op map[string]any, name string) bool {
+	params, _ := op["parameters"].([]any)
+	for _, p := range params {
+		pm, _ := p.(map[string]any)
+		if pm["name"] == name && pm["in"] == "header" {
+			return true
+		}
+	}
+	return false
 }
 
 func keysOf(m map[string]any) []string {

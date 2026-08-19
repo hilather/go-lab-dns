@@ -13,6 +13,19 @@ type healthResponse struct {
 	Status string `json:"status"`
 }
 
+type sessionResponse struct {
+	CSRF  string           `json:"csrf"`
+	Actor sessionActorJSON `json:"actor"`
+}
+
+type sessionActorJSON struct {
+	ID     string   `json:"id"`
+	Class  string   `json:"class"`
+	Role   string   `json:"role,omitempty"`
+	Scopes []string `json:"scopes"`
+	Groups []string `json:"groups,omitempty"`
+}
+
 type versionResponse struct {
 	Version   string           `json:"version"`
 	Commit    string           `json:"commit"`

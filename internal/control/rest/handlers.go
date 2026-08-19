@@ -104,6 +104,17 @@ func (s *Server) dispatch(w http.ResponseWriter, r *http.Request, instance strin
 		s.handleDocs(w, r, instance, ctx, actor, "dns-semantics")
 	case capabilities.DocsChaosSafety:
 		s.handleDocs(w, r, instance, ctx, actor, "chaos-safety")
+	case capabilities.Session:
+		switch r.Method {
+		case http.MethodPost:
+			s.handleSessionCreate(w, r, instance, actor)
+		case http.MethodGet:
+			s.handleSessionGet(w, r, instance)
+		case http.MethodDelete:
+			s.handleSessionDelete(w, r, instance)
+		default:
+			s.writeProblem(w, r, instance, domainerr.MethodNotAllowed("method not allowed"))
+		}
 	default:
 		s.writeProblem(w, r, instance, domainerr.UnsupportedCapability("unsupported capability"))
 	}

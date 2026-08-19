@@ -32,4 +32,8 @@ func TestMatchParameterizedAndColonSuffix(t *testing.T) {
 			t.Errorf("%s %s params=%v want %s=%s (route %s)", tc.method, tc.path, params, tc.wantParam, tc.wantVal, rt.path)
 		}
 	}
+	_, _, pathOK, _ := matchRoute(routes, "GET", "/")
+	if pathOK {
+		t.Fatal("compileRoutes must omit ui.assets GET /")
+	}
 }

@@ -686,6 +686,27 @@
       ]
     },
     {
+      "name": "ui.session",
+      "fields": [
+        "timestamp",
+        "level",
+        "event",
+        "component",
+        "request_id",
+        "trace_id",
+        "state_revision",
+        "generation",
+        "transport",
+        "capability",
+        "result",
+        "error_code",
+        "zone_id",
+        "policy_id",
+        "upstream_id",
+        "duration_ms"
+      ]
+    },
+    {
       "name": "upstream.exchange",
       "fields": [
         "timestamp",

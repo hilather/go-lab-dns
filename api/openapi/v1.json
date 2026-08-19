@@ -146,6 +146,43 @@
         "description": "Application type ResolveOut (internal/app).",
         "type": "object"
       },
+      "Session": {
+        "properties": {
+          "actor": {
+            "$ref": "#/components/schemas/SessionActor"
+          },
+          "csrf": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SessionActor": {
+        "properties": {
+          "class": {
+            "type": "string"
+          },
+          "groups": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "SimulateIn": {
         "description": "Application type SimulateIn (internal/app).",
         "type": "object"
@@ -256,6 +293,12 @@
         "description": "Required for non-loopback peers. Loopback (127.0.0.1 / ::1) may omit the token (Q-AUTH / dev-loopback-unauth).",
         "scheme": "bearer",
         "type": "http"
+      },
+      "cookieAuth": {
+        "description": "Browser session cookie. CSRF header X-LabDNS-CSRF is required on cookie-authenticated non-GET requests.",
+        "in": "cookie",
+        "name": "labdns_session",
+        "type": "apiKey"
       }
     }
   },
@@ -267,6 +310,43 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/": {
+      "get": {
+        "description": "Embedded operator SPA. REST only.",
+        "operationId": "get_",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "UI assets"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "security": [],
+        "summary": "UI assets",
+        "tags": [
+          "ui"
+        ],
+        "x-capability-id": "ui.assets",
+        "x-idempotent": true,
+        "x-mutating": false
+      }
+    },
     "/v1/audit": {
       "get": {
         "description": "Query recent in-memory audit events.",
@@ -406,7 +486,17 @@
       "post": {
         "description": "Flush the process cache. Does not change desired state.",
         "operationId": "post_v1_cache_flush",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "required when authenticating with cookie labdns_session; ignored for Authorization: Bearer.",
+            "in": "header",
+            "name": "X-LabDNS-CSRF",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -487,7 +577,17 @@
       "post": {
         "description": "Apply operations. Also requires resource-scoped writes when the change set touches those resources.",
         "operationId": "post_v1_changes_apply",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "required when authenticating with cookie labdns_session; ignored for Authorization: Bearer.",
+            "in": "header",
+            "name": "X-LabDNS-CSRF",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -536,7 +636,17 @@
       "post": {
         "description": "Dry-run operations against the active snapshot.",
         "operationId": "post_v1_changes_plan",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "required when authenticating with cookie labdns_session; ignored for Authorization: Bearer.",
+            "in": "header",
+            "name": "X-LabDNS-CSRF",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -632,6 +742,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "required when authenticating with cookie labdns_session; ignored for Authorization: Bearer.",
+            "in": "header",
+            "name": "X-LabDNS-CSRF",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -690,6 +809,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "required when authenticating with cookie labdns_session; ignored for Authorization: Bearer.",
+            "in": "header",
+            "name": "X-LabDNS-CSRF",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -745,6 +873,15 @@
             "in": "path",
             "name": "id",
             "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "required when authenticating with cookie labdns_session; ignored for Authorization: Bearer.",
+            "in": "header",
+            "name": "X-LabDNS-CSRF",
+            "required": false,
             "schema": {
               "type": "string"
             }
@@ -885,7 +1022,17 @@
       "post": {
         "description": "Set or clear the runtime EmergencyChaosOff bit.",
         "operationId": "post_v1_chaos_emergency_disable",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "required when authenticating with cookie labdns_session; ignored for Authorization: Bearer.",
+            "in": "header",
+            "name": "X-LabDNS-CSRF",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -934,7 +1081,17 @@
       "post": {
         "description": "Set or clear the runtime EmergencyChaosOff bit.",
         "operationId": "post_v1_chaos_emergency_enable",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "required when authenticating with cookie labdns_session; ignored for Authorization: Bearer.",
+            "in": "header",
+            "name": "X-LabDNS-CSRF",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -983,7 +1140,17 @@
       "post": {
         "description": "Simulate chaos decisions without sleeping, sending packets, or mutating cache.",
         "operationId": "post_v1_chaos_simulate",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "required when authenticating with cookie labdns_session; ignored for Authorization: Bearer.",
+            "in": "header",
+            "name": "X-LabDNS-CSRF",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -1223,7 +1390,17 @@
       "post": {
         "description": "Management-plane resolve. Defaults to not consuming live chaos.",
         "operationId": "post_v1_resolve",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "required when authenticating with cookie labdns_session; ignored for Authorization: Bearer.",
+            "in": "header",
+            "name": "X-LabDNS-CSRF",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -1272,7 +1449,17 @@
       "post": {
         "description": "Explain a resolve decision without changing live state.",
         "operationId": "post_v1_resolve_explain",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "required when authenticating with cookie labdns_session; ignored for Authorization: Bearer.",
+            "in": "header",
+            "name": "X-LabDNS-CSRF",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -1355,6 +1542,141 @@
         "x-required-scopes": [
           "dns.read"
         ]
+      }
+    },
+    "/v1/session": {
+      "delete": {
+        "description": "Browser session cookie and CSRF secret. REST only.",
+        "operationId": "delete_v1_session",
+        "parameters": [
+          {
+            "description": "required when authenticating with cookie labdns_session; ignored for Authorization: Bearer.",
+            "in": "header",
+            "name": "X-LabDNS-CSRF",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Session create/get/delete"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "summary": "Session create/get/delete",
+        "tags": [
+          "session"
+        ],
+        "x-capability-id": "session",
+        "x-idempotent": true,
+        "x-mutating": false
+      },
+      "get": {
+        "description": "Browser session cookie and CSRF secret. REST only.",
+        "operationId": "get_v1_session",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            },
+            "description": "Session create/get/delete"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Session create/get/delete",
+        "tags": [
+          "session"
+        ],
+        "x-capability-id": "session",
+        "x-idempotent": true,
+        "x-mutating": false
+      },
+      "post": {
+        "description": "Browser session cookie and CSRF secret. REST only.",
+        "operationId": "post_v1_session",
+        "parameters": [
+          {
+            "description": "required when authenticating with cookie labdns_session; ignored for Authorization: Bearer.",
+            "in": "header",
+            "name": "X-LabDNS-CSRF",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            },
+            "description": "Session create/get/delete"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "application/problem+json domain error"
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Session create/get/delete",
+        "tags": [
+          "session"
+        ],
+        "x-capability-id": "session",
+        "x-idempotent": true,
+        "x-mutating": false
       }
     },
     "/v1/state": {
@@ -1460,7 +1782,17 @@
       "post": {
         "description": "Reread the bootstrap mount, compile, and swap. Never writes the file.",
         "operationId": "post_v1_state_reset",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "required when authenticating with cookie labdns_session; ignored for Authorization: Bearer.",
+            "in": "header",
+            "name": "X-LabDNS-CSRF",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -1509,7 +1841,17 @@
       "post": {
         "description": "Validate a candidate document and/or operations without writing.",
         "operationId": "post_v1_state_validate",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "required when authenticating with cookie labdns_session; ignored for Authorization: Bearer.",
+            "in": "header",
+            "name": "X-LabDNS-CSRF",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -1936,6 +2278,9 @@
   "security": [
     {
       "bearerAuth": []
+    },
+    {
+      "cookieAuth": []
     }
   ],
   "servers": [
@@ -2012,6 +2357,14 @@
     {
       "description": "Embedded DNS semantics document.",
       "name": "docs"
+    },
+    {
+      "description": "Browser session cookie and CSRF secret. REST only.",
+      "name": "session"
+    },
+    {
+      "description": "Embedded operator SPA. REST only.",
+      "name": "ui"
     }
   ]
 }

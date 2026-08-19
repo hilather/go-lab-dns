@@ -67,8 +67,11 @@ type Config struct {
 	// Auth validates bearer tokens. Nil accepts any non-empty token as administrator.
 	Auth Authenticator
 	// AllowedOrigins are extra Origins accepted besides loopback. Empty denies
-	// every non-loopback Origin (DNS-rebinding default-deny).
+	// every non-loopback Origin (DNS-rebinding default-deny). Used when Origins is nil.
 	AllowedOrigins []string
+	// Origins returns the per-request Origin allowlist from the active snapshot.
+	// When non-nil it is preferred over AllowedOrigins.
+	Origins func() []string
 	// RatePerSec is the per-source management QPS. Zero uses the shared default.
 	// Negative disables the token bucket (concurrency cap still applies).
 	RatePerSec float64
@@ -190,7 +193,7 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validateOrigin(r, s.cfg.AllowedOrigins); err != nil {
+	if err := validateOrigin(r, s.origins()); err != nil {
 		writeRPC(w, http.StatusForbidden, err)
 		return
 	}

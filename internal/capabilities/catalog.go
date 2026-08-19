@@ -336,5 +336,22 @@ func catalog() []Capability {
 			UI:             &UIBinding{Route: "/docs/:id", Action: "view"},
 			ServiceMethods: []string{"Docs"},
 		},
+		{
+			ID: Session, Title: "Session create/get/delete", Version: VersionTag,
+			Description: "Browser session cookie and CSRF secret. REST only.",
+			Idempotent:  true, RESTOnly: true,
+			OutputSchema: &SchemaRef{Name: "Session"},
+			REST: []RESTBinding{
+				{Method: "POST", Path: "/v1/session"},
+				{Method: "GET", Path: "/v1/session"},
+				{Method: "DELETE", Path: "/v1/session"},
+			},
+		},
+		{
+			ID: UIAssets, Title: "UI assets", Version: VersionTag,
+			Description: "Embedded operator SPA. REST only.",
+			Idempotent:  true, RESTOnly: true,
+			REST: []RESTBinding{{Method: "GET", Path: "/"}},
+		},
 	}
 }

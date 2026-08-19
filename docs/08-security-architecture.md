@@ -2,7 +2,7 @@
 
 Status: Implemented (SEC-001)
 Owners: Security, DNS, Control Plane
-Last reviewed: 2026-08-16 (GA-001; reporting remains GitHub private advisories; Actions SHA pins)
+Last reviewed: 2026-08-19 (browser session cookie + CSRF)
 Related ADRs: 0003, 0004, 0005, 0007
 
 ## Goals
@@ -57,6 +57,14 @@ First-GA DNS listener numeric defaults (DNS-001; YAML overrides land with CFG/ST
 | `bearer` | Same loopback exception (Q-AUTH) | Bearer token required; `secretRef` must resolve to at least one token |
 
 `bearer` tokens are loaded from `spec.management.auth.secretRef` (a file: one token, or JSON `{"tokens":[{"token","id","role","scopes"}]}`). Unknown tokens fail closed. `X-Forwarded-For` is not trusted.
+
+### Browser session and CSRF
+
+The operator console authenticates with an in-process session table (max 256, 12h sliding TTL) and cookie `labdns_session` (`HttpOnly`, `SameSite=Lax`, `Path=/`, host-only, `Secure` iff `r.TLS != nil`). CSRF secret is returned in JSON and required as `X-LabDNS-CSRF` on cookie-authenticated non-GET requests (`subtle.ConstantTimeCompare`). CSRF is omitted on `POST /v1/session` **only when no live cookie is present**. A cookie-present POST without Bearer **rotates** ID/CSRF for the existing Actor (`class=ui-session`) and must not call loopback Identify (that would escalate a viewer to administrator). Identity switch requires `Authorization: Bearer`. `Authorization: Bearer` wins over cookie and CSRF for that request.
+
+Session create copies Identify `id`/`role`/`scopes`/`groups`. `ClassUISession` plus `administrator` role still yields all scopes via role expansion. MCP ignores cookies (off-loopback cookie-only MCP is 401). Cookie value, CSRF, and bearer are never logged. Cap reject uses existing `rate_limited` (429, detail `session table full`); do not evict.
+
+GET/HEAD outside `/v1` and `/mcp` is a pre-auth SPA branch and must not 401. Management JSON still gets nosniff / frame-deny / referrer-policy; CSP is applied on HTML/SPA.
 
 ### Scope catalog
 

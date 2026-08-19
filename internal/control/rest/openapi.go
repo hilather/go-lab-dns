@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/capabilities"
 	"github.com/hilather/go-lab-dns/internal/model"
 )
@@ -32,7 +33,10 @@ func RenderOpenAPI() ([]byte, error) {
 		"tags":       openAPITags(),
 		"paths":      openAPIPaths(),
 		"components": openAPIComponents(),
-		"security":   []any{map[string]any{"bearerAuth": []any{}}},
+		"security": []any{
+			map[string]any{"bearerAuth": []any{}},
+			map[string]any{"cookieAuth": []any{}},
+		},
 	}
 	return marshalSorted(doc)
 }
@@ -82,8 +86,17 @@ func openAPIOperation(c capabilities.Capability, b capabilities.RESTBinding) map
 		"description": c.Description,
 		"parameters":  pathParameters(b.Path),
 	}
-	if c.RESTOnly {
+	switch c.ID {
+	case capabilities.HealthLive, capabilities.HealthReady, capabilities.UIAssets:
 		op["security"] = []any{}
+	case capabilities.Session:
+		if strings.EqualFold(b.Method, "POST") || strings.EqualFold(b.Method, "GET") {
+			op["security"] = []any{
+				map[string]any{},
+				map[string]any{"bearerAuth": []any{}},
+				map[string]any{"cookieAuth": []any{}},
+			}
+		}
 	}
 	if len(c.RequiredScopes) > 0 {
 		op["x-required-scopes"] = append([]string(nil), c.RequiredScopes...)
@@ -125,6 +138,17 @@ func openAPIOperation(c capabilities.Capability, b capabilities.RESTBinding) map
 		params = append(params,
 			map[string]any{"name": "limit", "in": "query", "schema": map[string]any{"type": "integer", "minimum": 0}},
 		)
+		op["parameters"] = params
+	}
+	if strings.HasPrefix(b.Path, "/v1/") && !strings.EqualFold(b.Method, "GET") && !strings.EqualFold(b.Method, "HEAD") {
+		params, _ := op["parameters"].([]any)
+		params = append(params, map[string]any{
+			"name":        auth.CSRFHeader,
+			"in":          "header",
+			"required":    false,
+			"description": "required when authenticating with cookie labdns_session; ignored for Authorization: Bearer.",
+			"schema":      map[string]any{"type": "string"},
+		})
 		op["parameters"] = params
 	}
 	op["responses"] = openAPIResponses(c, b)
@@ -208,7 +232,7 @@ func openAPIResponses(c capabilities.Capability, b capabilities.RESTBinding) map
 	}
 	success := "200"
 	successSchema := map[string]any{"type": "object"}
-	if c.ID == capabilities.CacheFlush {
+	if c.ID == capabilities.CacheFlush || (c.ID == capabilities.Session && strings.EqualFold(b.Method, "DELETE")) {
 		success = "204"
 	}
 	if c.OutputSchema != nil {
@@ -249,7 +273,6 @@ func openAPIResponses(c capabilities.Capability, b capabilities.RESTBinding) map
 			},
 		},
 	}
-	_ = b
 	return out
 }
 
@@ -298,6 +321,23 @@ func openAPIComponents() map[string]any {
 				"status": map[string]any{"type": "string"},
 			},
 		},
+		"Session": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"csrf":  map[string]any{"type": "string"},
+				"actor": map[string]any{"$ref": "#/components/schemas/SessionActor"},
+			},
+		},
+		"SessionActor": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"id":     map[string]any{"type": "string"},
+				"class":  map[string]any{"type": "string"},
+				"role":   map[string]any{"type": "string"},
+				"scopes": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+				"groups": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+			},
+		},
 		"State": specSchema(),
 		"Spec":  specFieldsSchema(),
 	}
@@ -324,6 +364,12 @@ func openAPIComponents() map[string]any {
 				"scheme":       "bearer",
 				"bearerFormat": "token",
 				"description":  "Required for non-loopback peers. Loopback (127.0.0.1 / ::1) may omit the token (Q-AUTH / dev-loopback-unauth).",
+			},
+			"cookieAuth": map[string]any{
+				"type":        "apiKey",
+				"in":          "cookie",
+				"name":        auth.CookieName,
+				"description": "Browser session cookie. CSRF header X-LabDNS-CSRF is required on cookie-authenticated non-GET requests.",
 			},
 		},
 		"schemas": schemas,

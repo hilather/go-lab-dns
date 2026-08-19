@@ -36,6 +36,7 @@ func TestFrozenIDsStable(t *testing.T) {
 		UpstreamsStatus, CacheStatus, CacheFlush, ChaosStatus, ChaosPolicies,
 		ChaosSimulate, ChaosActivate, ChaosSetExpiry, ChaosEmergency,
 		AuditList, AuditGet, DocsDNSSemantics, DocsChaosSafety,
+		Session, UIAssets,
 	}
 	got := All()
 	if len(got) != len(want) {

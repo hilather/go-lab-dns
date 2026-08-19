@@ -51,6 +51,8 @@ const (
 	headerAllow       = "Allow"
 
 	requestURNPrefix = "urn:labdns:request:"
+
+	cspValue = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 )
 
 // Config constructs a management HTTP server.
@@ -61,9 +63,19 @@ type Config struct {
 	Service app.Service
 	// Auth validates bearer tokens. Nil accepts any non-empty token as administrator.
 	Auth Authenticator
+	// Sessions is the in-process browser session table. Nil becomes an empty table.
+	Sessions *auth.SessionTable
 	// AllowedOrigins are extra Origins accepted besides loopback. Empty denies
-	// every non-loopback Origin (CORS/DNS-rebinding default-deny).
+	// every non-loopback Origin (CORS/DNS-rebinding default-deny). Used when Origins is nil.
 	AllowedOrigins []string
+	// Origins returns the per-request Origin allowlist from the active snapshot.
+	// When non-nil it is preferred over AllowedOrigins.
+	Origins func() []string
+	// UIEnabled reports whether SPA assets should be served. Nil means true.
+	UIEnabled func() bool
+	// UI serves the embedded operator console on the pre-auth GET/HEAD branch.
+	// Nil 404s those paths (PR-3). Injected by cmd/labdns; rest does not import internal/web.
+	UI http.Handler
 	// RatePerSec is the per-source management QPS. Zero uses auth.DefaultMgmtRatePerSec.
 	// Negative disables the token bucket (concurrency cap still applies).
 	RatePerSec float64
@@ -106,6 +118,7 @@ type Server struct {
 	cfg      Config
 	svc      app.Service
 	authn    Authenticator
+	sessions *auth.SessionTable
 	routes   []compiledRoute
 	handler  http.Handler
 	maxBody  int64
@@ -139,10 +152,15 @@ func New(cfg Config) (*Server, error) {
 	if n <= 0 {
 		n = DefaultMaxConcurrent
 	}
+	sessions := cfg.Sessions
+	if sessions == nil {
+		sessions = auth.NewSessionTable(auth.SessionTableConfig{})
+	}
 	s := &Server{
 		cfg:      cfg,
 		svc:      cfg.Service,
 		authn:    cfg.Auth,
+		sessions: sessions,
 		routes:   compileRoutes(capabilities.All()),
 		maxBody:  maxBody,
 		timeout:  timeout,
@@ -274,9 +292,10 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	r = r.WithContext(ctx)
 	instance := requestURNPrefix + reqID
 
+	applySecurityHeaders(w.Header(), false)
 	// Deny-all CORS: never emit allow-* headers.
 	auth.ApplyCORS(w.Header())
-	if err := auth.CheckOrigin(r.Header.Get("Origin"), s.cfg.AllowedOrigins); err != nil {
+	if err := auth.CheckOrigin(r.Header.Get("Origin"), s.origins()); err != nil {
 		s.writeProblem(w, r, instance, err)
 		return
 	}
@@ -285,27 +304,23 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	select {
-	case s.inflight <- struct{}{}:
-		defer func() { <-s.inflight }()
-	default:
-		s.writeProblem(w, r, instance, domainerr.RateLimited("too many concurrent management requests"))
-		return
-	}
-
-	ctx = r.Context()
 	var cancel context.CancelFunc
 	if s.timeout > 0 {
-		ctx, cancel = context.WithTimeout(ctx, s.timeout)
+		ctx, cancel = context.WithTimeout(r.Context(), s.timeout)
 		defer cancel()
+		r = r.WithContext(ctx)
 	}
-	r = r.WithContext(ctx)
 
 	defer func() {
 		if rec := recover(); rec != nil {
 			s.writeProblem(w, r, instance, domainerr.Internal("internal error"))
 		}
 	}()
+
+	if isSPACandidate(r.Method, r.URL.Path) {
+		s.serveSPA(w, r, instance)
+		return
+	}
 
 	rt, params, pathOK, methodOK := matchRoute(s.routes, r.Method, r.URL.Path)
 	if !pathOK {
@@ -315,6 +330,14 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	if !methodOK {
 		w.Header().Set(headerAllow, allowedMethods(s.routes, r.URL.Path))
 		s.writeProblem(w, r, instance, domainerr.MethodNotAllowed("method not allowed"))
+		return
+	}
+
+	select {
+	case s.inflight <- struct{}{}:
+		defer func() { <-s.inflight }()
+	default:
+		s.writeProblem(w, r, instance, domainerr.RateLimited("too many concurrent management requests"))
 		return
 	}
 
@@ -370,6 +393,51 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	s.dispatch(sw, r, instance, actor, rt, params)
 	s.observe(rt, sw.code, time.Since(start), reqID)
+}
+
+func (s *Server) origins() []string {
+	if s.cfg.Origins != nil {
+		return s.cfg.Origins()
+	}
+	return s.cfg.AllowedOrigins
+}
+
+func (s *Server) uiEnabled() bool {
+	if s.cfg.UIEnabled != nil {
+		return s.cfg.UIEnabled()
+	}
+	return true
+}
+
+func isSPACandidate(method, path string) bool {
+	if method != http.MethodGet && method != http.MethodHead {
+		return false
+	}
+	if path == "/v1" || strings.HasPrefix(path, "/v1/") {
+		return false
+	}
+	if path == "/mcp" || strings.HasPrefix(path, "/mcp/") {
+		return false
+	}
+	return true
+}
+
+func (s *Server) serveSPA(w http.ResponseWriter, r *http.Request, instance string) {
+	applySecurityHeaders(w.Header(), true)
+	if s.uiEnabled() && s.cfg.UI != nil {
+		s.cfg.UI.ServeHTTP(w, r)
+		return
+	}
+	s.writeProblem(w, r, instance, domainerr.NotFound("not found"))
+}
+
+func applySecurityHeaders(h http.Header, html bool) {
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Referrer-Policy", "no-referrer")
+	h.Set("X-Frame-Options", "DENY")
+	if html {
+		h.Set("Content-Security-Policy", cspValue)
+	}
 }
 
 func isHealthCap(cap capabilities.Capability) bool {

@@ -83,6 +83,7 @@ const (
 	EventAuthFailure       = "auth.failure"
 	EventTelemetryDrop     = "telemetry.drop"
 	EventHealthChange      = "health.change"
+	EventUISession         = "ui.session"
 )
 
 // AllowedLabels is the default bounded label set. Metric definitions may
@@ -220,6 +221,7 @@ func Events() []EventDef {
 		EventChaosDecide, EventChaosEmergency, EventChaosBudget,
 		EventStateApply, EventStateReset, EventStateCompile,
 		EventCapabilityInvoke, EventAuthFailure, EventTelemetryDrop, EventHealthChange,
+		EventUISession,
 	}
 	out := make([]EventDef, len(names))
 	for i, n := range names {

@@ -24,6 +24,9 @@ type pathSeg struct {
 func compileRoutes(caps []capabilities.Capability) []compiledRoute {
 	var out []compiledRoute
 	for _, c := range caps {
+		if c.ID == capabilities.UIAssets {
+			continue
+		}
 		for _, b := range c.REST {
 			out = append(out, compiledRoute{
 				method:  strings.ToUpper(b.Method),

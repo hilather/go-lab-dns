@@ -100,6 +100,21 @@ func TestRemoteXForwardedForNotTrusted(t *testing.T) {
 	requireRPCError(t, rec, http.StatusUnauthorized, "unauthenticated")
 }
 
+func TestRemoteCookieDoesNotAuthenticate(t *testing.T) {
+	s, _ := newTestServer(t)
+	rec := doRaw(t, s.Handler(), rpcCall(1, "tools/call", map[string]any{
+		"_meta":     map[string]any{"io.modelcontextprotocol/protocolVersion": ProtocolVersion},
+		"name":      "dns_version_get",
+		"arguments": map[string]any{},
+	}), map[string]string{
+		"Content-Type":        "application/json",
+		"Accept":              "application/json, text/event-stream",
+		headerProtocolVersion: ProtocolVersion,
+		"Cookie":              auth.CookieName + "=deadbeef",
+	}, "192.0.2.10:9")
+	requireRPCError(t, rec, http.StatusUnauthorized, "unauthenticated")
+}
+
 func TestIsLoopback(t *testing.T) {
 	if !isLoopback("127.0.0.1:1") || !isLoopback("[::1]:80") {
 		t.Fatal("loopback not detected")

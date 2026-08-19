@@ -36,6 +36,8 @@ const (
 	AuditGet           ID = "audit.get"
 	DocsDNSSemantics   ID = "docs.dns-semantics"
 	DocsChaosSafety    ID = "docs.chaos-safety"
+	Session            ID = "session"
+	UIAssets           ID = "ui.assets"
 )
 
 // VersionTag is the first-GA capability schema version embedded on every row.

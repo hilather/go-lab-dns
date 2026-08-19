@@ -2,7 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Application, REST, MCP, UI
-Last reviewed: 2026-08-19 (UIBinding; disposition derived from RESTOnly)
+Last reviewed: 2026-08-19 (session and UI assets REST_ONLY rows; UI omitted on those rows)
 Related ADRs: 0004, 0006
 
 ## Problem statement
@@ -50,7 +50,7 @@ type UIBinding struct {
 }
 ```
 
-`UI` is omitted only for `REST_ONLY_PROTOCOL` rows the console does not surface as its own page (session and static assets, when added) and for `MCP_ONLY_PROTOCOL`. Health live/ready are REST-only probes displayed on the dashboard (`Route: "/"`, `Action: "view"`).
+`UI` is omitted only for `REST_ONLY_PROTOCOL` rows the console does not surface as its own page (session and static assets) and for `MCP_ONLY_PROTOCOL`. Health live/ready are REST-only probes displayed on the dashboard (`Route: "/"`, `Action: "view"`).
 
 The registry is the source for:
 
@@ -121,6 +121,8 @@ Frozen names live in `internal/capabilities` and the generated manifest `api/cap
 | Audit get | `GET /v1/audit/{eventId}` | `dns_audit_get` | `dns.audit.read` |
 | Docs: DNS semantics | `GET /v1/docs/dns-semantics` | `dns_docs_get` (`id=dns-semantics`), `labdns://docs/dns-semantics` | `dns.read` |
 | Docs: chaos safety | `GET /v1/docs/chaos-safety` | `dns_docs_get` (`id=chaos-safety`), `labdns://docs/chaos-safety` | `dns.read` |
+| Session create/get/delete | `POST /v1/session`, `GET /v1/session`, `DELETE /v1/session` | *not a tool* (REST only) | none |
+| UI assets | `GET /` | *not a tool* (REST only; SPA pre-auth) | none |
 
 The HTTP-less handler surface is `internal/app.Service`. REST and MCP must call it; they must not reimplement plan/apply/reset. Chaos activate/deactivate/set-expiry share `Apply` (`OpUpdate` + `TargetChaosActivation`). `SimulateChaos` is side-effect-free and uses `hash-v1`.
 
