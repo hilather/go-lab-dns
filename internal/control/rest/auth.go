@@ -39,6 +39,11 @@ func (s *Server) authenticate(r *http.Request, cap capabilities.Capability) (aut
 			}
 			return sess.Actor, nil
 		}
+		// Present but not live: do not Identify on session POST (loopback would
+		// mint administrator). First login omits the cookie.
+		if cap.ID == capabilities.Session && r.Method == http.MethodPost {
+			return auth.Actor{}, domainerr.Unauthenticated("authentication required")
+		}
 	}
 	return auth.Identify(r.Context(), auth.IdentifyIn{
 		RemoteAddr:    r.RemoteAddr,

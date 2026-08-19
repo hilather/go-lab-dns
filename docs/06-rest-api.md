@@ -111,7 +111,7 @@ DELETE /v1/session
 GET    /                 (SPA pre-auth; 404 until the embed handler is wired)
 ```
 
-`POST /v1/session` (no live cookie, or Bearer present) authenticates with Identify (loopback unauth or Bearer) and issues cookie `labdns_session` (`HttpOnly`, `SameSite=Lax`, `Path=/`, host-only, `Secure` iff TLS) plus JSON `{csrf, actor}`. `Cache-Control: no-store`. At 256 distinct sessions, new creates fail `rate_limited` with detail `session table full` (retryable); rotation of an existing session does not consume a slot.
+`POST /v1/session` with **no cookie header** (or with Bearer) authenticates with Identify (loopback unauth or Bearer) and issues cookie `labdns_session` (`HttpOnly`, `SameSite=Lax`, `Path=/`, host-only, `Secure` iff TLS) plus JSON `{csrf, actor}`. `Cache-Control: no-store`. A present but unknown/expired cookie without Bearer is 401 and does not Identify. At 256 distinct sessions, new creates fail `rate_limited` with detail `session table full` (retryable); rotation of an existing session does not consume a slot.
 
 Cookie-present `POST /v1/session` **without** Bearer requires CSRF and rotates ID/CSRF for the **same** Actor (`class=ui-session`). Identity switch requires `Authorization: Bearer`.
 

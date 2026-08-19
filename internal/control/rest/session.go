@@ -21,7 +21,8 @@ func (s *Server) handleSessionCreate(w http.ResponseWriter, r *http.Request, ins
 		if _, ok := s.sessions.Lookup(c.Value); ok {
 			sess, err = s.sessions.Rotate(c.Value)
 		} else {
-			sess, err = s.sessions.Create(actor)
+			s.writeProblem(w, r, instance, domainerr.Unauthenticated("authentication required"))
+			return
 		}
 	} else {
 		sess, err = s.sessions.Create(actor)
@@ -33,7 +34,7 @@ func (s *Server) handleSessionCreate(w http.ResponseWriter, r *http.Request, ins
 	setSessionCookie(w, r, sess.ID, 0)
 	w.Header().Set("Cache-Control", "no-store")
 	s.sessionAudit(r, sess.Actor, audit.ResultOK, "")
-	s.sessionLog(r, "ok")
+	s.sessionLog(r, sess.Actor, "ok")
 	s.writeJSON(w, http.StatusOK, sessionResponse{
 		CSRF:  sess.CSRF,
 		Actor: sessionActorJSONFrom(sess.Actor),
@@ -63,7 +64,7 @@ func (s *Server) handleSessionDelete(w http.ResponseWriter, r *http.Request, ins
 	setSessionCookie(w, r, "", -1)
 	w.Header().Set("Cache-Control", "no-store")
 	s.sessionAudit(r, sess.Actor, audit.ResultOK, "")
-	s.sessionLog(r, "ok")
+	s.sessionLog(r, sess.Actor, "ok")
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -103,7 +104,7 @@ func (s *Server) sessionAudit(r *http.Request, actor auth.Actor, result, code st
 	})
 }
 
-func (s *Server) sessionLog(r *http.Request, result string) {
+func (s *Server) sessionLog(r *http.Request, actor auth.Actor, result string) {
 	if s.logger == nil {
 		return
 	}
@@ -114,6 +115,7 @@ func (s *Server) sessionLog(r *http.Request, result string) {
 		Capability: "session",
 		Transport:  "rest",
 		Result:     result,
+		ActorID:    actor.ID,
 	})
 }
 

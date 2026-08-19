@@ -62,6 +62,19 @@ func TestRenderOpenAPICoversRegistry(t *testing.T) {
 	if postSess["security"] == nil {
 		t.Fatal("POST /v1/session should advertise optional security")
 	}
+	getSess, _ := sessionPath["get"].(map[string]any)
+	getSec, _ := getSess["security"].([]any)
+	if len(getSec) != 1 {
+		t.Fatalf("GET /v1/session security=%v want cookie-only", getSec)
+	}
+	sec0, _ := getSec[0].(map[string]any)
+	if _, ok := sec0["cookieAuth"]; !ok || len(sec0) != 1 {
+		t.Fatalf("GET /v1/session security=%v want cookieAuth only", getSec)
+	}
+	desc, _ := getSess["description"].(string)
+	if !strings.Contains(desc, "live labdns_session cookie") {
+		t.Fatalf("GET /v1/session description=%q", desc)
+	}
 	applyPath, _ := paths["/v1/changes:apply"].(map[string]any)
 	postApply, _ := applyPath["post"].(map[string]any)
 	if !hasHeaderParam(postApply, "X-LabDNS-CSRF") {

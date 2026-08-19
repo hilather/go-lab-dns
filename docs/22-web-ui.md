@@ -237,7 +237,7 @@ DELETE /v1/session
 
 Behavior (aligned with LabMail/LabLDAP, LabDNS cookie names):
 
-- `POST /v1/session` with **no live cookie** (or an unknown/expired cookie) authenticates with Identify (loopback unauth or `Authorization: Bearer`). CSRF is **omitted** on that first login only. On success: 32-byte random session ID in cookie `labdns_session` (`HttpOnly`, `SameSite=Lax`, `Secure` iff `r.TLS != nil`, `Path=/`, host-only) and a 32-byte CSRF secret in the JSON body (hex). `Cache-Control: no-store`.
+- `POST /v1/session` with **no cookie header** authenticates with Identify (loopback unauth or `Authorization: Bearer`). CSRF is **omitted** on that first login only. A cookie that is present but unknown/expired, with no Bearer, is **401** and does not Identify (loopback Identify would mint administrator after idle expiry). On success: 32-byte random session ID in cookie `labdns_session` (`HttpOnly`, `SameSite=Lax`, `Secure` iff `r.TLS != nil`, `Path=/`, host-only) and a 32-byte CSRF secret in the JSON body (hex). `Cache-Control: no-store`.
 - Cookie-present `POST /v1/session` **without** Bearer requires `X-LabDNS-CSRF` and **rotates** ID/CSRF for the **existing session Actor**. It must **not** call Identify (loopback Identify would upgrade a viewer UI session to administrator). Identity switch requires `Authorization: Bearer`.
 - `Authorization: Bearer` wins: cookie and CSRF are ignored for that request. `POST /v1/session` with Bearer creates a **new** session for that token's Actor (old cookie session is left to expire or `DELETE`).
 - Cookie-authenticated requests send `X-LabDNS-CSRF`. Required on every cookie non-GET, including cookie-present `POST /v1/session` and `DELETE /v1/session`. GET/HEAD never require CSRF.
@@ -334,7 +334,7 @@ Same scopes as [docs/08-security-architecture.md](08-security-architecture.md). 
 
 - Capability metrics already labeled by capability; session routes increment `labdns_capability_calls_total{capability="session",transport="rest"}`.
 - No SPA request metrics in 1.1.0 (pre-auth branch never calls `observe()`; `ui.assets` is omitted from the live mux).
-- Structured log `event=ui.session` with token **id**, not value. Cookie and CSRF are never logged.
+- Structured log `event=ui.session` with `actor_id` (token **id** or identity id such as `loopback`), never cookie, CSRF, or bearer value.
 
 ## Testing strategy
 

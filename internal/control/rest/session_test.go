@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hilather/go-lab-dns/internal/auth"
+	"github.com/hilather/go-lab-dns/internal/observability"
 )
 
 func TestSessionCookieFlags(t *testing.T) {
@@ -121,6 +122,107 @@ func TestSessionLoopbackCreate(t *testing.T) {
 	}
 	anon := doLoopback(t, s.Handler(), http.MethodGet, "/v1/session", "")
 	requireProblem(t, anon, http.StatusUnauthorized, "unauthenticated")
+}
+
+func TestSessionStaleCookiePostDoesNotEscalate(t *testing.T) {
+	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
+	pol, err := auth.NewPolicy(auth.PolicyConfig{Tokens: []auth.Token{
+		{Token: "view", ID: "viewer", Role: auth.RoleViewer},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := New(Config{Service: svc, Auth: pol, RatePerSec: -1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := s.Handler()
+	first := doSession(t, h, http.MethodPost, "/v1/session", "127.0.0.1:9", "", "", "view")
+	requireStatus(t, first, http.StatusOK)
+	id := sessionCookie(t, first).Value
+	csrf := decodeJSON(t, first)["csrf"].(string)
+	s.sessions.Delete(id)
+
+	stale := doSession(t, h, http.MethodPost, "/v1/session", "127.0.0.1:9", id, csrf, "")
+	requireProblem(t, stale, http.StatusUnauthorized, "unauthenticated")
+
+	fresh := doLoopback(t, h, http.MethodPost, "/v1/session", "")
+	requireStatus(t, fresh, http.StatusOK)
+	actor := decodeJSON(t, fresh)["actor"].(map[string]any)
+	if actor["id"] != "loopback" || actor["role"] != auth.RoleAdministrator {
+		t.Fatalf("explicit no-cookie login actor=%v", actor)
+	}
+}
+
+func TestSessionCookieAuthorizesGETState(t *testing.T) {
+	s, _ := newTestServer(t)
+	h := s.Handler()
+	first := doLoopback(t, h, http.MethodPost, "/v1/session", "")
+	requireStatus(t, first, http.StatusOK)
+	id := sessionCookie(t, first).Value
+	got := doSession(t, h, http.MethodGet, "/v1/state", "127.0.0.1:9", id, "", "")
+	requireStatus(t, got, http.StatusOK)
+	if decodeJSON(t, got)["runtimeRevision"] == "" {
+		t.Fatalf("state=%s", got.Body.String())
+	}
+}
+
+func TestSessionCookieMutationRequiresCSRF(t *testing.T) {
+	s, _ := newTestServer(t)
+	h := s.Handler()
+	first := doLoopback(t, h, http.MethodPost, "/v1/session", "")
+	requireStatus(t, first, http.StatusOK)
+	id := sessionCookie(t, first).Value
+	csrf := decodeJSON(t, first)["csrf"].(string)
+	body := `{"operations":[{"op":"add","target":{"kind":"record","id":"www-a","zoneId":"lab-zone"},"value":{"id":"www-a","owner":"www","type":"A","values":["10.42.0.80"]}}]}`
+
+	noCSRF := httptest.NewRequest(http.MethodPost, "/v1/state:validate", strings.NewReader(body))
+	noCSRF.RemoteAddr = "127.0.0.1:9"
+	noCSRF.Header.Set("Content-Type", "application/json")
+	noCSRF.AddCookie(&http.Cookie{Name: auth.CookieName, Value: id})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, noCSRF)
+	requireProblem(t, rec, http.StatusForbidden, "forbidden")
+
+	ok := httptest.NewRequest(http.MethodPost, "/v1/state:validate", strings.NewReader(body))
+	ok.RemoteAddr = "127.0.0.1:9"
+	ok.Header.Set("Content-Type", "application/json")
+	ok.AddCookie(&http.Cookie{Name: auth.CookieName, Value: id})
+	ok.Header.Set(auth.CSRFHeader, csrf)
+	okRec := httptest.NewRecorder()
+	h.ServeHTTP(okRec, ok)
+	requireStatus(t, okRec, http.StatusOK)
+}
+
+func TestSessionLogIncludesActorID(t *testing.T) {
+	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
+	pol, err := auth.NewPolicy(auth.PolicyConfig{Tokens: []auth.Token{
+		{Token: "view", ID: "viewer", Role: auth.RoleViewer},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf strings.Builder
+	s, err := New(Config{
+		Service:    svc,
+		Auth:       pol,
+		RatePerSec: -1,
+		Logger:     observability.NewLogger(&buf),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := doSession(t, s.Handler(), http.MethodPost, "/v1/session", "192.0.2.10:9", "", "", "view")
+	requireStatus(t, rec, http.StatusOK)
+	if !strings.Contains(buf.String(), `"event":"ui.session"`) {
+		t.Fatalf("missing ui.session: %s", buf.String())
+	}
+	if !strings.Contains(buf.String(), `"actor_id":"viewer"`) {
+		t.Fatalf("missing actor_id: %s", buf.String())
+	}
+	if strings.Contains(buf.String(), "view") && strings.Contains(buf.String(), "Bearer") {
+		t.Fatal("logged bearer")
+	}
 }
 
 func TestSessionLoopbackViewerRotateDoesNotEscalate(t *testing.T) {

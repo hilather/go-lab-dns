@@ -214,6 +214,7 @@ func Events() []EventDef {
 		"timestamp", "level", "event", "component", "request_id", "trace_id",
 		"state_revision", "generation", "transport", "capability", "result",
 		"error_code", "zone_id", "policy_id", "upstream_id", "duration_ms",
+		"actor_id",
 	}
 	names := []string{
 		EventDNSQuery, EventDNSParseFailed, EventDNSAdmissionFail, EventDeniedForward,

@@ -74,7 +74,7 @@ type Config struct {
 	// UIEnabled reports whether SPA assets should be served. Nil means true.
 	UIEnabled func() bool
 	// UI serves the embedded operator console on the pre-auth GET/HEAD branch.
-	// Nil 404s those paths (PR-3). Injected by cmd/labdns; rest does not import internal/web.
+	// Nil 404s those paths. Injected by cmd/labdns; rest does not import internal/web.
 	UI http.Handler
 	// RatePerSec is the per-source management QPS. Zero uses auth.DefaultMgmtRatePerSec.
 	// Negative disables the token bucket (concurrency cap still applies).

@@ -37,6 +37,8 @@ type Record struct {
 	PolicyID      string    `json:"policy_id,omitempty"`
 	UpstreamID    string    `json:"upstream_id,omitempty"`
 	DurationMS    float64   `json:"duration_ms,omitempty"`
+	// ActorID is a token or identity id (never a secret). Used by ui.session.
+	ActorID string `json:"actor_id,omitempty"`
 	// QNAME is recorded only when Logger.LogQNAME is true.
 	QNAME string `json:"qname,omitempty"`
 	// Client is recorded only when Logger.LogQNAME is true (same debug gate).

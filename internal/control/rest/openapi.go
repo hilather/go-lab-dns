@@ -90,7 +90,11 @@ func openAPIOperation(c capabilities.Capability, b capabilities.RESTBinding) map
 	case capabilities.HealthLive, capabilities.HealthReady, capabilities.UIAssets:
 		op["security"] = []any{}
 	case capabilities.Session:
-		if strings.EqualFold(b.Method, "POST") || strings.EqualFold(b.Method, "GET") {
+		switch strings.ToUpper(b.Method) {
+		case "GET":
+			op["description"] = c.Description + " A live labdns_session cookie is required; Authorization: Bearer does not substitute."
+			op["security"] = []any{map[string]any{"cookieAuth": []any{}}}
+		case "POST":
 			op["security"] = []any{
 				map[string]any{},
 				map[string]any{"bearerAuth": []any{}},

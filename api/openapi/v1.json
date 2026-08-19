@@ -1583,7 +1583,7 @@
         "x-mutating": false
       },
       "get": {
-        "description": "Browser session cookie and CSRF secret. REST only.",
+        "description": "Browser session cookie and CSRF secret. REST only. A live labdns_session cookie is required; Authorization: Bearer does not substitute.",
         "operationId": "get_v1_session",
         "parameters": [],
         "responses": {
@@ -1609,10 +1609,6 @@
           }
         },
         "security": [
-          {},
-          {
-            "bearerAuth": []
-          },
           {
             "cookieAuth": []
           }

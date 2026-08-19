@@ -18,12 +18,12 @@ Use structured JSON logs with stable event names. Fields:
 ```text
 timestamp level event component request_id trace_id
 state_revision generation transport capability result error_code
-zone_id policy_id upstream_id duration_ms
+zone_id policy_id upstream_id duration_ms actor_id
 ```
 
 Do not log complete QNAMEs or client addresses by default. Optional debug (`spec.observability.logQNAME`) must be time-bounded, access-controlled, and documented. The same gate may include a client address; it is off unless that flag is set.
 
-Event names are frozen in [`api/metrics/v1alpha1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/metrics/v1alpha1.json) (`events[]`). Browser session create/delete logs `ui.session` (`EventUISession`) with token **id**, never cookie, CSRF, or bearer value. SPA asset hits do not increment a capability metric.
+Event names are frozen in [`api/metrics/v1alpha1.json`](https://github.com/hilather/go-lab-dns/blob/main/api/metrics/v1alpha1.json) (`events[]`). Browser session create/delete logs `ui.session` (`EventUISession`) with `actor_id` (token **id** or identity id), never cookie, CSRF, or bearer value. SPA asset hits do not increment a capability metric. `actor_id` is a log field, not a metric label.
 
 ## Metrics
 
