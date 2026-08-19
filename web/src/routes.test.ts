@@ -1,10 +1,31 @@
 import { describe, expect, it } from 'vitest'
 import { ROUTES, UI_BINDING_ROUTES } from './routes'
 
+// Unique UIBinding.Route values from internal/capabilities/catalog.go.
+const CATALOG_UI_BINDING_ROUTES = [
+  '/',
+  '/capabilities',
+  '/schema',
+  '/state',
+  '/changes',
+  '/reset',
+  '/zones',
+  '/zones/:zoneId',
+  '/resolve',
+  '/forwarding',
+  '/cache',
+  '/chaos',
+  '/chaos/:policyId',
+  '/audit',
+  '/audit/:eventId',
+  '/docs/:id',
+] as const
+
 describe('ROUTES', () => {
-  it('includes every UIBinding.Route', () => {
+  it('matches every unique UIBinding.Route from the catalog', () => {
+    expect([...UI_BINDING_ROUTES]).toEqual([...CATALOG_UI_BINDING_ROUTES])
     const values = new Set<string>(Object.values(ROUTES))
-    for (const route of UI_BINDING_ROUTES) {
+    for (const route of CATALOG_UI_BINDING_ROUTES) {
       expect(values.has(route)).toBe(true)
     }
   })

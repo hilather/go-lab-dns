@@ -1,8 +1,8 @@
 # Operator Web UI
 
-Status: Partially implemented (UI-001 login, shell, dashboard, serve embed)
+Status: Partially implemented (UI-001 login, shell, dashboard, serve embed; UI-002 generated openapi-fetch client, revision-aware Query keys, frozen routes/nav, ConfirmDialog — read pages remain placeholders)
 Owners: Control Plane, REST, Security, UI
-Last reviewed: 2026-08-19 (login, shell, dashboard, serve UI handler)
+Last reviewed: 2026-08-19 (openapi-fetch client and revision-aware query keys)
 Related ADRs: 0004 (embedded-UI ADR is not yet in this tree)
 
 ## Problem statement

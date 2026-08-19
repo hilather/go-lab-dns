@@ -1,11 +1,25 @@
 import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-
-;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { ConfirmDialog } from './ConfirmDialog'
 import { ProblemAlert } from './ProblemAlert'
 import { ScopeGate } from './ScopeGate'
+
+;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+beforeAll(() => {
+  const proto = HTMLDialogElement.prototype
+  if (typeof proto.showModal !== 'function') {
+    proto.showModal = function showModal(this: HTMLDialogElement) {
+      this.setAttribute('open', '')
+    }
+  }
+  if (typeof proto.close !== 'function') {
+    proto.close = function close(this: HTMLDialogElement) {
+      this.removeAttribute('open')
+    }
+  }
+})
 
 let root: Root | undefined
 let host: HTMLDivElement | undefined
@@ -28,12 +42,14 @@ afterEach(async () => {
   host?.remove()
   root = undefined
   host = undefined
+  vi.restoreAllMocks()
 })
 
 describe('ConfirmDialog', () => {
-  it('opens a native dialog and confirms', async () => {
+  it('opens with showModal and confirms', async () => {
     const onConfirm = vi.fn()
     const onCancel = vi.fn()
+    const showModal = vi.spyOn(HTMLDialogElement.prototype, 'showModal')
     await render(
       <ConfirmDialog open title="Disable chaos?" onConfirm={onConfirm} onCancel={onCancel}>
         <p>This stops new faults immediately.</p>
@@ -41,6 +57,7 @@ describe('ConfirmDialog', () => {
     )
     const dialog = document.querySelector('dialog.confirm-dialog') as HTMLDialogElement | null
     expect(dialog).not.toBeNull()
+    expect(showModal).toHaveBeenCalled()
     expect(dialog?.open).toBe(true)
     expect(document.getElementById('confirm-dialog-title')?.textContent).toBe('Disable chaos?')
     const submit = document.querySelector('dialog button[type="submit"]') as HTMLButtonElement
@@ -48,6 +65,18 @@ describe('ConfirmDialog', () => {
       submit.click()
     })
     expect(onConfirm).toHaveBeenCalledTimes(1)
+  })
+
+  it('routes the dialog cancel event (Escape) to onCancel', async () => {
+    const onConfirm = vi.fn()
+    const onCancel = vi.fn()
+    await render(<ConfirmDialog open title="Reset?" onConfirm={onConfirm} onCancel={onCancel} />)
+    const dialog = document.querySelector('dialog.confirm-dialog') as HTMLDialogElement
+    await act(async () => {
+      dialog.dispatchEvent(new Event('cancel', { cancelable: true }))
+    })
+    expect(onCancel).toHaveBeenCalledTimes(1)
+    expect(onConfirm).not.toHaveBeenCalled()
   })
 })
 

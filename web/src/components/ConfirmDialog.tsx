@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 
 export function ConfirmDialog({
   open,
@@ -19,11 +19,32 @@ export function ConfirmDialog({
   onConfirm: () => void
   onCancel: () => void
 }) {
-  if (!open) {
-    return null
-  }
+  const ref = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) {
+      return
+    }
+    if (open) {
+      if (!el.open) {
+        el.showModal()
+      }
+    } else if (el.open) {
+      el.close()
+    }
+  }, [open])
+
   return (
-    <dialog className="confirm-dialog" open aria-labelledby="confirm-dialog-title" onCancel={onCancel}>
+    <dialog
+      ref={ref}
+      className="confirm-dialog"
+      aria-labelledby="confirm-dialog-title"
+      onCancel={(ev) => {
+        ev.preventDefault()
+        onCancel()
+      }}
+    >
       <form
         method="dialog"
         onSubmit={(ev) => {
