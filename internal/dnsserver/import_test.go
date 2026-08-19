@@ -53,7 +53,8 @@ func TestRepoOnlyDnswireImportsMiekg(t *testing.T) {
 			return err
 		}
 		if d.IsDir() {
-			if d.Name() == ".git" || d.Name() == "vendor" {
+			switch d.Name() {
+			case ".git", "vendor", "testdata", "node_modules":
 				return fs.SkipDir
 			}
 			return nil

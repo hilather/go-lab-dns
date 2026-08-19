@@ -12,7 +12,7 @@ GOLANGCI_LINT_MOD ?= github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GO
 
 .PHONY: help format lint generate verify-generated test test-race test-fuzz-smoke \
 	test-integration test-parity test-config-compat test-docs test-container \
-	security-scan test-changelog release-diff web-test web-build web-generate
+	security-scan test-changelog release-diff web-npm-ci web-test web-build web-generate
 
 help:
 	@printf '%s\n' \
@@ -32,6 +32,7 @@ help:
 		'  test-container      build ghcr.io/hilather/labdns and check non-root/read-only/no-caps' \
 		'  test-changelog      fail if observable paths changed without CHANGELOG.md' \
 		'  release-diff        compare public surfaces: make release-diff FROM=prev TO=HEAD NOTES=docs/releases/vX.Y.Z.md' \
+		'  web-npm-ci          npm ci in web/ (shared by web-test and web-build)' \
 		'  web-test            Vitest unit tests in web/ (fail closed if Node is missing; not Playwright)' \
 		'  web-build           Vite production build to web/dist only (fail closed if Node is missing)' \
 		'  web-generate        OpenAPI TypeScript client (unimplemented until UI-002)'
@@ -80,17 +81,21 @@ test-container:
 test-changelog:
 	$(GO) run ./scripts/checkchangelog
 
-web-generate:
+web-npm-ci:
+	@command -v $(NODE) >/dev/null || { echo 'web-npm-ci: node 22.14.0 is required' >&2; exit 1; }
+	cd $(WEB_DIR) && npm ci
+
+web-generate: web-npm-ci
 	@command -v $(NODE) >/dev/null || { echo 'web-generate: node 22.14.0 is required' >&2; exit 1; }
-	cd $(WEB_DIR) && npm ci && npm run generate
+	cd $(WEB_DIR) && npm run generate
 
-web-test:
+web-test: web-npm-ci
 	@command -v $(NODE) >/dev/null || { echo 'web-test: node 22.14.0 is required' >&2; exit 1; }
-	cd $(WEB_DIR) && npm ci && npm test
+	cd $(WEB_DIR) && npm test
 
-web-build:
+web-build: web-npm-ci
 	@command -v $(NODE) >/dev/null || { echo 'web-build: node 22.14.0 is required' >&2; exit 1; }
-	cd $(WEB_DIR) && npm ci && npm run build
+	cd $(WEB_DIR) && npm run build
 	test -f web/dist/index.html
 
 # FROM and TO are git refs. NOTES is optional and required for a tag gate.

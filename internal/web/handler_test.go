@@ -50,28 +50,31 @@ func TestHandlerHeadIndex(t *testing.T) {
 	assertSecurityHeaders(t, "HEAD /", res)
 }
 
-func TestHandlerMissingAssetIs404(t *testing.T) {
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/assets/missing-app.js", nil)
-	Handler().ServeHTTP(rec, req)
-	res := rec.Result()
-	if res.StatusCode != http.StatusNotFound {
-		t.Fatalf("status=%d want 404", res.StatusCode)
+func TestHandlerAssetPathsAre404(t *testing.T) {
+	h := Handler()
+	for _, path := range []string{"/assets", "/assets/", "/assets/missing-app.js"} {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		h.ServeHTTP(rec, req)
+		res := rec.Result()
+		if res.StatusCode != http.StatusNotFound {
+			t.Fatalf("%s status=%d want 404", path, res.StatusCode)
+		}
+		if got := res.Header.Get("Cache-Control"); got == cacheHashed {
+			t.Fatalf("%s must not be marked immutable", path)
+		}
+		if got := res.Header.Get("Cache-Control"); got == cacheIndex {
+			t.Fatalf("%s must not SPA-fallback to index.html", path)
+		}
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(body), "operator console stub") {
+			t.Fatalf("%s must not serve index.html", path)
+		}
+		assertSecurityHeaders(t, path, res)
 	}
-	if got := res.Header.Get("Cache-Control"); got == cacheHashed {
-		t.Fatal("missing hashed asset must not be marked immutable")
-	}
-	if got := res.Header.Get("Cache-Control"); got == cacheIndex {
-		t.Fatal("missing hashed asset must not SPA-fallback to index.html")
-	}
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(body), "operator console stub") {
-		t.Fatal("missing hashed asset must not serve index.html")
-	}
-	assertSecurityHeaders(t, "/assets/missing-app.js", res)
 }
 
 func TestHandlerMethodNotAllowed(t *testing.T) {

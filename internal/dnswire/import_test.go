@@ -19,8 +19,8 @@ func TestMiekgDNSOnlyImportedHere(t *testing.T) {
 			return err
 		}
 		if d.IsDir() {
-			name := d.Name()
-			if name == ".git" || name == "vendor" || name == "testdata" {
+			switch d.Name() {
+			case ".git", "vendor", "testdata", "node_modules":
 				return fs.SkipDir
 			}
 			return nil

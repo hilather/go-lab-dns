@@ -45,18 +45,22 @@ func serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rel := strings.TrimPrefix(reqPath, "/")
-	st, err := fs.Stat(content, rel)
-	if err == nil && !st.IsDir() {
-		if cc := cacheControl(reqPath, true); cc != "" {
-			w.Header().Set("Cache-Control", cc)
+	if isAssetPath(reqPath) {
+		st, err := fs.Stat(content, rel)
+		if err == nil && !st.IsDir() {
+			if cc := cacheControl(reqPath, true); cc != "" {
+				w.Header().Set("Cache-Control", cc)
+			}
+			serveFile(w, r, rel)
+			return
 		}
-		serveFile(w, r, rel)
+		http.NotFound(w, r)
 		return
 	}
 
-	// Hashed assets must 404 rather than fall back to index.html.
-	if strings.HasPrefix(reqPath, "/assets/") {
-		http.NotFound(w, r)
+	st, err := fs.Stat(content, rel)
+	if err == nil && !st.IsDir() {
+		serveFile(w, r, rel)
 		return
 	}
 	serveIndex(w, r)
@@ -94,11 +98,15 @@ func setSecurityHeaders(w http.ResponseWriter) {
 	w.Header().Set("X-Frame-Options", "DENY")
 }
 
+func isAssetPath(reqPath string) bool {
+	return reqPath == "/assets" || strings.HasPrefix(reqPath, "/assets/")
+}
+
 func cacheControl(urlPath string, exists bool) string {
 	if urlPath == "/" || urlPath == "/index.html" {
 		return cacheIndex
 	}
-	if exists && strings.HasPrefix(urlPath, "/assets/") {
+	if exists && isAssetPath(urlPath) {
 		return cacheHashed
 	}
 	return ""

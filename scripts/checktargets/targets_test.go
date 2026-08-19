@@ -250,6 +250,18 @@ func TestWebTargetsFailClosedAndStayVitestOnly(t *testing.T) {
 	if strings.Contains(build, "internal/web") {
 		t.Error("web-build must not copy into or rm internal/web/dist")
 	}
+	ci, ok := targets["web-npm-ci"]
+	if !ok {
+		t.Fatal("missing target web-npm-ci")
+	}
+	if !strings.Contains(ci, "npm ci") {
+		t.Error("web-npm-ci must run npm ci")
+	}
+	for _, name := range []string{"web-test", "web-build"} {
+		if strings.Contains(targets[name], "npm ci") {
+			t.Errorf("%s must use web-npm-ci instead of npm ci in its own recipe", name)
+		}
+	}
 }
 
 func TestWebNestedModuleFence(t *testing.T) {
@@ -290,11 +302,8 @@ func TestWebCIJobHasNoPlaywright(t *testing.T) {
 	if strings.Contains(strings.ToLower(job), "playwright") {
 		t.Error("web job must not install or run Playwright")
 	}
-	if !strings.Contains(job, "make web-test") {
-		t.Error("web job must run make web-test")
-	}
-	if !strings.Contains(job, "make web-build") {
-		t.Error("web job must run make web-build")
+	if !strings.Contains(job, "make web-test web-build") {
+		t.Error("web job must run make web-test web-build in one invocation so npm ci runs once")
 	}
 	if !strings.Contains(job, "setup-node") {
 		t.Error("web job must use setup-node")
