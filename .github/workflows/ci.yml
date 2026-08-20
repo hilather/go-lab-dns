@@ -235,3 +235,12 @@ jobs:
       - name: Operator e2e
         working-directory: web
         run: npm run test:e2e
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: web-playwright
+          path: |
+            web/playwright-report
+            web/test-results
+          retention-days: 14
+          if-no-files-found: ignore

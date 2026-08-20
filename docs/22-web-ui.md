@@ -2,7 +2,7 @@
 
 Status: Partially implemented (UI-001 login, shell, dashboard, serve embed; UI-002 generated openapi-fetch client, revision-aware Query keys, frozen routes/nav, ConfirmDialog — read pages remain placeholders)
 Owners: Control Plane, REST, Security, UI
-Last reviewed: 2026-08-19 (openapi-fetch client and revision-aware query keys)
+Last reviewed: 2026-08-19 (Playwright operator matrix; CI Chromium install)
 Related ADRs: 0004 (embedded-UI ADR is not yet in this tree)
 
 ## Problem statement
@@ -348,16 +348,18 @@ Same scopes as [docs/08-security-architecture.md](08-security-architecture.md). 
 | Security | Token not in `localStorage`/`sessionStorage`; CSP header; CSRF rejection; no CORS headers |
 | Compat | Omitted `spec.ui` materializes `enabled: true`; `enabled: false` 404s SPA |
 
-Playwright talks to a loopback `labdns serve` with fixture YAML. It is not a screenshot-only check.
+Playwright talks to a loopback `labdns serve` with `testdata/web/` (pack-sample plus viewer vs admin token sidecar). It is not a screenshot-only check. `make web-test` stays Vitest-only; the matrix is `make web-e2e` / `npm run test:e2e`.
 
-CI (added by UI-001, then required — no optional job):
+CI (required — no optional job):
 
 ```text
 make web-test
 make web-build
+npx playwright install --with-deps chromium
+npm run test:e2e
 ```
 
-GitHub job id `web`. Node 22.14.0 pinned. `make web-test` must fail closed if Node is missing in CI; local docs may skip with an explicit error, never a silent pass.
+GitHub job id `web`. Node 22.14.0 pinned. `make web-test` must fail closed if Node is missing in CI; local docs may skip with an explicit error, never a silent pass. Chromium is installed in the `web` job with `npx playwright install --with-deps chromium` (not a separate GitHub Action).
 
 ## Implementation plan
 
@@ -398,11 +400,11 @@ Resolved for this design:
 - Basic auth: **not** in LabDNS UI (no maildev swap constraint).
 - Package manager: **npm**.
 - Source directory: **`web/`**.
+- Playwright browsers in CI: `npx playwright install --with-deps chromium` on job `web` (not a pinned install action).
 
 Left for implementers only if a slice is blocked:
 
 - Exact Node image digest at Dockerfile time.
-- Playwright browser install in CI (`npx playwright install --with-deps chromium` vs a pinned action).
 
 ## Detailed design references
 

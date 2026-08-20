@@ -32,7 +32,7 @@ help:
 		'  test-container      build ghcr.io/hilather/labdns and check non-root/read-only/no-caps' \
 		'  test-changelog      fail if observable paths changed without CHANGELOG.md' \
 		'  release-diff        compare public surfaces: make release-diff FROM=prev TO=HEAD NOTES=docs/releases/vX.Y.Z.md' \
-		'  web-npm-ci          npm ci in web/ (shared by web-test and web-build)' \
+		'  web-npm-ci          npm ci in web/ (shared by web-test, web-build, and web-e2e)' \
 		'  web-test            Vitest unit tests in web/ (fail closed if Node is missing; not Playwright)' \
 		'  web-build           Vite production build to web/dist only (fail closed if Node is missing)' \
 		'  web-generate        write web/src/api/openapi.d.ts from api/openapi/v1.json' \

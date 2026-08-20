@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from '@playwright/test'
+import { expect, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -33,6 +33,40 @@ export function loadFixtureTokens(): FixtureTokens {
   return { admin, viewer }
 }
 
+/** Restore pack-sample + live chaos so a CI retry does not see a dirty snapshot. */
+export async function restoreFixture(request: APIRequestContext): Promise<void> {
+  const sessRes = await request.post('/v1/session')
+  if (!sessRes.ok()) {
+    throw new Error(`session create ${sessRes.status()} ${await sessRes.text()}`)
+  }
+  const sess = (await sessRes.json()) as { csrf?: string }
+  const csrf = sess.csrf ?? ''
+  if (csrf === '') {
+    throw new Error('session create missing csrf')
+  }
+  const headers = { 'Content-Type': 'application/json', 'X-LabDNS-CSRF': csrf }
+  const st = await request.get('/v1/chaos/status')
+  if (st.ok()) {
+    const body = (await st.json()) as { emergencyDisabled?: boolean }
+    if (body.emergencyDisabled === true) {
+      const en = await request.post('/v1/chaos:emergency-enable', {
+        headers,
+        data: { reason: 'e2e restore fixture' },
+      })
+      if (!en.ok()) {
+        throw new Error(`emergency-enable ${en.status()} ${await en.text()}`)
+      }
+    }
+  }
+  const reset = await request.post('/v1/state:reset', {
+    headers,
+    data: { reason: 'e2e restore fixture' },
+  })
+  if (!reset.ok()) {
+    throw new Error(`reset ${reset.status()} ${await reset.text()}`)
+  }
+}
+
 export async function loginLoopback(page: Page): Promise<void> {
   await page.goto('/login')
   await page.getByRole('button', { name: 'Continue as local administrator' }).click()
@@ -53,15 +87,30 @@ export async function signOut(page: Page): Promise<void> {
 }
 
 export async function expectNoSecretStorage(page: Page, token: string): Promise<void> {
-  const dump = await page.evaluate(() => ({
-    local: { ...window.localStorage },
-    session: { ...window.sessionStorage },
-    cookie: document.cookie,
-  }))
+  const dump = await page.evaluate(async () => {
+    const idbNames: string[] = []
+    if (typeof indexedDB !== 'undefined' && typeof indexedDB.databases === 'function') {
+      const dbs = await indexedDB.databases()
+      for (const db of dbs) {
+        if (db.name) {
+          idbNames.push(db.name)
+        }
+      }
+    }
+    return {
+      local: { ...window.localStorage },
+      session: { ...window.sessionStorage },
+      cookie: document.cookie,
+      href: window.location.href,
+      idbNames,
+    }
+  })
   const blob = JSON.stringify(dump)
   expect(blob).not.toContain(token)
   expect(blob.toLowerCase()).not.toContain('csrf')
   expect(dump.cookie).not.toContain('labdns_session')
+  expect(dump.href).not.toContain(token)
+  expect(dump.idbNames.join(',')).not.toContain(token)
 }
 
 function parseColor(css: string): [number, number, number] | null {

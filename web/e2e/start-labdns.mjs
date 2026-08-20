@@ -153,16 +153,22 @@ function start() {
   child.stdout.on('data', prefix)
   child.stderr.on('data', prefix)
   child.on('exit', (code, signal) => {
-    if (signal) {
+    if (signal === 'SIGTERM' || signal === 'SIGINT' || code === 0) {
       process.exit(0)
     }
-    fail(`labdns exited ${code}`)
+    fail(`labdns exited ${code}${signal ? ` signal ${signal}` : ''}`)
   })
 
   const stop = () => {
-    if (child.exitCode === null && !child.killed) {
-      child.kill('SIGTERM')
+    if (child.exitCode !== null) {
+      return
     }
+    child.kill('SIGTERM')
+    setTimeout(() => {
+      if (child.exitCode === null) {
+        child.kill('SIGKILL')
+      }
+    }, 3000).unref()
   }
   process.on('SIGINT', stop)
   process.on('SIGTERM', stop)
@@ -178,8 +184,21 @@ function start() {
         if (res.ok) {
           const spa = await fetch(root)
           const ctype = spa.headers.get('content-type') || ''
+          const html = await spa.text()
           if (!spa.ok || !ctype.includes('text/html')) {
             fail(`SPA GET / returned ${spa.status} ${ctype} (want 200 text/html; overlay may have failed)`)
+          }
+          if (!html.includes('id="root"') || !html.includes('/assets/')) {
+            fail(`SPA GET / is the embed stub, not production overlay:\n${html.slice(0, 240)}`)
+          }
+          const asset = html.match(/src="(\/assets\/[^"]+)"/) || html.match(/href="(\/assets\/[^"]+)"/)
+          if (!asset) {
+            fail('SPA index.html has no /assets/ script or stylesheet')
+          } else {
+            const assetRes = await fetch(`http://${mgmtListen}${asset[1]}`)
+            if (!assetRes.ok) {
+              fail(`hashed asset ${asset[1]} returned ${assetRes.status}`)
+            }
           }
           process.stderr.write(`start-labdns: ready ${root}\n`)
           return

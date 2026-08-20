@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page, type Request } from '@playwright/test'
 import {
   RECORD_ID,
   RECORD_VALUE,
@@ -6,6 +6,7 @@ import {
   loadFixtureTokens,
   loginBearer,
   loginLoopback,
+  restoreFixture,
   signOut,
 } from './helpers'
 
@@ -13,7 +14,21 @@ test.describe.configure({ mode: 'serial' })
 
 const tokens = loadFixtureTokens()
 
-async function planAndApplyRecord(page: Page): Promise<number> {
+function applyIdempotencyKey(req: Request): string {
+  const header = req.headers()['idempotency-key'] ?? ''
+  let fromBody = ''
+  try {
+    const body = req.postDataJSON() as { idempotencyKey?: unknown } | null
+    if (typeof body?.idempotencyKey === 'string') {
+      fromBody = body.idempotencyKey
+    }
+  } catch {
+    // apply body may be unparsed; header still counts
+  }
+  return fromBody || header
+}
+
+async function planAndApplyRecord(page: Page): Promise<void> {
   await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Changes' }).click()
   await expect(page.getByRole('heading', { name: 'Changes' })).toBeVisible()
   await page.getByRole('radio', { name: 'Operations' }).check()
@@ -26,9 +41,9 @@ async function planAndApplyRecord(page: Page): Promise<number> {
   await expect(page.getByRole('heading', { name: 'Plan' })).toBeVisible()
   await expect(page.getByText('dns.write')).toBeVisible()
 
-  let applyPosts = 0
+  const keys: string[] = []
   await page.route('**/v1/changes:apply', async (route) => {
-    applyPosts += 1
+    keys.push(applyIdempotencyKey(route.request()))
     await route.continue()
   })
   await page.getByRole('button', { name: 'Apply' }).click()
@@ -40,13 +55,19 @@ async function planAndApplyRecord(page: Page): Promise<number> {
   await confirm.getByRole('button', { name: 'Apply' }).dblclick()
   await expect(page.getByRole('heading', { name: 'Apply result' })).toBeVisible()
   await expect(page.getByText(/Applied/)).toBeVisible()
-  expect(applyPosts).toBeGreaterThanOrEqual(1)
-  expect(applyPosts).toBeLessThanOrEqual(2)
+  expect(keys.length).toBeGreaterThanOrEqual(1)
+  expect(keys.length).toBeLessThanOrEqual(2)
+  expect(keys.every((k) => k !== '')).toBeTruthy()
+  expect(new Set(keys).size).toBe(1)
   await page.unroute('**/v1/changes:apply')
-  return applyPosts
 }
 
 test.describe('operator matrix', () => {
+  // Playwright does not restart webServer on retry; restore pack-sample + chaos first.
+  test.beforeEach(async ({ request }) => {
+    await restoreFixture(request)
+  })
+
   test('login, dashboard, plan/apply, export, resolve, chaos, reset, viewer 403', async ({ page }) => {
     await loginLoopback(page)
     await expect(page.getByRole('heading', { name: 'Process' })).toBeVisible()
@@ -152,6 +173,11 @@ test.describe('operator matrix', () => {
     expect(sess.ok()).toBeTruthy()
     const body = (await sess.json()) as { csrf?: string }
     expect(body.csrf).toBeTruthy()
+    const liveStatus = await page.request.get('/v1/status')
+    expect(liveStatus.ok()).toBeTruthy()
+    const statusBody = (await liveStatus.json()) as { revisions?: { runtimeRevision?: string } }
+    const expectedRevision = statusBody.revisions?.runtimeRevision ?? ''
+    expect(expectedRevision).not.toBe('')
     const forced = await page.request.post('/v1/changes:apply', {
       headers: {
         'Content-Type': 'application/json',
@@ -159,6 +185,7 @@ test.describe('operator matrix', () => {
       },
       data: {
         reason: 'viewer-force',
+        expectedRevision,
         operations: [
           {
             op: 'add',
@@ -169,5 +196,9 @@ test.describe('operator matrix', () => {
       },
     })
     expect(forced.status()).toBe(403)
+    const problem = (await forced.json()) as { code?: string; detail?: string }
+    expect(problem.code).toBe('forbidden')
+    expect(problem.detail ?? '').not.toMatch(/csrf/i)
+    expect(problem.detail ?? '').toMatch(/scope/i)
   })
 })

@@ -317,6 +317,9 @@ func TestWebCIJobRunsPlaywrightE2E(t *testing.T) {
 	if !strings.Contains(job, "npm run test:e2e") {
 		t.Error("web job must run npm run test:e2e (not folded into make web-test)")
 	}
+	if !strings.Contains(job, "playwright-report") || !strings.Contains(job, "test-results") {
+		t.Error("web job must upload Playwright report and test-results on failure")
+	}
 }
 
 func TestWebE2ETargetIsSeparateFromWebTest(t *testing.T) {

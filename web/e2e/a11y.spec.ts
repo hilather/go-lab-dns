@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { contrastAgainstBackground, loadFixtureTokens } from './helpers'
+import { contrastAgainstBackground, expectNoSecretStorage, loadFixtureTokens } from './helpers'
 
 test.describe('login a11y and CSP', () => {
   test('login HTML has labels, keyboard path, alert, contrast, and no inline styles', async ({
@@ -44,12 +44,6 @@ test.describe('login a11y and CSP', () => {
     await page.getByLabel('Bearer token').fill(tokens.admin)
     await page.getByRole('button', { name: 'Sign in' }).click()
     await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible()
-    const dump = await page.evaluate(() => ({
-      local: { ...window.localStorage },
-      session: { ...window.sessionStorage },
-      cookie: document.cookie,
-    }))
-    expect(JSON.stringify(dump)).not.toContain(tokens.admin)
-    expect(dump.cookie).not.toContain('labdns_session')
+    await expectNoSecretStorage(page, tokens.admin)
   })
 })
