@@ -15,15 +15,18 @@ import {
   asChangeInSchema,
   asValidateInSchema,
   changeFingerprint,
+  compileBuilderRows,
   compileChangeIn,
   hasOperations,
   hasPlanSource,
   hasWriteScope,
   isPlanCurrent,
   newIdempotencyKey,
+  operationToRow,
   parseEditorDocument,
   parsePlanView,
   parseProblem,
+  type BuilderRow,
   type ChangeInBody,
   type Operation,
   type PlanView,
@@ -74,7 +77,7 @@ export function ChangesPage() {
   const [documentText, setDocumentText] = useState(
     typeof incoming.document === 'string' ? incoming.document : '',
   )
-  const [operations, setOperations] = useState<Operation[]>(initialOps)
+  const [rows, setRows] = useState<BuilderRow[]>(() => initialOps.map((op) => operationToRow(op)))
   const [reason, setReason] = useState(typeof incoming.reason === 'string' ? incoming.reason : '')
   const [ticket, setTicket] = useState(typeof incoming.ticket === 'string' ? incoming.ticket : '')
   const [actor, setActor] = useState<SessionActor | null>(null)
@@ -101,8 +104,20 @@ export function ChangesPage() {
   const compiled = useMemo((): { body: ChangeInBody; error: string } => {
     try {
       if (mode === 'operations') {
+        const compiledRows = compileBuilderRows(rows)
+        if (compiledRows.error !== '') {
+          return {
+            body: compileChangeIn(undefined, { expectedRevision: revision, reason, ticket }),
+            error: compiledRows.error,
+          }
+        }
         return {
-          body: compileChangeIn(undefined, { expectedRevision: revision, reason, ticket, operations }),
+          body: compileChangeIn(undefined, {
+            expectedRevision: revision,
+            reason,
+            ticket,
+            operations: compiledRows.operations,
+          }),
           error: '',
         }
       }
@@ -118,7 +133,7 @@ export function ChangesPage() {
       const message = err instanceof DocumentParseError || err instanceof Error ? err.message : 'invalid document'
       return { body: compileChangeIn(undefined, { expectedRevision: revision, reason, ticket }), error: message }
     }
-  }, [mode, documentText, operations, revision, reason, ticket])
+  }, [mode, documentText, rows, revision, reason, ticket])
 
   const fingerprint = changeFingerprint(compiled.body)
   const parseError = compiled.error
@@ -126,16 +141,18 @@ export function ChangesPage() {
   const canWrite = hasWriteScope(actor)
   const canValidate = canWrite && parseError === '' && hasPlanSource(compiled.body) && busy === null
   const canPlan = canWrite && parseError === '' && hasOperations(compiled.body) && revision !== '' && busy === null
-  const canApply = canWrite && planCurrent && busy === null
+  const canApply = canWrite && planCurrent && reason.trim() !== '' && busy === null
 
   useEffect(() => {
     if (plan && plan.revision !== revision) {
       setPlan(null)
+      setConfirmOpen(false)
     }
   }, [plan, revision])
 
   function discardPlan() {
     setPlan(null)
+    setConfirmOpen(false)
   }
 
   function openConfirm() {
@@ -282,7 +299,7 @@ export function ChangesPage() {
         {mode === 'document' ? (
           <YamlJsonEditor value={documentText} onChange={setDocumentText} parseError={parseError} />
         ) : (
-          <OperationBuilder operations={operations} onChange={setOperations} />
+          <OperationBuilder rows={rows} onChange={setRows} />
         )}
         <p>
           Validate accepts a candidate document and/or operations. Plan and apply require structured
@@ -333,7 +350,7 @@ export function ChangesPage() {
         open={confirmOpen}
         title="Apply this plan?"
         confirmLabel="Apply"
-        confirmDisabled={reason.trim() === '' || busy === 'apply'}
+        confirmDisabled={reason.trim() === '' || busy === 'apply' || !planCurrent}
         onConfirm={() => void runApply()}
         onCancel={closeConfirm}
       >

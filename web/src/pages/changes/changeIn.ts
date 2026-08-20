@@ -33,6 +33,78 @@ export type Operation = {
   value?: unknown
 }
 
+export type BuilderRow = {
+  key: string
+  op: OpKind
+  target: {
+    kind: string
+    id?: string
+    zoneId?: string
+  }
+  valueText: string
+}
+
+let builderRowSeq = 0
+
+export function newBuilderRowKey(): string {
+  builderRowSeq += 1
+  return `row-${builderRowSeq}`
+}
+
+export function operationToRow(op: Operation, key = newBuilderRowKey()): BuilderRow {
+  let valueText = ''
+  if (op.value !== undefined) {
+    try {
+      valueText = JSON.stringify(op.value, null, 2)
+    } catch {
+      valueText = ''
+    }
+  }
+  return { key, op: op.op, target: { ...op.target }, valueText }
+}
+
+export function emptyBuilderRow(): BuilderRow {
+  return {
+    key: newBuilderRowKey(),
+    op: 'add',
+    target: { kind: 'record' },
+    valueText: '{}',
+  }
+}
+
+export function builderValueError(row: BuilderRow): string {
+  if (row.op === 'remove') {
+    return ''
+  }
+  const trimmed = row.valueText.trim()
+  if (trimmed === '') {
+    return ''
+  }
+  try {
+    JSON.parse(trimmed)
+    return ''
+  } catch {
+    return 'Invalid JSON value'
+  }
+}
+
+export function compileBuilderRows(rows: BuilderRow[]): { operations: Operation[]; error: string } {
+  const operations: Operation[] = []
+  for (const row of rows) {
+    const err = builderValueError(row)
+    if (err !== '') {
+      return { operations: [], error: err }
+    }
+    const op: Operation = { op: row.op, target: { ...row.target } }
+    const trimmed = row.valueText.trim()
+    if (row.op !== 'remove' && trimmed !== '') {
+      op.value = JSON.parse(trimmed) as unknown
+    }
+    operations.push(op)
+  }
+  return { operations, error: '' }
+}
+
 export type ChangeInBody = {
   expectedRevision?: string
   idempotencyKey?: string

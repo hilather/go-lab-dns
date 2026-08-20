@@ -49,6 +49,20 @@ function jsonResponse(status: number, body: unknown): Response {
   })
 }
 
+function setNativeValue(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
+  const proto = Object.getPrototypeOf(el) as HTMLInputElement | HTMLTextAreaElement
+  const protoSetter = Object.getOwnPropertyDescriptor(proto, 'value')?.set
+  const instSetter = Object.getOwnPropertyDescriptor(el, 'value')?.set
+  if (protoSetter && instSetter !== protoSetter) {
+    protoSetter.call(el, value)
+  } else if (protoSetter) {
+    protoSetter.call(el, value)
+  } else {
+    el.value = value
+  }
+  el.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
 function result(status: number, data?: unknown, error?: unknown) {
   const ok = status >= 200 && status < 300
   return {
@@ -208,6 +222,49 @@ describe('ChangesPage', () => {
     })
     expect(applyBodies).toHaveLength(0)
     expect(document.querySelector('dialog.confirm-dialog')?.hasAttribute('open')).toBeFalsy()
+  })
+
+  it('keeps apply disabled when reason is empty after a current plan', async () => {
+    await renderPage({ locationState: { operations: [ADD_WWW] } })
+    await act(async () => {
+      actionButton('Plan').click()
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(planBodies).toHaveLength(1)
+    expect(actionButton('Apply').disabled).toBe(true)
+    await act(async () => {
+      actionButton('Apply').click()
+    })
+    expect(applyBodies).toHaveLength(0)
+    expect(document.querySelector('dialog.confirm-dialog')?.hasAttribute('open')).toBeFalsy()
+  })
+
+  it('disables plan and apply when a seeded value is edited to invalid JSON', async () => {
+    await renderPage({ locationState: draft })
+    await act(async () => {
+      actionButton('Plan').click()
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(actionButton('Apply').disabled).toBe(false)
+    const ta = document.querySelector('.operation-value textarea') as HTMLTextAreaElement
+    await act(async () => {
+      setNativeValue(ta, '{')
+    })
+    expect(document.body.textContent).toContain('Invalid JSON value')
+    expect(actionButton('Plan').disabled).toBe(true)
+    expect(actionButton('Apply').disabled).toBe(true)
+    await act(async () => {
+      actionButton('Plan').click()
+    })
+    await act(async () => {
+      actionButton('Apply').click()
+    })
+    expect(planBodies).toHaveLength(1)
+    expect(applyBodies).toHaveLength(0)
   })
 
   it('validate sends expectedRevision from latest status', async () => {
@@ -377,9 +434,15 @@ describe('ChangesPage', () => {
     })
     expect(actionButton('Apply').disabled).toBe(false)
     await act(async () => {
+      actionButton('Apply').click()
+    })
+    const dialog = document.querySelector('dialog.confirm-dialog') as HTMLDialogElement
+    expect(dialog.hasAttribute('open') || dialog.open).toBe(true)
+    await act(async () => {
       document.getElementById('bump-rev')!.click()
     })
     expect(actionButton('Apply').disabled).toBe(true)
+    expect(dialog.hasAttribute('open') || dialog.open).toBe(false)
     const id = document.querySelectorAll('.operation-row input[type="text"]')[0] as HTMLInputElement
     expect(id.value).toBe('www-a')
     const reason = document.querySelector('.changes-reason input') as HTMLInputElement

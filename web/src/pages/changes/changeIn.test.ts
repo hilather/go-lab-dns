@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  builderValueError,
   changeFingerprint,
+  compileBuilderRows,
   compileChangeIn,
   hasOperations,
   hasWriteScope,
   isPlanCurrent,
+  operationToRow,
   parseEditorDocument,
   parseProblem,
   type PlannedChange,
@@ -91,6 +94,18 @@ describe('parseProblem', () => {
     expect(p.code).toBe('revision_conflict')
     expect(p.currentRevision).toBe('sha256:live')
     expect(p.status).toBe(409)
+  })
+})
+
+describe('compileBuilderRows', () => {
+  it('does not keep a stale parsed value when JSON is invalid', () => {
+    const row = operationToRow(addWww)
+    expect(compileBuilderRows([row]).operations).toEqual([addWww])
+    const broken = { ...row, valueText: '{' }
+    expect(builderValueError(broken)).toBe('Invalid JSON value')
+    const compiled = compileBuilderRows([broken])
+    expect(compiled.error).toBe('Invalid JSON value')
+    expect(compiled.operations).toEqual([])
   })
 })
 

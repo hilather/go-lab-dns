@@ -1,187 +1,133 @@
-import { useState } from 'react'
-import { OP_KINDS, TARGET_KINDS, type Operation, type OpKind } from '../pages/changes/changeIn'
-
-function emptyOp(): Operation {
-  return { op: 'add', target: { kind: 'record' }, value: {} }
-}
-
-function valueText(op: Operation): string {
-  if (op.value === undefined) {
-    return ''
-  }
-  try {
-    return JSON.stringify(op.value, null, 2)
-  } catch {
-    return ''
-  }
-}
-
-function OperationValueField({
-  op,
-  disabled,
-  onValue,
-}: {
-  op: Operation
-  disabled: boolean
-  onValue: (value: unknown | undefined) => void
-}) {
-  const [text, setText] = useState(() => valueText(op))
-  const [error, setError] = useState('')
-
-  return (
-    <label className="operation-value">
-      Value (JSON)
-      <textarea
-        spellCheck={false}
-        rows={6}
-        disabled={disabled}
-        value={text}
-        onChange={(ev) => {
-          const next = ev.target.value
-          setText(next)
-          const trimmed = next.trim()
-          if (trimmed === '') {
-            setError('')
-            onValue(undefined)
-            return
-          }
-          try {
-            onValue(JSON.parse(trimmed))
-            setError('')
-          } catch {
-            setError('Invalid JSON value')
-          }
-        }}
-      />
-      {error !== '' ? (
-        <p role="alert" className="problem">
-          {error}
-        </p>
-      ) : null}
-    </label>
-  )
-}
+import {
+  OP_KINDS,
+  TARGET_KINDS,
+  builderValueError,
+  emptyBuilderRow,
+  type BuilderRow,
+  type OpKind,
+} from '../pages/changes/changeIn'
 
 export function OperationBuilder({
-  operations,
+  rows,
   onChange,
   disabled = false,
 }: {
-  operations: Operation[]
-  onChange: (next: Operation[]) => void
+  rows: BuilderRow[]
+  onChange: (next: BuilderRow[]) => void
   disabled?: boolean
 }) {
-  function update(i: number, next: Operation) {
-    onChange(operations.map((op, idx) => (idx === i ? next : op)))
+  function update(i: number, next: BuilderRow) {
+    onChange(rows.map((row, idx) => (idx === i ? next : row)))
   }
 
   return (
     <div className="operation-builder">
       <p>
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => onChange([...operations, emptyOp()])}
-        >
+        <button type="button" disabled={disabled} onClick={() => onChange([...rows, emptyBuilderRow()])}>
           Add operation
         </button>
       </p>
-      {operations.length === 0 ? (
-        <p>No operations. Add one, or paste a YAML/JSON change envelope.</p>
-      ) : null}
+      {rows.length === 0 ? <p>No operations. Add one, or paste a YAML/JSON change envelope.</p> : null}
       <ol className="operation-list">
-        {operations.map((op, i) => (
-          <li key={i} className="operation-row">
-            <div className="operation-row-fields">
-              <label>
-                Op
-                <select
-                  value={op.op}
-                  disabled={disabled}
-                  onChange={(ev) => update(i, { ...op, op: ev.target.value as OpKind })}
-                >
-                  {OP_KINDS.map((k) => (
-                    <option key={k} value={k}>
-                      {k}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Kind
-                <select
-                  value={op.target.kind}
-                  disabled={disabled}
-                  onChange={(ev) =>
-                    update(i, { ...op, target: { ...op.target, kind: ev.target.value } })
-                  }
-                >
-                  {TARGET_KINDS.map((k) => (
-                    <option key={k} value={k}>
-                      {k}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                ID
-                <input
-                  type="text"
-                  value={op.target.id ?? ''}
-                  disabled={disabled}
-                  onChange={(ev) => {
-                    const id = ev.target.value
-                    const target = { ...op.target }
-                    if (id === '') {
-                      delete target.id
-                    } else {
-                      target.id = id
+        {rows.map((row, i) => {
+          const valueError = builderValueError(row)
+          return (
+            <li key={row.key} className="operation-row" data-row-key={row.key}>
+              <div className="operation-row-fields">
+                <label>
+                  Op
+                  <select
+                    value={row.op}
+                    disabled={disabled}
+                    onChange={(ev) => update(i, { ...row, op: ev.target.value as OpKind })}
+                  >
+                    {OP_KINDS.map((k) => (
+                      <option key={k} value={k}>
+                        {k}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Kind
+                  <select
+                    value={row.target.kind}
+                    disabled={disabled}
+                    onChange={(ev) =>
+                      update(i, { ...row, target: { ...row.target, kind: ev.target.value } })
                     }
-                    update(i, { ...op, target })
-                  }}
-                />
-              </label>
-              <label>
-                Zone ID
-                <input
-                  type="text"
-                  value={op.target.zoneId ?? ''}
+                  >
+                    {TARGET_KINDS.map((k) => (
+                      <option key={k} value={k}>
+                        {k}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  ID
+                  <input
+                    type="text"
+                    value={row.target.id ?? ''}
+                    disabled={disabled}
+                    onChange={(ev) => {
+                      const id = ev.target.value
+                      const target = { ...row.target }
+                      if (id === '') {
+                        delete target.id
+                      } else {
+                        target.id = id
+                      }
+                      update(i, { ...row, target })
+                    }}
+                  />
+                </label>
+                <label>
+                  Zone ID
+                  <input
+                    type="text"
+                    value={row.target.zoneId ?? ''}
+                    disabled={disabled}
+                    onChange={(ev) => {
+                      const zoneId = ev.target.value
+                      const target = { ...row.target }
+                      if (zoneId === '') {
+                        delete target.zoneId
+                      } else {
+                        target.zoneId = zoneId
+                      }
+                      update(i, { ...row, target })
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
                   disabled={disabled}
-                  onChange={(ev) => {
-                    const zoneId = ev.target.value
-                    const target = { ...op.target }
-                    if (zoneId === '') {
-                      delete target.zoneId
-                    } else {
-                      target.zoneId = zoneId
-                    }
-                    update(i, { ...op, target })
-                  }}
-                />
-              </label>
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => onChange(operations.filter((_, idx) => idx !== i))}
-              >
-                Remove
-              </button>
-            </div>
-            {op.op === 'remove' ? null : (
-              <OperationValueField
-                op={op}
-                disabled={disabled}
-                onValue={(value) => {
-                  const copy: Operation = { op: op.op, target: { ...op.target } }
-                  if (value !== undefined) {
-                    copy.value = value
-                  }
-                  update(i, copy)
-                }}
-              />
-            )}
-          </li>
-        ))}
+                  onClick={() => onChange(rows.filter((_, idx) => idx !== i))}
+                >
+                  Remove
+                </button>
+              </div>
+              {row.op === 'remove' ? null : (
+                <label className="operation-value">
+                  Value (JSON)
+                  <textarea
+                    spellCheck={false}
+                    rows={6}
+                    disabled={disabled}
+                    value={row.valueText}
+                    onChange={(ev) => update(i, { ...row, valueText: ev.target.value })}
+                  />
+                  {valueError !== '' ? (
+                    <p role="alert" className="problem">
+                      {valueError}
+                    </p>
+                  ) : null}
+                </label>
+              )}
+            </li>
+          )
+        })}
       </ol>
     </div>
   )
