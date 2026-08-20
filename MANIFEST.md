@@ -15,7 +15,7 @@
 - `docs/known-limitations.md`: honest first-GA residual (UI no longer a 1.1 non-goal).
 - `docs/releases/v1.0.0-rc.1.md`: curated 1.0.0-rc.1 candidate notes (UI-less; do not rewrite).
 - `docs/releases/v1.0.0-rc.2.md`: curated 1.0.0-rc.2 notes (MCP mount, Go 1.26.6, action SHA pins; UI-less).
-- `docs/releases/v1.1.0.md`: curated 1.1.0 candidate notes (operator console). Unreleased changelog until tag.
+- `docs/releases/v1.1.0.md`: curated 1.1.0 notes (operator console).
 - `docs/releases/acceptance-evidence.md`: docs/19 criterion → test/command index (rc.1 plus 1.1.0 console appendix).
 - `CI-FAILURE-HARDENING-TEMPLATE.md`: root-cause and pipeline-hardening record.
 
