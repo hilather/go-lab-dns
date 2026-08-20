@@ -25,6 +25,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 ### Changed
 
 - Canonical JSON materializes `spec.ui.enabled: true` when `spec.ui` is omitted. Content-addressed `sha256:` revisions therefore change for previously hashed documents that omitted `spec.ui`. Operators with stored `expectedRevision` from 1.0.0-rc.* must re-GET state after upgrade. Chaos `hash-v1` vectors are unaffected.
+- Operator docs: plan/apply of `spec.ui.enabled` and `spec.management.allowedOrigins` is live on the next request; `spec.management.auth` stays serve-time and needs a restart (in-process sessions drop).
 
 ### Fixed
 

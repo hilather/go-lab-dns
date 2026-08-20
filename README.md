@@ -356,6 +356,7 @@ Full catalog: [docs/README.md](docs/README.md).
 - [0005 Bounded chaos engine](docs/adr/0005-bounded-chaos-engine.md)
 - [0006 Pin MCP protocol versions](docs/adr/0006-pin-mcp-protocol-versions.md)
 - [0007 Defer unsafe wire chaos](docs/adr/0007-defer-unsafe-wire-chaos.md)
+- [0008 Embedded operator web UI](https://github.com/hilather/go-lab-dns/blob/main/docs/adr/0008-embedded-operator-web-ui.md)
 
 ### Task lists and program board
 
@@ -366,14 +367,14 @@ Implementation contracts (not a substitute for the design docs):
 - [tasks/parallelization-plan.md](tasks/parallelization-plan.md) — safe parallel lanes
 - [tasks/reviewer-checklist.md](tasks/reviewer-checklist.md)
 - [tasks/agent-task-template.md](tasks/agent-task-template.md)
-- [01](tasks/01-repository-foundation.md) · [02](tasks/02-domain-and-configuration.md) · [03](tasks/03-dns-wire-server.md) · [04](tasks/04-local-resolver-and-wildcards.md) · [05](tasks/05-forwarding-and-cache.md) · [06](tasks/06-snapshot-state-and-mutations.md) · [07](tasks/07-chaos-core.md) · [08](tasks/08-chaos-effects.md) · [09](tasks/09-rest-control-plane.md) · [10](tasks/10-mcp-control-plane.md) · [11](tasks/11-auth-security-audit.md) · [12](tasks/12-observability.md) · [13](tasks/13-cli-and-container.md) · [14](tasks/14-deployment-examples.md) · [15](tasks/15-ci-docs-release.md) · [16](tasks/16-performance-interoperability.md) · [17](tasks/17-ga-hardening.md)
+- [01](tasks/01-repository-foundation.md) · [02](tasks/02-domain-and-configuration.md) · [03](tasks/03-dns-wire-server.md) · [04](tasks/04-local-resolver-and-wildcards.md) · [05](tasks/05-forwarding-and-cache.md) · [06](tasks/06-snapshot-state-and-mutations.md) · [07](tasks/07-chaos-core.md) · [08](tasks/08-chaos-effects.md) · [09](tasks/09-rest-control-plane.md) · [10](tasks/10-mcp-control-plane.md) · [11](tasks/11-auth-security-audit.md) · [12](tasks/12-observability.md) · [13](tasks/13-cli-and-container.md) · [14](tasks/14-deployment-examples.md) · [15](tasks/15-ci-docs-release.md) · [16](tasks/16-performance-interoperability.md) · [17](tasks/17-ga-hardening.md) · [18](https://github.com/hilather/go-lab-dns/blob/main/tasks/18-web-ui.md)
 
 ### Generated contracts and examples
 
 - [api/capabilities/v1.json](api/capabilities/v1.json) · [api/openapi/v1.json](api/openapi/v1.json) · [api/mcp/v1.json](api/mcp/v1.json)
 - [api/metrics/v1alpha1.json](api/metrics/v1alpha1.json) · [api/cli/help.txt](api/cli/help.txt) · [api/errors/v1.json](api/errors/v1.json)
 - [api/jsonschema/labdns.dev.v1alpha1.json](api/jsonschema/labdns.dev.v1alpha1.json) · [api/chaos/effects.json](api/chaos/effects.json)
-- [examples/labdns-deploy](examples/labdns-deploy/README.md) · [docs/releases/v1.0.0-rc.2.md](docs/releases/v1.0.0-rc.2.md) · [docs/releases/v1.0.0-rc.1.md](docs/releases/v1.0.0-rc.1.md) · [docs/releases/acceptance-evidence.md](docs/releases/acceptance-evidence.md)
+- [examples/labdns-deploy](examples/labdns-deploy/README.md) · [docs/releases/v1.1.0.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.1.0.md) · [docs/releases/v1.0.0-rc.2.md](docs/releases/v1.0.0-rc.2.md) · [docs/releases/v1.0.0-rc.1.md](docs/releases/v1.0.0-rc.1.md) · [docs/releases/acceptance-evidence.md](docs/releases/acceptance-evidence.md)
 
 ---
 

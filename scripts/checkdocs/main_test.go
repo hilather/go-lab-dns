@@ -17,6 +17,16 @@ func TestCheckRepoDocuments(t *testing.T) {
 	}
 }
 
+func TestRequiredRootDocsIncludes110Notes(t *testing.T) {
+	want := "docs/releases/v1.1.0.md"
+	for _, rel := range RequiredRootDocs {
+		if rel == want {
+			return
+		}
+	}
+	t.Fatalf("RequiredRootDocs missing %s", want)
+}
+
 func TestCheckReportsMissingAndBroken(t *testing.T) {
 	dir := t.TempDir()
 	if err := Check(dir); err == nil {

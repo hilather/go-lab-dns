@@ -81,8 +81,11 @@ behavior: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/d
 5. Same-origin UI on a **published** management host needs
    `spec.management.allowedOrigins` with exact `http(s)://host[:port]` Origin
    strings (no path). Loopback Origin is already allowed. Invalid entries
-   fail config validation. Plan/apply of `ui` / `management` takes effect on
-   the next request without restart.
+   fail config validation. Plan/apply of `spec.ui.enabled` and
+   `spec.management.allowedOrigins` takes effect on the next request without
+   restart. `spec.management.auth` is serve-time (`auth.FromSpec` at process
+   start): changing profile or tokens requires a restart, which drops
+   in-process sessions (`ResetIfDigestChanged` is unused in 1.1.0).
 
 Local `go test` / `go run` embed the committed stub, not the production Vite
 bundle. Production images copy `web/dist` in Docker.
