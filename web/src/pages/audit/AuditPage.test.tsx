@@ -111,6 +111,7 @@ describe('AuditPage', () => {
     })
     expect(host?.textContent).toContain(`In-memory ring of ${AUDIT_RING_MAX}`)
     expect(host?.textContent).toContain('dns.audit.read')
+    expect(host?.textContent).toContain('fetched page only')
     expect(host?.textContent).toContain('<img src=x onerror=alert(1)>')
     expect(host?.querySelector('img')).toBeNull()
     expect(host?.querySelector('a')?.getAttribute('href')).toBe('/audit/aud-2')
@@ -127,6 +128,13 @@ describe('AuditPage', () => {
     })
     expect(host?.textContent).toContain('aud-1')
     expect(host?.textContent).not.toContain('aud-2')
+
+    await act(async () => {
+      result.value = 'error'
+      result.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect(host?.textContent).toContain('No events match these filters.')
+    expect(host?.textContent).not.toContain('No audit events.')
   })
 
   it('announces problem+json when the viewer cannot read audit', async () => {

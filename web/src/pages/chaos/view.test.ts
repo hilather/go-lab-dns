@@ -12,6 +12,7 @@ import {
   policyHref,
   SCOPE_CHAOS_ACTIVATE,
   SCOPE_CHAOS_EMERGENCY,
+  scopeGateAllowed,
 } from './view'
 
 describe('chaos view parsers', () => {
@@ -67,6 +68,39 @@ describe('chaos view parsers', () => {
     expect(policy?.outcomes[0]?.actions[0]?.type).toBe('delay')
     expect(formatAction(policy!.outcomes[0]!.actions[0]!)).toBe('delay before-response uniform 100ms–750ms')
     expect(policyHref('slow tools')).toBe('/chaos/slow%20tools')
+
+    const alt = parseChaosPolicy({
+      id: 'spoof-a',
+      owner: 'platform-lab',
+      reason: 'swap A',
+      enabled: false,
+      safetyClass: 'medium',
+      outcomes: [
+        {
+          id: 'swap',
+          weight: 1,
+          actions: [
+            {
+              type: 'alternate',
+              values: ['10.42.0.30', '10.42.0.31'],
+              ttl: '5s',
+              limit: 2,
+              upstreamId: 'corp-1',
+              hold: '1s',
+              ede: { code: 21, text: 'blocked' },
+            },
+          ],
+        },
+      ],
+    })
+    const formatted = formatAction(alt!.outcomes[0]!.actions[0]!)
+    expect(formatted).toContain('10.42.0.30')
+    expect(formatted).toContain('10.42.0.31')
+    expect(formatted).toContain('5s')
+    expect(formatted).toContain('limit 2')
+    expect(formatted).toContain('corp-1')
+    expect(formatted).toContain('hold 1s')
+    expect(formatted).toContain('ede 21 blocked')
   })
 
   it('gates high-impact activation using session EffectiveScopes', () => {
@@ -84,5 +118,8 @@ describe('chaos view parsers', () => {
     expect(activateMissingScope(operator, 'high')).toBe(SCOPE_CHAOS_EMERGENCY)
     expect(canActivateHigh(admin)).toBe(true)
     expect(activateMissingScope(admin, 'high')).toBe('')
+    expect(scopeGateAllowed(false, false)).toBe(true)
+    expect(scopeGateAllowed(true, false)).toBe(false)
+    expect(scopeGateAllowed(true, true)).toBe(true)
   })
 })

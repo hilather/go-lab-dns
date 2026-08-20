@@ -157,7 +157,11 @@ export function ChaosPolicyPage() {
               </dl>
             </section>
           ) : null}
-          <ActivationPanel actor={actor} safetyClass={policy.safetyClass} />
+          <ActivationPanel
+            actor={actor}
+            safetyClass={policy.safetyClass}
+            sessionKnown={sessionQuery.isSuccess || sessionQuery.isError}
+          />
         </>
       ) : null}
     </article>

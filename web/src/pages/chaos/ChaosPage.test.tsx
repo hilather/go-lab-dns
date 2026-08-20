@@ -176,6 +176,33 @@ describe('ChaosPage', () => {
     expect(simulate?.disabled).toBe(true)
   })
 
+  it('does not flash Missing scope before GET /v1/session settles', async () => {
+    vi.spyOn(client, 'GET').mockImplementation((async (path: string) => {
+      if (path === '/v1/status') {
+        return ok({ revisions: { runtimeRevision: REV } })
+      }
+      if (path === '/v1/session') {
+        return new Promise(() => {})
+      }
+      if (path === '/v1/chaos/status') {
+        return ok({ enabled: true, emergencyDisabled: false, activePolicies: 0 })
+      }
+      if (path === '/v1/chaos/policies') {
+        return ok({ policies: [policy] })
+      }
+      return fail(404, { code: 'not_found', detail: path })
+    }) as typeof client.GET)
+    await render(<ChaosPage />, '/chaos', '/chaos')
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(host?.textContent).toContain('slow-tools')
+      })
+    })
+    expect(host?.textContent).not.toContain('Missing scope')
+    const simulate = [...(host?.querySelectorAll('button') ?? [])].find((b) => b.textContent === 'Simulate')
+    expect(simulate?.disabled).toBe(true)
+  })
+
   it('announces problem+json when chaos status fails', async () => {
     vi.spyOn(client, 'GET').mockImplementation((async (path: string) => {
       if (path === '/v1/status') {

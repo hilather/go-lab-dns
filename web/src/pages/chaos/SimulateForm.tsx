@@ -1,10 +1,16 @@
 import { ScopeGate } from '../../components/ScopeGate'
 import { MutationsPending } from './ui'
-import { hasScope, SCOPE_CHAOS_READ, type SessionActorView } from './view'
+import { hasScope, SCOPE_CHAOS_READ, scopeGateAllowed, type SessionActorView } from './view'
 
 // PR-14 owns simulate mutations. Keep the form visible but inert.
-export function SimulateForm({ actor }: { actor: SessionActorView }) {
-  const allowed = hasScope(actor, SCOPE_CHAOS_READ)
+export function SimulateForm({
+  actor,
+  sessionKnown,
+}: {
+  actor: SessionActorView
+  sessionKnown: boolean
+}) {
+  const allowed = scopeGateAllowed(sessionKnown, hasScope(actor, SCOPE_CHAOS_READ))
   return (
     <section>
       <h2>Simulate</h2>

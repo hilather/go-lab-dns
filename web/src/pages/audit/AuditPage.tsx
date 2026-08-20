@@ -38,6 +38,7 @@ export function AuditPage() {
 
       <section>
         <h2>Filters</h2>
+        <p>Capability, result, and actor filters apply to the fetched page only. GET /v1/audit accepts limit, not typed filters.</p>
         <p>
           <label>
             Limit
@@ -95,7 +96,9 @@ export function AuditPage() {
       <section>
         <h2>Events</h2>
         {query.isPending ? <p>Loading audit…</p> : null}
-        {!query.isPending && !query.isError && visible.length === 0 ? <p>No audit events.</p> : null}
+        {!query.isPending && !query.isError && visible.length === 0 ? (
+          <p>{events.length > 0 ? 'No events match these filters.' : 'No audit events.'}</p>
+        ) : null}
         {visible.length > 0 ? (
           <table>
             <caption>Newest-first in-memory audit ring</caption>

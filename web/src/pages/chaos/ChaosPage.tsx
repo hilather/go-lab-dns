@@ -113,7 +113,7 @@ export function ChaosPage() {
         )}
       </section>
 
-      <SimulateForm actor={actor} />
+      <SimulateForm actor={actor} sessionKnown={sessionQuery.isSuccess || sessionQuery.isError} />
     </article>
   )
 }

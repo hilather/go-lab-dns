@@ -54,6 +54,13 @@ export type ChaosActionView = {
   min: string
   max: string
   value: string
+  values: string[]
+  ttl: string
+  limit?: number
+  upstreamId: string
+  hold: string
+  edeCode?: number
+  edeText: string
 }
 
 export type ChaosOutcomeView = {
@@ -216,6 +223,14 @@ function parseSelector(v: unknown): ChaosSelectorView {
   }
 }
 
+function parseEde(v: unknown): { edeCode?: number; edeText: string } {
+  const rec = asRecord(v)
+  if (!rec) {
+    return { edeText: '' }
+  }
+  return { edeCode: asNumber(rec.code), edeText: asString(rec.text) }
+}
+
 function parseAction(v: unknown): ChaosActionView | null {
   const rec = asRecord(v)
   if (!rec) {
@@ -225,6 +240,7 @@ function parseAction(v: unknown): ChaosActionView | null {
   if (type === '') {
     return null
   }
+  const ede = parseEde(rec.ede)
   return {
     type,
     phase: asString(rec.phase),
@@ -233,6 +249,13 @@ function parseAction(v: unknown): ChaosActionView | null {
     min: asString(rec.min),
     max: asString(rec.max),
     value: asString(rec.value),
+    values: asStringList(rec.values),
+    ttl: asString(rec.ttl),
+    limit: asNumber(rec.limit),
+    upstreamId: asString(rec.upstreamId),
+    hold: asString(rec.hold),
+    edeCode: ede.edeCode,
+    edeText: ede.edeText,
   }
 }
 
@@ -338,6 +361,10 @@ export function hasScope(actor: SessionActorView, scope: string): boolean {
 
 export function canActivateHigh(actor: SessionActorView): boolean {
   return hasScope(actor, SCOPE_CHAOS_ACTIVATE) && (hasScope(actor, SCOPE_CHAOS_EMERGENCY) || hasScope(actor, SCOPE_ADMIN))
+}
+
+export function scopeGateAllowed(sessionKnown: boolean, has: boolean): boolean {
+  return !sessionKnown || has
 }
 
 export function activateMissingScope(actor: SessionActorView, safetyClass: string): string {
@@ -451,6 +478,26 @@ export function formatAction(a: ChaosActionView): string {
   }
   if (a.value) {
     parts.push(a.value)
+  }
+  if (a.values.length > 0) {
+    parts.push(a.values.join(', '))
+  }
+  if (a.ttl) {
+    parts.push(a.ttl)
+  }
+  if (a.limit !== undefined) {
+    parts.push(`limit ${a.limit}`)
+  }
+  if (a.upstreamId) {
+    parts.push(a.upstreamId)
+  }
+  if (a.hold) {
+    parts.push(`hold ${a.hold}`)
+  }
+  if (a.edeCode !== undefined) {
+    parts.push(a.edeText !== '' ? `ede ${a.edeCode} ${a.edeText}` : `ede ${a.edeCode}`)
+  } else if (a.edeText !== '') {
+    parts.push(`ede ${a.edeText}`)
   }
   return parts.join(' ')
 }
