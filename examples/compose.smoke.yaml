@@ -1,4 +1,7 @@
 # Minimal Compose smoke for the hardened image. Pin by digest in GitOps (GIT-001).
+# Management (REST /v1, MCP /mcp, operator console GET /) is loopback-only.
+# Open http://127.0.0.1:8080/ — loopback Continue as local administrator, or
+# paste a bearer when the image is configured with spec.management.auth.bearer.
 services:
   labdns:
     image: ghcr.io/hilather/labdns:test

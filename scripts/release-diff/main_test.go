@@ -78,6 +78,17 @@ func TestRunDiffFailsOnDirtyWorktree(t *testing.T) {
 	}
 }
 
+func TestPublicSurfacesOmitHashedWebAssets(t *testing.T) {
+	for _, s := range releasecontract.PublicSurfaces() {
+		p := s.Path
+		if strings.HasPrefix(p, "web/dist") ||
+			strings.HasPrefix(p, "internal/web/dist") ||
+			strings.Contains(p, "/dist/assets") {
+			t.Errorf("public surface %s path %s is hashed UI output; omit from release-diff", s.ID, p)
+		}
+	}
+}
+
 func TestRunDiffFailsWhenCLIHelpUndocumented(t *testing.T) {
 	root := initRepo(t)
 	writeSurface(t, root, "cli-help", "usage: labdns old\n")

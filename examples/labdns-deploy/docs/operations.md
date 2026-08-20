@@ -16,6 +16,12 @@ Compose: `127.0.0.1:8080`. Kubernetes: NetworkPolicy + ClusterIP. Remote
 calls need `Authorization: Bearer`. Health live/ready stay unauthenticated
 so Docker HEALTHCHECK and kubelet work at the HTTP layer.
 
+Operator console: open `http://127.0.0.1:8080/` after Compose up and paste
+the bearer token on `/login`. The SPA discards the token after
+`POST /v1/session` (HttpOnly cookie + CSRF). `spec.ui.enabled: false`
+404s `/` and hashed assets only. A non-loopback browser Origin must be in
+`spec.management.allowedOrigins` (exact `http(s)://host[:port]`).
+
 Kubernetes DNS Service uses `externalTrafficPolicy: Local` so
 refuse-forward sees the real client IP. That pins the single replica to
 the node that received the packet; use a DaemonSet/hostNetwork if you

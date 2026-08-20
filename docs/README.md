@@ -72,6 +72,7 @@ This page is the catalog. Normative design documents win over task summaries.
 | [0005](adr/0005-bounded-chaos-engine.md) | Bounded chaos engine |
 | [0006](adr/0006-pin-mcp-protocol-versions.md) | Pin MCP protocol versions |
 | [0007](adr/0007-defer-unsafe-wire-chaos.md) | Defer unsafe wire chaos |
+| [0008](adr/0008-embedded-operator-web-ui.md) | Embedded operator web UI |
 
 ## Task lists
 
@@ -100,13 +101,15 @@ See [tasks/README.md](../tasks/README.md) and the [program board](../tasks/00-pr
 | [15-ci-docs-release.md](../tasks/15-ci-docs-release.md) | REL-001 |
 | [16-performance-interoperability.md](../tasks/16-performance-interoperability.md) | PERF-001 |
 | [17-ga-hardening.md](../tasks/17-ga-hardening.md) | GA-001 |
+| [18-web-ui.md](../tasks/18-web-ui.md) | UI-001–UI-004 |
 
 ## Releases and contracts
 
 | Path | Role |
 |---|---|
-| [releases/v1.0.0-rc.1.md](releases/v1.0.0-rc.1.md) | 1.0.0-rc.1 candidate notes |
-| [releases/v1.0.0-rc.2.md](releases/v1.0.0-rc.2.md) | 1.0.0-rc.2 notes (MCP mount, toolchain, action pins) |
+| [releases/v1.0.0-rc.1.md](releases/v1.0.0-rc.1.md) | 1.0.0-rc.1 candidate notes (UI-less) |
+| [releases/v1.0.0-rc.2.md](releases/v1.0.0-rc.2.md) | 1.0.0-rc.2 notes (MCP mount, toolchain, action pins; UI-less) |
+| [releases/v1.1.0.md](releases/v1.1.0.md) | 1.1.0 candidate notes (operator console) |
 | [releases/acceptance-evidence.md](releases/acceptance-evidence.md) | Acceptance index |
 | [ci-failure-hardening/2026-08-15-cli-help-not-generated.md](ci-failure-hardening/2026-08-15-cli-help-not-generated.md) | CI hardening note |
 | [../api/openapi/v1.json](../api/openapi/v1.json) | OpenAPI 3.1 |

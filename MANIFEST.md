@@ -12,10 +12,11 @@
 - `SECURITY.md`: top-level security policy (GitHub private advisories).
 - `CHANGELOG.md`: curated unreleased and release history.
 - `RELEASE-NOTES-TEMPLATE.md`: complete between-tag functionality-difference template.
-- `docs/known-limitations.md`: honest first-GA residual.
-- `docs/releases/v1.0.0-rc.1.md`: curated 1.0.0-rc.1 candidate notes.
-- `docs/releases/v1.0.0-rc.2.md`: curated 1.0.0-rc.2 notes (MCP mount, Go 1.26.6, action SHA pins).
-- `docs/releases/acceptance-evidence.md`: docs/19 criterion → test/command index.
+- `docs/known-limitations.md`: honest first-GA residual (UI no longer a 1.1 non-goal).
+- `docs/releases/v1.0.0-rc.1.md`: curated 1.0.0-rc.1 candidate notes (UI-less; do not rewrite).
+- `docs/releases/v1.0.0-rc.2.md`: curated 1.0.0-rc.2 notes (MCP mount, Go 1.26.6, action SHA pins; UI-less).
+- `docs/releases/v1.1.0.md`: curated 1.1.0 candidate notes (operator console). Unreleased changelog until tag.
+- `docs/releases/acceptance-evidence.md`: docs/19 criterion → test/command index (rc.1 plus 1.1.0 console appendix).
 - `CI-FAILURE-HARDENING-TEMPLATE.md`: root-cause and pipeline-hardening record.
 
 ## Design documents
@@ -52,6 +53,7 @@
 - `docs/adr/0005-bounded-chaos-engine.md`
 - `docs/adr/0006-pin-mcp-protocol-versions.md`
 - `docs/adr/0007-defer-unsafe-wire-chaos.md`
+- `docs/adr/0008-embedded-operator-web-ui.md`
 
 ## Generated contracts
 
@@ -66,4 +68,4 @@
 
 ## Agent task plans
 
-See `tasks/README.md` and `tasks/00-program-board.md` for the ordered implementation plan.
+See `tasks/README.md` and `tasks/00-program-board.md` for the ordered implementation plan. Operator console: `tasks/18-web-ui.md` (UI-001–UI-004, done).

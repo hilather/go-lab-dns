@@ -2,6 +2,7 @@
 
 Status: Normative release gate (REL-001)
 Owners: Release Engineering, All maintainers
+Last reviewed: 2026-08-19 (1.1.0 candidate notes; hashed web/dist omitted from release-diff)
 Last reviewed: 2026-08-19 (required CI job `web`; Node 22.14.0)
 Last reviewed: 2026-08-16 (GA-001 1.0.0-rc.1 candidate; Actions SHA pins)
 
@@ -72,7 +73,7 @@ No administrative bypass is permitted for a required failed check. A skipped or 
 
 ### Operator checklist
 
-1. Land the release-candidate commit on `main` with required CI green. GA-001 attached [docs/releases/acceptance-evidence.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/acceptance-evidence.md) and candidate notes [docs/releases/v1.0.0-rc.1.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.1.md). Post-rc.1 notes live at [docs/releases/v1.0.0-rc.2.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.2.md). Tag only the exact green SHA.
+1. Land the release-candidate commit on `main` with required CI green. GA-001 attached [docs/releases/acceptance-evidence.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/acceptance-evidence.md) and candidate notes [docs/releases/v1.0.0-rc.1.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.1.md). Post-rc.1 notes live at [docs/releases/v1.0.0-rc.2.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.2.md). Operator-console increment: [docs/releases/v1.1.0.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.1.0.md) (`make release-diff FROM=v1.0.0-rc.2 TO=HEAD NOTES=docs/releases/v1.1.0.md`). Do not rewrite rc.1/rc.2. Tag only the exact green SHA. Hashed `web/dist` is not a public surface.
 2. Write `docs/releases/vX.Y.Z.md` from `RELEASE-NOTES-TEMPLATE.md` (or copy `docs/releases/v1.0.0-rc.1.md` for `v1.0.0-rc.1`).
 3. Run `make verify-generated` and `make release-diff FROM=<prev> TO=HEAD NOTES=docs/releases/vX.Y.Z.md` locally (`<prev>` is the previous `v*` tag, or the empty-tree SHA from `go run ./scripts/release-diff -print-empty-tree` for the first tag).
 4. Freeze `CHANGELOG.md` Unreleased into `## vX.Y.Z — YYYY-MM-DD`.

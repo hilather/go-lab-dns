@@ -28,3 +28,7 @@ kubectl create secret generic labdns-token \
 
 Do not commit that file. Remote `/v1` and `/mcp` need
 `Authorization: Bearer`; loopback may omit it.
+
+Operator console: `http://127.0.0.1:8080/` after `compose up`. Paste the
+bearer token. Set `spec.ui.enabled: false` in `dns.yaml` to hide the SPA.
+A published Origin needs `spec.management.allowedOrigins`.

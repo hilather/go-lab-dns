@@ -1,8 +1,8 @@
-# Known limitations (first GA)
+# Known limitations (first GA and 1.1.0)
 
-Honest residual for first GA, last reviewed against **1.0.0-rc.2**. These are not defects hidden from the notes; they are out of first-GA scope, operator steps that a given change does not perform, or documented bounds. See [docs/18-roadmap-and-non-goals.md](https://github.com/hilather/go-lab-dns/blob/main/docs/18-roadmap-and-non-goals.md) for deferred product work.
+Honest residual last reviewed against **1.1.0** (console shipped) and the **1.0.0-rc.2** candidate. These are not defects hidden from the notes; they are out of scope, operator steps that a given change does not perform, or documented bounds. See [docs/18-roadmap-and-non-goals.md](https://github.com/hilather/go-lab-dns/blob/main/docs/18-roadmap-and-non-goals.md) for deferred product work. The embedded operator console is **implemented** in 1.1.0 ([docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md)); it is no longer a residual non-goal. 1.0.0-rc.1 / rc.2 remain UI-less — those notes were not rewritten.
 
-Last reviewed: 2026-08-16
+Last reviewed: 2026-08-19
 
 ## Tag and image publish
 
@@ -51,6 +51,7 @@ Last reviewed: 2026-08-16
 - Unix-socket management is out of first GA. Emergency control #3 is `SIGUSR1`.
 - Typed CRUD write routes are not added; plan/apply is the write path.
 - Management resolve defaults to not consuming live chaos.
+- Operator console (1.1.0): no SSE/WebSockets, no OAuth/OIDC, no shared session store, no management TLS (`labdns_session` `Secure` is false on HTTP). Session table is in-process (ADR 0003); restart logs the operator in again. `ResetIfDigestChanged` exists but 1.1.0 never rereads tokens. Hashed `web/dist` is not a `release-diff` surface. Local `go test` embeds the stub, not the production SPA.
 - Absolute QPS / p99 numbers are recorded by benches, not gated in CI (hardware varies).
 - Default soak in CI is 2s. Long soak is opt-in (`-soak=30m` / `LABDNS_SOAK_DURATION`).
 - The 24-hour (or longer) pre-GA soak in [docs/10-testing-strategy.md](https://github.com/hilather/go-lab-dns/blob/main/docs/10-testing-strategy.md) was **not** executed on this candidate. Only the 2s CI soak ran; 30m remains optional.
@@ -59,4 +60,4 @@ Last reviewed: 2026-08-16
 
 ## Explicit non-goals (unchanged)
 
-Full Internet recursion, public authoritative hosting, RFC 2136, AXFR/IXFR, DNSSEC signing, multi-replica runtime consensus, web UI, DHCP, client-facing DoH/DoQ, malformed-wire generation in-process, general network impairment, direct Git writes from the DNS process, and any internal database or hidden volume. See [docs/18-roadmap-and-non-goals.md](https://github.com/hilather/go-lab-dns/blob/main/docs/18-roadmap-and-non-goals.md).
+Full Internet recursion, public authoritative hosting, RFC 2136, AXFR/IXFR, DNSSEC signing, multi-replica runtime consensus, DHCP, client-facing DoH/DoQ, malformed-wire generation in-process, general network impairment, direct Git writes from the DNS process, and any internal database or hidden volume. The operator web UI shipped in 1.1.0; SSE, OAuth/OIDC, management TLS, and multi-replica sessions remain deferred. See [docs/18-roadmap-and-non-goals.md](https://github.com/hilather/go-lab-dns/blob/main/docs/18-roadmap-and-non-goals.md).

@@ -1,9 +1,9 @@
 # Operator Web UI
 
-Status: Partially implemented (UI-001 login, shell, dashboard, serve embed; UI-002 generated openapi-fetch client, revision-aware Query keys, frozen routes/nav, ConfirmDialog — read pages remain placeholders)
+Status: Implemented
 Owners: Control Plane, REST, Security, UI
-Last reviewed: 2026-08-19 (Playwright operator matrix; CI Chromium install)
-Related ADRs: 0004 (embedded-UI ADR is not yet in this tree)
+Last reviewed: 2026-08-19 (UI-004 onboarding, 1.1.0 notes; console complete)
+Related ADRs: [0004](https://github.com/hilather/go-lab-dns/blob/main/docs/adr/0004-shared-capability-registry.md), [0008](https://github.com/hilather/go-lab-dns/blob/main/docs/adr/0008-embedded-operator-web-ui.md)
 
 ## Problem statement
 
@@ -95,7 +95,7 @@ Forbidden:
 - Hand-written TypeScript DTO duplicates of OpenAPI schemas.
 - UI calling `/mcp`.
 
-`web/go.mod` is a nested-module fence so parent `go test ./...` does not walk `node_modules`. `//go:embed` cannot leave a module, so `make web-build` copies `web/dist` into `internal/web/dist`. Local `go test` uses the committed `internal/web/stub` placeholder when dist is absent.
+`web/go.mod` is a nested-module fence so parent `go test ./...` does not walk `node_modules`. `//go:embed` cannot leave a module. `make web-build` writes **only** gitignored `web/dist/` and must not overwrite the tracked stub `internal/web/dist/index.html`. Production images copy `web/dist` into `internal/web/dist` in Docker after `COPY . .`. Local `go test` / `go run` embed the committed stub.
 
 ## Dispositions
 
@@ -363,34 +363,34 @@ GitHub job id `web`. Node 22.14.0 pinned. `make web-test` must fail closed if No
 
 ## Implementation plan
 
-Work packages (task IDs UI-001–UI-004; the task file is not in this tree yet):
+Work packages (task IDs UI-001–UI-004; all **done** — [tasks/18-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/tasks/18-web-ui.md)):
 
-| Order | ID | Outcome |
-|---:|---|---|
-| 18 | UI-001 | Session, embed, toolchain, login, shell, dashboard, CI `web` |
-| 19 | UI-002 | All read pages + TanStack polling + generated client |
-| 20 | UI-003 | All mutating workflows (plan/apply/reset/flush/chaos) |
-| 21 | UI-004 | Playwright matrix, a11y, docs/examples, acceptance |
+| Order | ID | Outcome | Status |
+|---:|---|---|---|
+| 18 | UI-001 | Session, embed, toolchain, login, shell, dashboard, CI `web` | done |
+| 19 | UI-002 | All read pages + TanStack polling + generated client | done |
+| 20 | UI-003 | All mutating workflows (plan/apply/reset/flush/chaos) | done |
+| 21 | UI-004 | Playwright matrix, a11y, docs/examples, 1.1.0 notes | done |
 
 Do not mark a later DNS/REST/MCP task complete if it adds a public operator capability without a UI action and a Playwright case.
 
-Suggested PR merge order: UI-001 → UI-002 → UI-003 → UI-004. UI-002 and UI-003 may overlap on different pages only after the generated client and shell exist.
+Operator onboarding (loopback `:8080`, bearer paste, `spec.ui.enabled`, `spec.management.allowedOrigins`) lives in [docs/11-deployment.md](https://github.com/hilather/go-lab-dns/blob/main/docs/11-deployment.md), [docs/13-operations-and-runbooks.md](https://github.com/hilather/go-lab-dns/blob/main/docs/13-operations-and-runbooks.md), and [examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md).
 
-Dockerfile gains a Node stage **before** the Go build:
+Dockerfile already has a Node stage **before** the Go build:
 
 1. `npm ci` + `npm run build` in `web/`.
-2. Copy `web/dist` into `internal/web/dist`.
-3. Existing Go static build embeds dist.
+2. Copy `web/dist` into `internal/web/dist` **after** `COPY . .`.
+3. Existing Go static build embeds dist. Image build fails if `index.html` or hashed `assets/` are missing.
 
 Pin the Node base image by digest in the release Dockerfile, same policy as `golang:1.26.6-alpine`.
 
 ## Compatibility implications
 
 - Additive OpenAPI paths `/v1/session` and static `/`.
-- Additive config `spec.ui.enabled` with default true (omission keeps current listen behavior plus SPA once implemented).
+- Additive config `spec.ui.enabled` with default true (omission keeps current listen behavior plus SPA).
 - Cookie `labdns_session` is not an MCP concern.
-- Hashed `web/dist` is **not** a `release-diff` surface (changes every build). Diff the capability UI map, OpenAPI session operations, and `spec.ui` schema.
-- First UI increment is a **minor** (1.1.0) after 1.0.0, unless the 1.0.0 tag is deliberately held. rc.1/rc.2 notes must not be rewritten to claim a UI.
+- Hashed `web/dist` is **not** a `release-diff` surface (changes every build). Diff the capability UI map, OpenAPI session operations, and `spec.ui` schema. `internal/releasecontract.PublicSurfaces()` omits hashed assets.
+- First UI increment is **1.1.0**. Candidate notes: [docs/releases/v1.1.0.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.1.0.md). rc.1/rc.2 notes were not rewritten to claim a UI.
 
 ## Open questions
 
@@ -402,9 +402,7 @@ Resolved for this design:
 - Source directory: **`web/`**.
 - Playwright browsers in CI: `npx playwright install --with-deps chromium` on job `web` (not a pinned install action).
 
-Left for implementers only if a slice is blocked:
-
-- Exact Node image digest at Dockerfile time.
+Left closed for 1.1.0 (Node alpine digest is pinned in the Dockerfile). Follow-ons remain SSE, OAuth/OIDC, management TLS, and multi-replica sessions.
 
 ## Detailed design references
 

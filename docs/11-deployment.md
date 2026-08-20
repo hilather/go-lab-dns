@@ -2,10 +2,11 @@
 
 Status: Proposed
 Owners: Deployment, Operations, Security
+Last reviewed: 2026-08-19 (operator console on :8080, ui.enabled, allowedOrigins)
 Last reviewed: 2026-08-19 (Dockerfile Node 22.14.0 stage for operator console)
 Last reviewed: 2026-08-15 (PERF-001 capacity notes)
 Last reviewed: 2026-08-15 (DEP-001 CLI; GIT-001 GitOps template)
-Related ADRs: 0003
+Related ADRs: 0003, 0008
 
 ## Goals
 
@@ -60,6 +61,31 @@ Copyable Compose, Kubernetes, policy, and probe files live in
 [examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md)
 (GIT-001). Those examples use **bearer** `secretRef` (no token in Git) and
 bind management to loopback or a NetworkPolicy-isolated ClusterIP.
+
+## Operator console
+
+The embedded SPA is served on the management listener (`GET /`) when
+`spec.ui.enabled` is true (the default when omitted). Spec and session
+behavior: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md).
+
+1. Bind management on loopback. Compose already maps `127.0.0.1:8080:8080`.
+2. Open `http://127.0.0.1:8080/` in a browser. Off-loopback peers can load
+   login HTML without a bearer; `/v1` still requires a session cookie or
+   `Authorization: Bearer`.
+3. Loopback `dev-loopback-unauth`: **Continue as local administrator**.
+   Remote GitOps (`bearer` + `secretRef`): paste the token into the password
+   field. The SPA discards it after `POST /v1/session`. Never store the
+   bearer in `localStorage`, `sessionStorage`, IndexedDB, or the URL.
+4. `spec.ui.enabled: false` 404s SPA paths only; REST and MCP remain.
+   `--management-listen=off` unbinds REST, MCP, and the UI together.
+5. Same-origin UI on a **published** management host needs
+   `spec.management.allowedOrigins` with exact `http(s)://host[:port]` Origin
+   strings (no path). Loopback Origin is already allowed. Invalid entries
+   fail config validation. Plan/apply of `ui` / `management` takes effect on
+   the next request without restart.
+
+Local `go test` / `go run` embed the committed stub, not the production Vite
+bundle. Production images copy `web/dist` in Docker.
 
 ## Compose example
 

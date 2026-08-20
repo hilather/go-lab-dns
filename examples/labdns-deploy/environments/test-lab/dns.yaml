@@ -28,6 +28,11 @@ spec:
     ttl: 30s
     negativeTTL: 10s
 
+  # Operator console on the mapped management port (test-lab: 18080).
+  # Open http://127.0.0.1:18080/ and paste the bearer token.
+  ui:
+    enabled: true
+
   management:
     auth:
       profile: bearer

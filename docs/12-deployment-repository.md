@@ -2,7 +2,7 @@
 
 Status: Normative (GIT-001)
 Owners: Deployment, Platform
-Last reviewed: 2026-08-15
+Last reviewed: 2026-08-19 (operator console :8080, ui.enabled, allowedOrigins)
 
 ## Purpose
 
@@ -56,7 +56,7 @@ labdns-deploy/
 - Pin images by digest (`name@sha256:<64 hex>`). Tags and `:latest` fail `labdns verify --image`. When `k8s/kustomization.yaml` exists, `--kustomize` must carry the **same** digest as `image.env`.
 - Mount `dns.yaml` read-only at `/etc/labdns/config.yaml`.
 - Keep secrets outside Git. GitOps auth is **bearer** via `secretRef` (file or Kubernetes Secret), never an inline token. Loopback (`127.0.0.1` / `::1`) may omit a bearer; every remote management peer must present one.
-- Isolate management: Compose binds `:8080` to `127.0.0.1`; Kubernetes uses ClusterIP plus NetworkPolicy.
+- Isolate management: Compose binds `:8080` to `127.0.0.1`; Kubernetes uses ClusterIP plus NetworkPolicy. Open the operator console at `http://127.0.0.1:8080/` after Compose up (paste the bearer token). `spec.ui.enabled: false` 404s the SPA only. A published management Origin must be listed in `spec.management.allowedOrigins` (exact `http(s)://host[:port]`; loopback Origin is already allowed).
 - Require review for forwarding, protected names, management networks, and high-impact chaos changes (`CODEOWNERS`).
 - Store verification probes with desired state (`labdns.dev/probes/v1alpha1`).
 - Preserve historical release and schema compatibility through Git history.

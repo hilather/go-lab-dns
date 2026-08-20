@@ -11,5 +11,12 @@
 6. Run `scripts/test-config.sh <env>` until it is green.
 7. Open a PR. CODEOWNERS must review `dns.yaml`, `image.env`, and `policies/`.
 8. Merge and `scripts/deploy.sh <env> compose` (or `k8s`).
+9. Open the operator console at `http://127.0.0.1:8080/` (Compose publishes
+   management on loopback). Paste the bearer token from
+   `secrets/labdns-token`. Loopback Origin is allowed without
+   `spec.management.allowedOrigins`. A published management host must list
+   the exact browser Origin (`http(s)://host[:port]`) in
+   `spec.management.allowedOrigins`. Set `spec.ui.enabled: false` to 404
+   the SPA while leaving REST and MCP up.
 
 A new lab that skips digest pin, policy check, or probes is not onboarded.

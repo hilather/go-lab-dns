@@ -28,6 +28,14 @@ spec:
     ttl: 30s
     negativeTTL: 10s
 
+  # Operator console (default enabled). After compose up, open
+  # http://127.0.0.1:8080/ and paste the bearer token. Set enabled: false
+  # to 404 the SPA only. Loopback Origin is allowed without this list; a
+  # published host needs exact Origins, e.g.
+  # allowedOrigins: ["https://dns-mgmt.lab.example"]
+  ui:
+    enabled: true
+
   management:
     auth:
       # Remote management requires a bearer. The token file is mounted;

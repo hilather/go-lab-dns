@@ -7,6 +7,7 @@ Last reviewed: 2026-08-15 (OBS-001 metrics catalog)
 Last reviewed: 2026-08-15 (REL-001 release-diff surfaces)
 Last reviewed: 2026-08-15 (PERF-001 interop matrix)
 Last reviewed: 2026-08-15 (GA-001 known limitations)
+Last reviewed: 2026-08-19 (hashed web/dist is not a release-diff surface)
 Last reviewed: 2026-08-19 (Canonical revision-hash change from materialized spec.ui)
 
 ## Public compatibility surfaces
@@ -64,6 +65,8 @@ Security emergencies may require faster removal, with explicit notes.
 ## Schema diff policy
 
 `scripts/release-diff` reports `added` / `removed` / `changed` / `identical` for every public surface between two refs. Human review confirms whether a `changed` file is additive, potentially breaking, or breaking. All differences appear in `docs/releases/<tag>.md`. An unaccounted surface blocks the tag.
+
+Hashed operator-console assets (`web/dist/`, `internal/web/dist/assets/`) are **not** public surfaces. They change every production build. Diff the capability UI map, OpenAPI session operations, `spec.ui` schema, and the metrics `ui.session` event instead. `internal/releasecontract.PublicSurfaces()` is the closed list.
 
 ## Testing strategy
 

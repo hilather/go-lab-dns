@@ -39,6 +39,8 @@ type Report struct {
 }
 
 // Compare reads every public surface from two git refs.
+// Hashed operator-console assets (web/dist, internal/web/dist/assets) are
+// not public surfaces; they change every production Vite build.
 func Compare(root, from, to string) (Report, error) {
 	rep := Report{From: from, To: to}
 	if err := verifyRef(root, from); err != nil {

@@ -1,5 +1,6 @@
 # Compose GitOps example. Management is loopback-only; DNS is published on 53.
 # Bearer token is a file mount, never an inline environment value.
+# Operator console: http://127.0.0.1:8080/ — paste the mounted bearer token.
 name: labdns-main-lab
 
 services:

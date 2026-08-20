@@ -13,6 +13,7 @@ If you want to run it, stay on this page, then follow the [README quick start](R
 5. `./labdns serve --config lab.yaml`
 6. `./labdns query --name ns1.lab.example.net --server 127.0.0.1:5353`
 7. `curl -sS http://127.0.0.1:8080/v1/state`
+8. Open `http://127.0.0.1:8080/` — Continue as local administrator (loopback) or paste a bearer token.
 
 YAML field rules, revisions, and the plan/apply/export/reset contract live in [docs/04-state-and-configuration.md](docs/04-state-and-configuration.md). REST and MCP twins are in [docs/06-rest-api.md](docs/06-rest-api.md) and [docs/07-mcp-api.md](docs/07-mcp-api.md).
 
@@ -25,7 +26,8 @@ YAML field rules, revisions, and the plan/apply/export/reset contract live in [d
 | Breaking DNS on purpose | [docs/03-chaos-engine.md](docs/03-chaos-engine.md), [api/chaos/effects.json](api/chaos/effects.json) |
 | Wiring an agent | [docs/05-control-plane-and-parity.md](docs/05-control-plane-and-parity.md), [docs/07-mcp-api.md](docs/07-mcp-api.md) |
 | Changing behavior | [AGENTS.md](AGENTS.md), then the normative doc for that area |
-| Reviewing the 1.0.0-rc.2 candidate | [docs/releases/v1.0.0-rc.2.md](docs/releases/v1.0.0-rc.2.md), [docs/releases/v1.0.0-rc.1.md](docs/releases/v1.0.0-rc.1.md), [docs/releases/acceptance-evidence.md](docs/releases/acceptance-evidence.md), [docs/known-limitations.md](docs/known-limitations.md) |
+| Reviewing 1.1.0 (operator console) | [docs/releases/v1.1.0.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.1.0.md), [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md), [docs/releases/acceptance-evidence.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/acceptance-evidence.md), [docs/known-limitations.md](https://github.com/hilather/go-lab-dns/blob/main/docs/known-limitations.md) |
+| Reviewing the 1.0.0-rc.2 candidate | [docs/releases/v1.0.0-rc.2.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.2.md), [docs/releases/v1.0.0-rc.1.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.0.0-rc.1.md) |
 
 The full catalog — architecture, ADRs, task lists, generated contracts — is in [docs/README.md](docs/README.md) and linked from the [README documentation map](README.md#documentation).
 
@@ -59,4 +61,4 @@ A task is not done until:
 - No CI check is ignored, bypassed, or marked optional to get a merge.
 - User-visible and operator-visible changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 
-GA-001 (1.0.0-rc.1 candidate) is complete on the program board. The next candidate notes are [docs/releases/v1.0.0-rc.2.md](docs/releases/v1.0.0-rc.2.md). Evidence: [docs/releases/acceptance-evidence.md](docs/releases/acceptance-evidence.md). Residual: [docs/known-limitations.md](docs/known-limitations.md).
+GA-001 (1.0.0-rc.1 candidate) and UI-001–UI-004 (1.1.0 console) are complete on the program board. Candidate notes: [docs/releases/v1.1.0.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.1.0.md). Evidence: [docs/releases/acceptance-evidence.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/acceptance-evidence.md). Residual: [docs/known-limitations.md](https://github.com/hilather/go-lab-dns/blob/main/docs/known-limitations.md). rc.1/rc.2 notes were not rewritten.

@@ -67,6 +67,13 @@ only from namespaces labeled `labdns.dev/management=true`.
 `secretRef: /run/secrets/labdns-token`. The token is a mounted Secret /
 file, not a Git field.
 
+Operator console (1.1.0, default `spec.ui.enabled: true`): after
+`deploy.sh … compose`, open `http://127.0.0.1:8080/` and paste the bearer
+token. Loopback Origin is allowed without `allowedOrigins`. If you publish
+management as `https://dns-mgmt.lab.example`, add that exact Origin under
+`spec.management.allowedOrigins`. `spec.ui.enabled: false` 404s the SPA
+and keeps REST `/v1` and MCP `/mcp`.
+
 ## Probes
 
 Offline `labdns verify` uses the DNS orchestrator (not a management-only

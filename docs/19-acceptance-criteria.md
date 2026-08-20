@@ -1,10 +1,10 @@
 # Product Acceptance Criteria
 
-Status: Accepted pending tag-gate (1.0.0-rc.1 evidence attached)
+Status: Accepted pending tag-gate (1.0.0-rc.1 evidence attached; 1.1.0 console evidence attached)
 Owners: Product, Architecture, QA
-Last reviewed: 2026-08-15 (GA-001)
+Last reviewed: 2026-08-19 (operator console UI-004 / 1.1.0)
 
-Evidence index for this candidate: [docs/releases/acceptance-evidence.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/acceptance-evidence.md). Residual: [docs/known-limitations.md](https://github.com/hilather/go-lab-dns/blob/main/docs/known-limitations.md). Tag is a human step on a green commit.
+Evidence index: [docs/releases/acceptance-evidence.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/acceptance-evidence.md) (1.0.0-rc.1 GA plus 1.1.0 operator-console appendix). Residual: [docs/known-limitations.md](https://github.com/hilather/go-lab-dns/blob/main/docs/known-limitations.md). Tag is a human step on a green commit.
 
 ## Functional DNS
 
@@ -36,13 +36,16 @@ Evidence index for this candidate: [docs/releases/acceptance-evidence.md](https:
 - Runtime drift is visible.
 - Canonical export and deployment operations are deterministic.
 
-## REST and MCP
+## REST, MCP, and UI
 
-- Every public capability has parity.
+- Every public capability has REST/MCP parity except documented `REST_ONLY_PROTOCOL` rows.
+- Every `PARITY_REQUIRED` capability is completable in the embedded console (ADR 0008, [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md)).
 - REST contract and MCP conformance tests pass.
 - Shared authorization and errors match.
 - MCP Streamable HTTP validates Origin and protocol version.
 - All mutations support planning and audit.
+- The UI does not skip plan/apply for desired-state writes and does not store bearer tokens in Web Storage.
+- Evidence: [docs/releases/acceptance-evidence.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/acceptance-evidence.md) § Operator console (1.1.0); Playwright `web/e2e`; `make web-test`; `make web-e2e`; `make test-parity`.
 
 ## Security
 
@@ -55,7 +58,7 @@ Evidence index for this candidate: [docs/releases/acceptance-evidence.md](https:
 ## Quality
 
 - Every area has regression tests.
-- Race, fuzz smoke, integration, parity, container, documentation, and security CI passes.
+- Race, fuzz smoke, integration, parity, container, documentation, security, and web CI passes.
 - Load and soak targets are met and documented.
 - No known critical or high-severity unresolved vulnerability is accepted for GA without explicit governance.
 - Documentation matches implementation.

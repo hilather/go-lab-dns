@@ -2,6 +2,8 @@
 
 This index maps every criterion in [docs/19-acceptance-criteria.md](https://github.com/hilather/go-lab-dns/blob/main/docs/19-acceptance-criteria.md) to the tests and commands that prove it. It is the GA-001 evidence artifact. It is **not** a substitute for running the commands on the candidate commit.
 
+1.1.0 operator-console evidence is the appendix **Operator console (1.1.0)** below. It does not replace the rc.1 tables.
+
 **Candidate:** 1.0.0-rc.1 (untagged). A human creates the annotated tag only on an exact green commit. This change does not create a git tag or publish an image.
 
 **Baseline:** first public candidate; public-surface diff is against the git empty tree.
@@ -169,4 +171,23 @@ Open questions: first-GA decisions are frozen (Apache-2.0, module `github.com/hi
 
 ## Program board
 
-All work packages FND-001 through GA-001 are **done** on this candidate. See [tasks/00-program-board.md](https://github.com/hilather/go-lab-dns/blob/main/tasks/00-program-board.md). M5 *tag* remains a human step on a green commit.
+All work packages FND-001 through GA-001 are **done** on the 1.0.0-rc.1 candidate. UI-001 through UI-004 (M6) are **done** on the 1.1.0 increment. See [tasks/00-program-board.md](https://github.com/hilather/go-lab-dns/blob/main/tasks/00-program-board.md). M5/M6 *tag* remains a human step on a green commit.
+
+---
+
+## Operator console (1.1.0)
+
+Evidence for the REST/MCP/UI rows added in [docs/19-acceptance-criteria.md](https://github.com/hilather/go-lab-dns/blob/main/docs/19-acceptance-criteria.md). Normative UI spec: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md). Candidate notes: [docs/releases/v1.1.0.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.1.0.md).
+
+| Criterion | Evidence |
+|---|---|
+| Every `PARITY_REQUIRED` capability completable in the UI | `go test ./internal/capabilities -run TestParityUIBindingsComplete`; Playwright `web/e2e/operator.spec.ts`; capability map in [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md) |
+| UI does not skip plan/apply | `web/src/pages/changes/ChangesPage.test.tsx`; Playwright plan then apply a record; REST still authorizes |
+| Bearer/CSRF not in Web Storage | `web/src` session-memory Vitest; Playwright `expectNoSecretStorage`; `web/e2e/a11y.spec.ts` |
+| Session/CSRF and Origin | `go test ./internal/auth ./internal/control/rest` session tests; cookie-present POST does not Identify |
+| `ui.enabled: false` 404s SPA | REST tests for pre-auth `GET /` 404; `/v1/state` still authenticates |
+| Chaos cannot affect UI/session/REST/MCP/health/emergency | Management-only prefix list; chaos packages do not import `internal/web` |
+| Playwright operator matrix | `make web-e2e` / CI job `web` (`npx playwright install --with-deps chromium`; `npm run test:e2e`); fixture [testdata/web/](https://github.com/hilather/go-lab-dns/blob/main/testdata/web/config.yaml) |
+| Required CI `web` | `internal/releasecontract.RequiredCIJobs`; `make web-test`; `make web-build` |
+
+Re-run: `make web-test`, `make web-build`, `make web-e2e`, `make test-parity`, `make test-docs`, `go run ./scripts/release-diff v1.0.0-rc.2 HEAD -notes docs/releases/v1.1.0.md`.
