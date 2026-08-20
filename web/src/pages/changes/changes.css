@@ -1,0 +1,94 @@
+.changes-page section {
+  margin: 1.25rem 0;
+}
+
+.changes-page dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+
+.changes-page dt {
+  font-weight: 600;
+}
+
+.changes-page dd {
+  margin: 0;
+}
+
+.changes-mode {
+  display: flex;
+  gap: 1rem;
+  margin: 0.75rem 0;
+}
+
+.changes-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.changes-reason,
+.changes-ticket {
+  display: grid;
+  gap: 0.35rem;
+  max-width: 36rem;
+  margin: 0.75rem 0;
+}
+
+.yaml-json-editor,
+.operation-builder {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.yaml-json-editor textarea,
+.operation-value textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  width: 100%;
+  max-width: 56rem;
+  box-sizing: border-box;
+}
+
+.operation-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.operation-row-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.operation-row-fields label,
+.operation-value {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.plan-diff {
+  overflow-x: auto;
+}
+
+.plan-diff table {
+  border-collapse: collapse;
+}
+
+.plan-diff th,
+.plan-diff td {
+  border: 1px solid #ccc;
+  padding: 0.25rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.plan-diff code {
+  white-space: pre-wrap;
+}
