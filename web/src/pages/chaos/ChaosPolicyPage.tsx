@@ -161,6 +161,9 @@ export function ChaosPolicyPage() {
             actor={actor}
             safetyClass={policy.safetyClass}
             sessionKnown={sessionQuery.isSuccess || sessionQuery.isError}
+            policyId={policy.id}
+            expectedRevision={revision}
+            enabled={policy.enabled}
           />
         </>
       ) : null}

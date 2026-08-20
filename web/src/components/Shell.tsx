@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router'
 import { APIError, deleteSession, getJSON, getSession } from '../auth/sessionApi'
 import { NAV } from '../nav'
 import { readyKind, readyLabel, shortRevision, type StatusView } from '../status'
+import { EmergencyControl } from '../pages/chaos/EmergencyControl'
 import { Nav } from './Nav'
 
 export type ShellContext = {
@@ -114,7 +115,9 @@ export function Shell() {
           </span>{' '}
           {readyLabel(kind)}
         </p>
-        <div className="emergency-slot" />
+        <div className="emergency-slot">
+          <EmergencyControl emergencyDisabled={status?.chaos?.emergencyDisabled} />
+        </div>
         <button type="button" onClick={() => void onSignOut()}>
           Sign out
         </button>

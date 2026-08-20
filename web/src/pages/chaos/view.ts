@@ -3,11 +3,11 @@ import { client, throwOnError } from '../../api/client'
 import { queryKeys } from '../../query/keys'
 import { statusRevision, useStatusQuery } from '../../query/status'
 
-export const MUTATIONS_UI003 = 'mutations in UI-003'
 export const SCOPE_ADMIN = 'dns.admin'
 export const SCOPE_CHAOS_READ = 'dns.chaos.read'
 export const SCOPE_CHAOS_ACTIVATE = 'dns.chaos.activate'
 export const SCOPE_CHAOS_EMERGENCY = 'dns.chaos.emergency'
+export const EMERGENCY_REASON = 'operator console'
 
 export type ChaosStatusView = {
   enabled?: boolean
@@ -363,6 +363,11 @@ export function canActivateHigh(actor: SessionActorView): boolean {
   return hasScope(actor, SCOPE_CHAOS_ACTIVATE) && (hasScope(actor, SCOPE_CHAOS_EMERGENCY) || hasScope(actor, SCOPE_ADMIN))
 }
 
+// Same rule as auth.CanEmergencyEnable: emergency-only operators may disable, not re-enable.
+export function canEmergencyEnable(actor: SessionActorView): boolean {
+  return hasScope(actor, SCOPE_CHAOS_EMERGENCY) && (hasScope(actor, SCOPE_CHAOS_ACTIVATE) || hasScope(actor, SCOPE_ADMIN))
+}
+
 export function scopeGateAllowed(sessionKnown: boolean, has: boolean): boolean {
   return !sessionKnown || has
 }
@@ -375,6 +380,130 @@ export function activateMissingScope(actor: SessionActorView, safetyClass: strin
     return SCOPE_CHAOS_EMERGENCY
   }
   return ''
+}
+
+export function deactivateMissingScope(actor: SessionActorView): string {
+  if (!hasScope(actor, SCOPE_CHAOS_ACTIVATE)) {
+    return SCOPE_CHAOS_ACTIVATE
+  }
+  return ''
+}
+
+export function expireMissingScope(
+  actor: SessionActorView,
+  safetyClass: string,
+  enabled: boolean | undefined,
+): string {
+  if (!hasScope(actor, SCOPE_CHAOS_ACTIVATE)) {
+    return SCOPE_CHAOS_ACTIVATE
+  }
+  if (enabled !== false && safetyClass === 'high' && !canActivateHigh(actor)) {
+    return SCOPE_CHAOS_EMERGENCY
+  }
+  return ''
+}
+
+export function emergencyDisableMissingScope(actor: SessionActorView): string {
+  if (!hasScope(actor, SCOPE_CHAOS_EMERGENCY)) {
+    return SCOPE_CHAOS_EMERGENCY
+  }
+  return ''
+}
+
+export function emergencyEnableMissingScope(actor: SessionActorView): string {
+  if (!hasScope(actor, SCOPE_CHAOS_EMERGENCY)) {
+    return SCOPE_CHAOS_EMERGENCY
+  }
+  if (!canEmergencyEnable(actor)) {
+    return SCOPE_CHAOS_ACTIVATE
+  }
+  return ''
+}
+
+export function newChaosIdempotencyKey(): string {
+  return crypto.randomUUID()
+}
+
+export function datetimeLocalToRFC3339(value: string): string {
+  const trimmed = value.trim()
+  if (trimmed === '') {
+    return ''
+  }
+  const d = new Date(trimmed)
+  if (Number.isNaN(d.getTime())) {
+    return ''
+  }
+  return d.toISOString()
+}
+
+export type SimulateDecisionView = {
+  policyId: string
+  outcomeId: string
+  triggered?: boolean
+  skipReason: string
+  digestHex: string
+}
+
+export type SimulateOutView = {
+  algorithm: string
+  disabled?: boolean
+  reason: string
+  triggered?: boolean
+  decisions: SimulateDecisionView[]
+}
+
+export type ApplyResultView = {
+  applied?: boolean
+  previousRevision: string
+  candidateRevision: string
+  auditEventId: string
+}
+
+export function parseSimulateOut(data: unknown): SimulateOutView | null {
+  const rec = asRecord(data)
+  if (!rec) {
+    return null
+  }
+  const decisions: SimulateDecisionView[] = []
+  if (Array.isArray(rec.decisions)) {
+    for (const item of rec.decisions) {
+      const d = asRecord(item)
+      if (!d) {
+        continue
+      }
+      const policyId = asString(d.policyId)
+      if (policyId === '') {
+        continue
+      }
+      decisions.push({
+        policyId,
+        outcomeId: asString(d.outcomeId),
+        triggered: asBool(d.triggered),
+        skipReason: asString(d.skipReason),
+        digestHex: asString(d.digestHex),
+      })
+    }
+  }
+  return {
+    algorithm: asString(rec.algorithm),
+    disabled: asBool(rec.disabled),
+    reason: asString(rec.reason),
+    triggered: asBool(rec.triggered),
+    decisions,
+  }
+}
+
+export function parseApplyResult(data: unknown): ApplyResultView | null {
+  const rec = asRecord(data)
+  if (!rec) {
+    return null
+  }
+  return {
+    applied: asBool(rec.applied),
+    previousRevision: asString(rec.previousRevision),
+    candidateRevision: asString(rec.candidateRevision),
+    auditEventId: asString(rec.auditEventId),
+  }
 }
 
 export function yn(v: boolean | undefined, known: boolean): string {

@@ -2,13 +2,21 @@ import { describe, expect, it } from 'vitest'
 import {
   activateMissingScope,
   canActivateHigh,
+  canEmergencyEnable,
   chaosRuntimeKind,
+  datetimeLocalToRFC3339,
+  deactivateMissingScope,
+  emergencyDisableMissingScope,
+  emergencyEnableMissingScope,
+  expireMissingScope,
   formatAction,
   hasScope,
+  parseApplyResult,
   parseChaosPolicies,
   parseChaosPolicy,
   parseChaosStatus,
   parseSessionActor,
+  parseSimulateOut,
   policyHref,
   SCOPE_CHAOS_ACTIVATE,
   SCOPE_CHAOS_EMERGENCY,
@@ -118,8 +126,53 @@ describe('chaos view parsers', () => {
     expect(activateMissingScope(operator, 'high')).toBe(SCOPE_CHAOS_EMERGENCY)
     expect(canActivateHigh(admin)).toBe(true)
     expect(activateMissingScope(admin, 'high')).toBe('')
+    expect(deactivateMissingScope(operator)).toBe('')
+    expect(expireMissingScope(operator, 'high', true)).toBe(SCOPE_CHAOS_EMERGENCY)
+    expect(expireMissingScope(operator, 'high', false)).toBe('')
     expect(scopeGateAllowed(false, false)).toBe(true)
     expect(scopeGateAllowed(true, false)).toBe(false)
     expect(scopeGateAllowed(true, true)).toBe(true)
+  })
+
+  it('gates emergency enable with CanEmergencyEnable and disable with emergency only', () => {
+    const emergencyOnly = parseSessionActor({
+      actor: { id: 'e', role: 'emergency-operator', scopes: ['dns.read', 'dns.chaos.read', 'dns.chaos.emergency'] },
+    })
+    const operator = parseSessionActor({
+      actor: { id: 'op', role: 'chaos-operator', scopes: ['dns.read', 'dns.chaos.read', 'dns.chaos.activate'] },
+    })
+    const admin = parseSessionActor({
+      actor: { id: 'a', role: 'administrator', scopes: ['dns.admin'] },
+    })
+    expect(emergencyDisableMissingScope(emergencyOnly)).toBe('')
+    expect(canEmergencyEnable(emergencyOnly)).toBe(false)
+    expect(emergencyEnableMissingScope(emergencyOnly)).toBe(SCOPE_CHAOS_ACTIVATE)
+    expect(emergencyDisableMissingScope(operator)).toBe(SCOPE_CHAOS_EMERGENCY)
+    expect(canEmergencyEnable(admin)).toBe(true)
+    expect(emergencyEnableMissingScope(admin)).toBe('')
+  })
+
+  it('parses simulate and apply envelopes', () => {
+    const sim = parseSimulateOut({
+      algorithm: 'hash-v1',
+      disabled: false,
+      triggered: true,
+      reason: '',
+      decisions: [{ policyId: 'slow-tools', outcomeId: 'delayed', triggered: true, digestHex: 'abc' }],
+    })
+    expect(sim?.algorithm).toBe('hash-v1')
+    expect(sim?.triggered).toBe(true)
+    expect(sim?.decisions[0]?.policyId).toBe('slow-tools')
+    expect(parseSimulateOut(null)).toBeNull()
+    expect(parseApplyResult({ applied: true, candidateRevision: 'sha256:b', auditEventId: 'evt-1' })).toEqual({
+      applied: true,
+      previousRevision: '',
+      candidateRevision: 'sha256:b',
+      auditEventId: 'evt-1',
+    })
+    expect(datetimeLocalToRFC3339('')).toBe('')
+    expect(datetimeLocalToRFC3339('not-a-date')).toBe('')
+    const rfc = datetimeLocalToRFC3339('2026-09-01T00:00')
+    expect(rfc).toMatch(/^2026-0[89]-0[12]T/)
   })
 })

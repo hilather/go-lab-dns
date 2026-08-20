@@ -1,7 +1,5 @@
-import type { ReactNode } from 'react'
 import { APIError } from '../../auth/sessionApi'
 import { ProblemAlert } from '../../components/ProblemAlert'
-import { MUTATIONS_UI003 } from './view'
 
 export function queryProblem(err: unknown): { code?: string; detail?: string; message?: string } | null {
   if (!err) {
@@ -13,6 +11,15 @@ export function queryProblem(err: unknown): { code?: string; detail?: string; me
   if (err instanceof Error) {
     return { message: err.message }
   }
+  if (typeof err === 'object') {
+    const o = err as { code?: unknown; detail?: unknown; message?: unknown }
+    const code = typeof o.code === 'string' ? o.code : undefined
+    const detail = typeof o.detail === 'string' ? o.detail : undefined
+    const message = typeof o.message === 'string' ? o.message : undefined
+    if (code || detail || message) {
+      return { code, detail, message }
+    }
+  }
   return { message: 'request failed' }
 }
 
@@ -22,12 +29,4 @@ export function QueryError({ error }: { error: unknown }) {
     return null
   }
   return <ProblemAlert error={problem} />
-}
-
-export function MutationsPending({ children }: { children: ReactNode }) {
-  return (
-    <p className="mutations-pending">
-      {children} <span>{MUTATIONS_UI003}</span>
-    </p>
-  )
 }
