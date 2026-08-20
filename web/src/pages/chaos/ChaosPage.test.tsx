@@ -250,6 +250,32 @@ describe('ChaosPolicyPage', () => {
     expect(queryClient?.getQueryData(queryKeys.chaosPolicy(REV, 'slow-tools'))).toBeTruthy()
   })
 
+  it('keeps activation disabled while GET /v1/session is pending without flashing Missing scope', async () => {
+    vi.spyOn(client, 'GET').mockImplementation((async (path: string) => {
+      if (path === '/v1/status') {
+        return ok({ revisions: { runtimeRevision: REV } })
+      }
+      if (path === '/v1/session') {
+        return new Promise(() => {})
+      }
+      if (path === '/v1/chaos/policies/{policyId}') {
+        return ok(policy)
+      }
+      return fail(404, { code: 'not_found', detail: path })
+    }) as typeof client.GET)
+    await render(<ChaosPolicyPage />, '/chaos/slow-tools', '/chaos/:policyId')
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(host?.textContent).toContain('Test application startup timeouts')
+      })
+    })
+    expect(host?.textContent).not.toContain('Missing scope')
+    for (const label of ['Activate', 'Deactivate', 'Set expiry']) {
+      const button = [...(host?.querySelectorAll('button') ?? [])].find((b) => b.textContent === label)
+      expect(button?.disabled).toBe(true)
+    }
+  })
+
   it('keeps activation disabled for an administrator until UI-003', async () => {
     mockGets(adminSession)
     await render(<ChaosPolicyPage />, '/chaos/slow-tools', '/chaos/:policyId')

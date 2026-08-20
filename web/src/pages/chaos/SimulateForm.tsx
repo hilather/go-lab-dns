@@ -40,7 +40,7 @@ export function SimulateForm({
         </p>
         <MutationsPending>
           <ScopeGate allowed={allowed} missingScope={SCOPE_CHAOS_READ}>
-            <button type="submit" disabled>
+            <button type="submit" disabled={true || !sessionKnown}>
               Simulate
             </button>
           </ScopeGate>

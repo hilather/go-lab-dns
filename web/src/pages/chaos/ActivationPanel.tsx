@@ -7,7 +7,7 @@ import {
   type SessionActorView,
 } from './view'
 
-// Read slice: mutations stay inert. PR-14 drops `true ||` so ScopeGate.disabled is the live gate.
+// Read slice: mutations stay inert. PR-14 drops `true ||` so pending (`disabled`) plus ScopeGate remain the live gate.
 function ActivationControls({ disabled }: { disabled?: boolean }) {
   const off = true || disabled === true
   return (
@@ -50,7 +50,7 @@ export function ActivationPanel({
       </p>
       <MutationsPending>
         <ScopeGate allowed={allowed} missingScope={named}>
-          <ActivationControls />
+          <ActivationControls disabled={!sessionKnown} />
         </ScopeGate>
       </MutationsPending>
     </section>
