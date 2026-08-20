@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { CursorPager, MutationsPending, QueryError } from './ui'
 import {
   DEFAULT_PAGE_LIMIT,
   fetchZoneList,
+  usePagedCursor,
   useRuntimeRevision,
   zoneHref,
   zonesListKey,
@@ -12,14 +12,7 @@ import {
 
 export function ZonesPage() {
   const revision = useRuntimeRevision()
-  const [cursor, setCursor] = useState('')
-  const prevRev = useRef(revision)
-  useEffect(() => {
-    if (prevRev.current !== revision) {
-      prevRev.current = revision
-      setCursor('')
-    }
-  }, [revision])
+  const [cursor, setCursor] = usePagedCursor(revision)
 
   const query = useQuery({
     queryKey: zonesListKey(revision, cursor, DEFAULT_PAGE_LIMIT),
@@ -61,14 +54,12 @@ export function ZonesPage() {
           </tbody>
         </table>
       ) : null}
-      {page ? (
-        <CursorPager
-          cursor={cursor}
-          nextCursor={page.nextCursor}
-          onFirst={() => setCursor('')}
-          onNext={setCursor}
-        />
-      ) : null}
+      <CursorPager
+        cursor={cursor}
+        nextCursor={page?.nextCursor ?? ''}
+        onFirst={() => setCursor('')}
+        onNext={setCursor}
+      />
     </article>
   )
 }

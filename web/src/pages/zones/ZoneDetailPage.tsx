@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { queryKeys } from '../../query/keys'
 import { ROUTES } from '../../routes'
@@ -10,20 +9,14 @@ import {
   fetchZone,
   recordHref,
   recordsListKey,
+  usePagedCursor,
   useRuntimeRevision,
 } from './zones'
 
 export function ZoneDetailPage() {
   const { zoneId = '' } = useParams()
   const revision = useRuntimeRevision()
-  const [cursor, setCursor] = useState('')
-  const prev = useRef({ revision, zoneId })
-  useEffect(() => {
-    if (prev.current.revision !== revision || prev.current.zoneId !== zoneId) {
-      prev.current = { revision, zoneId }
-      setCursor('')
-    }
-  }, [revision, zoneId])
+  const [cursor, setCursor] = usePagedCursor(`${revision}\0${zoneId}`)
 
   const zoneQuery = useQuery({
     queryKey: queryKeys.zone(revision, zoneId),
@@ -103,14 +96,12 @@ export function ZoneDetailPage() {
           </tbody>
         </table>
       ) : null}
-      {records ? (
-        <CursorPager
-          cursor={cursor}
-          nextCursor={records.nextCursor}
-          onFirst={() => setCursor('')}
-          onNext={setCursor}
-        />
-      ) : null}
+      <CursorPager
+        cursor={cursor}
+        nextCursor={records?.nextCursor ?? ''}
+        onFirst={() => setCursor('')}
+        onNext={setCursor}
+      />
     </article>
   )
 }

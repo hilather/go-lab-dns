@@ -98,6 +98,18 @@ async function waitForText(text: string) {
   })
 }
 
+function btn(label: string): HTMLButtonElement | undefined {
+  return Array.from(host?.querySelectorAll('button') ?? []).find((b) => b.textContent === label)
+}
+
+function zoneListURLs(): URL[] {
+  return requested().filter((u) => u.pathname === '/v1/zones')
+}
+
+function recordListURLs(): URL[] {
+  return requested().filter((u) => u.pathname === '/v1/zones/lab-zone/records')
+}
+
 afterEach(async () => {
   if (root) {
     await act(async () => {
@@ -171,7 +183,7 @@ describe('ZonesPage', () => {
     expect(firstZones?.searchParams.get('limit')).toBe(String(DEFAULT_PAGE_LIMIT))
     expect(firstZones?.searchParams.get('cursor')).toBeNull()
 
-    const next = Array.from(host!.querySelectorAll('button')).find((b) => b.textContent === 'Next')
+    const next = btn('Next')
     expect(next).toBeDefined()
     await act(async () => {
       next!.click()
@@ -179,13 +191,109 @@ describe('ZonesPage', () => {
     await waitForText('vendor-overlay')
     expect(host?.textContent).toContain('overlay')
 
-    const paged = requested().filter(
-      (u) => u.pathname === '/v1/zones' && u.searchParams.get('cursor') === '1',
-    )
+    const paged = zoneListURLs().filter((u) => u.searchParams.get('cursor') === '1')
     expect(paged.length).toBeGreaterThan(0)
     expect(paged[0]?.searchParams.get('limit')).toBe(String(DEFAULT_PAGE_LIMIT))
 
     expect(qc?.getQueryState(zonesListKey(REV, '1', DEFAULT_PAGE_LIMIT))?.status).toBe('success')
+
+    const firstPageGets = zoneListURLs().filter((u) => u.searchParams.get('cursor') === null).length
+    await act(async () => {
+      btn('First page')!.click()
+    })
+    await waitForText('lab-zone')
+    expect(zoneListURLs().filter((u) => u.searchParams.get('cursor') === null).length).toBeGreaterThan(
+      firstPageGets,
+    )
+  })
+
+  it('drops cursor on the same render when runtimeRevision changes', async () => {
+    const rev2 = 'sha256:def'
+    mockAPI((url) => {
+      if (url.pathname === '/v1/status') {
+        return jsonResponse(200, { revisions: { runtimeRevision: REV } })
+      }
+      if (url.pathname === '/v1/zones') {
+        const cursor = url.searchParams.get('cursor') ?? ''
+        if (cursor === '') {
+          return jsonResponse(200, {
+            zones: [{ id: 'lab-zone', name: 'lab.example.net.', mode: 'authoritative' }],
+            nextCursor: '1',
+          })
+        }
+        return jsonResponse(200, {
+          zones: [{ id: 'vendor-overlay', name: 'vendor.example.', mode: 'overlay' }],
+        })
+      }
+      return jsonResponse(404, { code: 'not_found', detail: url.pathname })
+    })
+
+    await renderAt('/zones', <ZonesPage />)
+    await waitForText('lab-zone')
+    await act(async () => {
+      btn('Next')!.click()
+    })
+    await waitForText('vendor-overlay')
+
+    const marked = requested().length
+    mockAPI((url) => {
+      if (url.pathname === '/v1/status') {
+        return jsonResponse(200, { revisions: { runtimeRevision: rev2 } })
+      }
+      if (url.pathname === '/v1/zones') {
+        return jsonResponse(200, {
+          zones: [{ id: 'after-rev', name: 'new.example.', mode: 'authoritative' }],
+        })
+      }
+      return jsonResponse(404, { code: 'not_found', detail: url.pathname })
+    })
+    await act(async () => {
+      await qc!.invalidateQueries({ queryKey: queryKeys.status() })
+    })
+    await waitForText('after-rev')
+    expect(qc?.getQueryState(zonesListKey(rev2, '1', DEFAULT_PAGE_LIMIT))).toBeUndefined()
+    expect(qc?.getQueryState(zonesListKey(rev2, '', DEFAULT_PAGE_LIMIT))?.status).toBe('success')
+    const after = requested()
+      .slice(marked)
+      .filter((u) => u.pathname === '/v1/zones' && u.searchParams.get('cursor') === null)
+    expect(after.length).toBeGreaterThan(0)
+  })
+
+  it('keeps First page when the next cursor page fails', async () => {
+    mockAPI((url) => {
+      if (url.pathname === '/v1/status') {
+        return jsonResponse(200, { revisions: { runtimeRevision: REV } })
+      }
+      if (url.pathname === '/v1/zones') {
+        const cursor = url.searchParams.get('cursor') ?? ''
+        if (cursor === '') {
+          return jsonResponse(200, {
+            zones: [{ id: 'lab-zone', name: 'lab.example.net.', mode: 'authoritative' }],
+            nextCursor: '1',
+          })
+        }
+        return jsonResponse(403, { code: 'forbidden', detail: 'dns.read required' })
+      }
+      return jsonResponse(404, { code: 'not_found', detail: url.pathname })
+    })
+
+    await renderAt('/zones', <ZonesPage />)
+    await waitForText('lab-zone')
+    await act(async () => {
+      btn('Next')!.click()
+    })
+    await waitForText('forbidden: dns.read required')
+    expect(btn('First page')).toBeDefined()
+    expect(btn('Next')).toBeUndefined()
+
+    const firstPageGets = zoneListURLs().filter((u) => u.searchParams.get('cursor') === null).length
+    await act(async () => {
+      btn('First page')!.click()
+    })
+    await waitForText('lab-zone')
+    expect(zoneListURLs().filter((u) => u.searchParams.get('cursor') === null).length).toBeGreaterThan(
+      firstPageGets,
+    )
   })
 
   it('disables create with mutations in UI-003', async () => {
@@ -257,22 +365,70 @@ describe('ZoneDetailPage', () => {
     expect(recsFirst?.searchParams.get('limit')).toBe(String(DEFAULT_PAGE_LIMIT))
     expect(recsFirst?.searchParams.get('cursor')).toBeNull()
 
-    const next = Array.from(host!.querySelectorAll('button')).find((b) => b.textContent === 'Next')
     await act(async () => {
-      next!.click()
+      btn('Next')!.click()
     })
     await waitForText('grafana-cname')
     expect(host?.textContent).toContain('CNAME')
 
-    const paged = requested().filter(
-      (u) => u.pathname === '/v1/zones/lab-zone/records' && u.searchParams.get('cursor') === '1',
-    )
+    const paged = recordListURLs().filter((u) => u.searchParams.get('cursor') === '1')
     expect(paged.length).toBeGreaterThan(0)
     expect(paged[0]?.searchParams.get('limit')).toBe(String(DEFAULT_PAGE_LIMIT))
 
     expect(qc?.getQueryState(queryKeys.zone(REV, 'lab-zone'))?.status).toBe('success')
     expect(qc?.getQueryState(recordsListKey(REV, 'lab-zone', '1', DEFAULT_PAGE_LIMIT))?.status).toBe(
       'success',
+    )
+
+    const firstPageGets = recordListURLs().filter((u) => u.searchParams.get('cursor') === null).length
+    await act(async () => {
+      btn('First page')!.click()
+    })
+    await waitForText('ns1-a')
+    expect(recordListURLs().filter((u) => u.searchParams.get('cursor') === null).length).toBeGreaterThan(
+      firstPageGets,
+    )
+  })
+
+  it('keeps First page when the next records page fails', async () => {
+    mockAPI((url) => {
+      if (url.pathname === '/v1/status') {
+        return jsonResponse(200, { revisions: { runtimeRevision: REV } })
+      }
+      if (url.pathname === '/v1/zones/lab-zone') {
+        return jsonResponse(200, {
+          id: 'lab-zone',
+          name: 'lab.example.net.',
+          mode: 'authoritative',
+        })
+      }
+      if (url.pathname === '/v1/zones/lab-zone/records') {
+        const cursor = url.searchParams.get('cursor') ?? ''
+        if (cursor === '') {
+          return jsonResponse(200, {
+            records: [{ id: 'ns1-a', owner: 'ns1', type: 'A', ttl: '30s' }],
+            nextCursor: '1',
+          })
+        }
+        return jsonResponse(500, { code: 'internal_error', detail: 'list failed' })
+      }
+      return jsonResponse(404, { code: 'not_found', detail: url.pathname })
+    })
+
+    await renderAt('/zones/lab-zone', <ZoneDetailPage />)
+    await waitForText('ns1-a')
+    await act(async () => {
+      btn('Next')!.click()
+    })
+    await waitForText('internal_error: list failed')
+    expect(btn('First page')).toBeDefined()
+    const firstPageGets = recordListURLs().filter((u) => u.searchParams.get('cursor') === null).length
+    await act(async () => {
+      btn('First page')!.click()
+    })
+    await waitForText('ns1-a')
+    expect(recordListURLs().filter((u) => u.searchParams.get('cursor') === null).length).toBeGreaterThan(
+      firstPageGets,
     )
   })
 

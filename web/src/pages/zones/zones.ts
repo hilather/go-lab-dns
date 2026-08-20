@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { client, throwOnError } from '../../api/client'
 import { queryKeys } from '../../query/keys'
 import { statusRevision, useStatusQuery } from '../../query/status'
@@ -52,6 +53,18 @@ export function recordsListKey(revision: string, zoneId: string, cursor: string,
 export function useRuntimeRevision(): string {
   const statusQuery = useStatusQuery()
   return statusRevision(statusQuery.data)
+}
+
+// Reset during render so the same commit queries cursor='' (useEffect would fetch the old offset first).
+export function usePagedCursor(scope: string): [string, (next: string) => void] {
+  const [cursor, setCursor] = useState('')
+  const [scopedTo, setScopedTo] = useState(scope)
+  if (scopedTo !== scope) {
+    setScopedTo(scope)
+    setCursor('')
+  }
+  const active = scopedTo === scope ? cursor : ''
+  return [active, setCursor]
 }
 
 function str(v: unknown): string {
