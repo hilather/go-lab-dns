@@ -289,7 +289,7 @@ func TestWebNestedModuleFence(t *testing.T) {
 	}
 }
 
-func TestWebCIJobHasNoPlaywright(t *testing.T) {
+func TestWebCIJobRunsPlaywrightE2E(t *testing.T) {
 	root := mustRoot(t)
 	body, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "ci.yml"))
 	if err != nil {
@@ -299,9 +299,6 @@ func TestWebCIJobHasNoPlaywright(t *testing.T) {
 	if !ok {
 		t.Fatal("CI workflow missing web job")
 	}
-	if strings.Contains(strings.ToLower(job), "playwright") {
-		t.Error("web job must not install or run Playwright")
-	}
 	if !strings.Contains(job, "make web-test web-build") {
 		t.Error("web job must run make web-test web-build in one invocation so npm ci runs once")
 	}
@@ -310,6 +307,44 @@ func TestWebCIJobHasNoPlaywright(t *testing.T) {
 	}
 	if !strings.Contains(job, "22.14.0") {
 		t.Error("web job must pin Node 22.14.0")
+	}
+	if !strings.Contains(job, "setup-go") {
+		t.Error("web job must use setup-go so Playwright e2e can build labdns")
+	}
+	if !strings.Contains(job, "npx playwright install --with-deps chromium") {
+		t.Error("web job must install Playwright Chromium with OS deps")
+	}
+	if !strings.Contains(job, "npm run test:e2e") {
+		t.Error("web job must run npm run test:e2e (not folded into make web-test)")
+	}
+}
+
+func TestWebE2ETargetIsSeparateFromWebTest(t *testing.T) {
+	root := mustRoot(t)
+	body, err := os.ReadFile(filepath.Join(root, "Makefile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	targets := parseTargets(string(body))
+	e2e, ok := targets["web-e2e"]
+	if !ok {
+		t.Fatal("missing target web-e2e")
+	}
+	if !strings.Contains(e2e, "command -v") {
+		t.Error("web-e2e must fail closed when node is missing")
+	}
+	if strings.Contains(e2e, "exit 0") {
+		t.Error("web-e2e must not exit 0 as a placeholder")
+	}
+	if !strings.Contains(e2e, "npm run test:e2e") {
+		t.Error("web-e2e must run npm run test:e2e")
+	}
+	if strings.Contains(e2e, "npm ci") {
+		t.Error("web-e2e must use web-npm-ci instead of npm ci in its own recipe")
+	}
+	webTest := targets["web-test"]
+	if strings.Contains(strings.ToLower(webTest), "playwright") || strings.Contains(webTest, "test:e2e") {
+		t.Error("web-test must stay Vitest-only and must not run Playwright e2e")
 	}
 }
 

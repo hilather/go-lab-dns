@@ -12,7 +12,7 @@ GOLANGCI_LINT_MOD ?= github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GO
 
 .PHONY: help format lint generate verify-generated test test-race test-fuzz-smoke \
 	test-integration test-parity test-config-compat test-docs test-container \
-	security-scan test-changelog release-diff web-npm-ci web-test web-build web-generate
+	security-scan test-changelog release-diff web-npm-ci web-test web-build web-generate web-e2e
 
 help:
 	@printf '%s\n' \
@@ -35,7 +35,8 @@ help:
 		'  web-npm-ci          npm ci in web/ (shared by web-test and web-build)' \
 		'  web-test            Vitest unit tests in web/ (fail closed if Node is missing; not Playwright)' \
 		'  web-build           Vite production build to web/dist only (fail closed if Node is missing)' \
-		'  web-generate        write web/src/api/openapi.d.ts from api/openapi/v1.json'
+		'  web-generate        write web/src/api/openapi.d.ts from api/openapi/v1.json' \
+		'  web-e2e             Playwright operator matrix on loopback labdns (not part of web-test)'
 
 format:
 	$(GO) fmt ./...
@@ -97,6 +98,10 @@ web-build: web-npm-ci
 	@command -v $(NODE) >/dev/null || { echo 'web-build: node 22.14.0 is required' >&2; exit 1; }
 	cd $(WEB_DIR) && npm run build
 	test -f web/dist/index.html
+
+web-e2e: web-npm-ci
+	@command -v $(NODE) >/dev/null || { echo 'web-e2e: node 22.14.0 is required' >&2; exit 1; }
+	cd $(WEB_DIR) && npm run test:e2e
 
 # FROM and TO are git refs. NOTES is optional and required for a tag gate.
 FROM ?=

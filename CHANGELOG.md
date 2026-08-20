@@ -15,6 +15,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Generated OpenAPI TypeScript client (`make web-generate` writes committed `web/src/api/openapi.d.ts`; `make generate` stays Go-only). `openapi-fetch` sends `credentials: include` and CSRF on non-GET. TanStack Query keys include snapshot revision; status polls every 2s while visible; upstream/cache/chaos status poll every 5s; snapshot queries invalidate on revision change. Placeholder routes and nav cover every docs/22 path.
 - Operator console chaos mutations: side-effect-free simulate, typed activate/deactivate/expiry, and shell emergency disable/enable. High-impact activate uses the same `CanActivateHigh` split as REST (`dns.chaos.activate` and `dns.chaos.emergency` or `dns.admin`); REST remains the authorizer. Emergency is one confirm, not a typed phrase.
 - Structured log event `ui.session` (`EventUISession`) in the metrics catalog, including log field `actor_id` (token or identity id; not a metric label). Session routes use `labdns_capability_calls_total{capability="session"}`. No SPA request metrics.
+- Vite/React operator-console toolchain (`web/`), committed embed stub (`internal/web`), fail-closed `make web-test` / `make web-build`, required CI job `web`, and a digest-pinned Node 22.14.0 image stage. Production assets are copied into the embed path in Docker only; local `go test` uses the stub and does not require Node.
+- Playwright operator-matrix e2e (`web/e2e`, `make web-e2e` / `npm run test:e2e`) against loopback `labdns serve` and `testdata/web/` (pack-sample plus viewer vs admin tokens). CI job `web` installs Chromium (`npx playwright install --with-deps chromium`) and runs the matrix. `make web-test` stays Vitest-only.
 
 ### Changed
 
