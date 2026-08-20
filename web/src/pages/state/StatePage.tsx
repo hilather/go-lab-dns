@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useOutletContext } from 'react-router'
 import { ProblemAlert } from '../../components/ProblemAlert'
+import type { ShellContext } from '../../components/Shell'
 import { queryKeys } from '../../query/keys'
 import { statusRevision, useStatusQuery } from '../../query/status'
 import { downloadStateExport, fetchState, prettyJSON, problemFrom, type ExportFormat } from './state'
@@ -14,10 +16,12 @@ function yn(v: boolean | undefined): string {
 
 export function StatePage() {
   const status = useStatusQuery()
-  const revision = statusRevision(status.data)
+  const outlet = useOutletContext<ShellContext | null>()
+  const revision = statusRevision(status.data) || outlet?.status?.revisions?.runtimeRevision || ''
   const query = useQuery({
     queryKey: queryKeys.state(revision),
     queryFn: () => fetchState(),
+    enabled: revision !== '',
   })
   const [exportError, setExportError] = useState<unknown>(null)
   const [exporting, setExporting] = useState<ExportFormat | null>(null)
@@ -41,7 +45,7 @@ export function StatePage() {
     <article className="dashboard">
       <h1>State</h1>
       {err ? <ProblemAlert error={err} /> : null}
-      {query.isPending ? <p>Loading state…</p> : null}
+      {revision === '' || query.isFetching ? <p>Loading state…</p> : null}
       {data ? (
         <section>
           <h2>Revisions</h2>

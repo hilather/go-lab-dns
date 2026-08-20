@@ -110,4 +110,27 @@ describe('CapabilitiesPage', () => {
     expect(qc.getQueryCache().find({ queryKey: queryKeys.capabilities('sha256:caps') })).toBeTruthy()
     expect(fetchMock.mock.calls.every((c) => requestOf(c as unknown[]).method === 'GET')).toBe(true)
   })
+
+  it('announces capabilities fetch failures', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const req = input instanceof Request ? input : new Request(String(input))
+      if (pathOf(req) === '/v1/status') {
+        return jsonResponse(200, { revisions: { runtimeRevision: 'sha256:x' } })
+      }
+      return jsonResponse(403, { code: 'forbidden', detail: 'dns.read required', status: 403, title: 'Forbidden', type: 'about:blank' }, 'application/problem+json')
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const qc = testClient()
+    qc.setQueryData(queryKeys.status(), { revisions: { runtimeRevision: 'sha256:x' } })
+    await render(
+      <QueryClientProvider client={qc}>
+        <CapabilitiesPage />
+      </QueryClientProvider>,
+    )
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(host?.querySelector('[role="alert"]')?.textContent).toBe('forbidden: dns.read required')
+      })
+    })
+  })
 })

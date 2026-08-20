@@ -98,26 +98,40 @@ describe('state API', () => {
 
   it('download uses a blob URL and never writes storage', async () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem')
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(new Response('kind: LabDNS\n', { status: 200, headers: { 'Content-Type': 'application/yaml' } }))
-    const createObjectURL = vi.fn(() => 'blob:labdns-export')
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const req = input instanceof Request ? input : new Request(String(input))
+      const format = new URL(req.url, 'http://localhost').searchParams.get('format')
+      if (format === 'json') {
+        return jsonResponse(200, { format: 'json', revision: 'sha256:abc', body: { kind: 'LabDNS' } })
+      }
+      return new Response('kind: LabDNS\n', { status: 200, headers: { 'Content-Type': 'application/yaml' } })
+    })
+    const createObjectURL = vi.fn((blob: Blob) => `blob:labdns-export-${blob.type}`)
     const revokeObjectURL = vi.fn()
     const origCreate = URL.createObjectURL
     const origRevoke = URL.revokeObjectURL
     URL.createObjectURL = createObjectURL as typeof URL.createObjectURL
     URL.revokeObjectURL = revokeObjectURL
-    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const clicked: HTMLAnchorElement[] = []
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      clicked.push(this)
+    })
     const api = createLabdnsClient({ fetch: fetchMock })
     try {
       await downloadStateExport('yaml', api)
+      await downloadStateExport('json', api)
     } finally {
       URL.createObjectURL = origCreate
       URL.revokeObjectURL = origRevoke
     }
-    expect(createObjectURL).toHaveBeenCalled()
-    expect(click).toHaveBeenCalled()
-    expect(revokeObjectURL).toHaveBeenCalledWith('blob:labdns-export')
+    expect(clicked).toHaveLength(2)
+    expect(clicked[0]?.download).toBe('labdns-state.yaml')
+    expect(clicked[0]?.href).toContain('blob:')
+    expect(clicked[1]?.download).toBe('labdns-state.json')
+    expect(clicked[1]?.href).toContain('blob:')
+    expect(createObjectURL.mock.calls[0]?.[0]).toMatchObject({ type: 'application/yaml' })
+    expect(createObjectURL.mock.calls[1]?.[0]).toMatchObject({ type: 'application/json' })
+    expect(revokeObjectURL).toHaveBeenCalledTimes(2)
     expect(setItem).not.toHaveBeenCalled()
     expect(window.localStorage.getItem('token')).toBeNull()
   })
@@ -172,7 +186,28 @@ describe('StatePage', () => {
     expect(qc.getQueryCache().find({ queryKey: queryKeys.state('sha256:abc') })).toBeTruthy()
     const methods = fetchMock.mock.calls.map((c) => requestOf(c as unknown[]).method)
     expect(methods.every((m) => m === 'GET')).toBe(true)
-    expect(host?.querySelector('button')?.textContent).toContain('Download YAML')
+    const labels = [...(host?.querySelectorAll('button') ?? [])].map((b) => b.textContent)
+    expect(labels).toContain('Download YAML')
+    expect(labels).toContain('Download JSON')
+  })
+
+  it('does not GET /v1/state until a runtime revision is known', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const req = input instanceof Request ? input : new Request(String(input))
+      return jsonResponse(404, { code: 'not_found', detail: pathOf(req), status: 404, title: 'Not found', type: 'about:blank' })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await render(
+      <QueryClientProvider client={testClient()}>
+        <StatePage />
+      </QueryClientProvider>,
+    )
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+    const stateGets = fetchMock.mock.calls.filter((c) => pathOf(requestOf(c as unknown[])) === '/v1/state')
+    expect(stateGets).toHaveLength(0)
+    expect(host?.textContent).toContain('Loading state')
   })
 
   it('announces problem+json with role=alert', async () => {
@@ -184,8 +219,10 @@ describe('StatePage', () => {
       return jsonResponse(403, { code: 'forbidden', detail: 'dns.read required', status: 403, title: 'Forbidden', type: 'about:blank' }, 'application/problem+json')
     })
     vi.stubGlobal('fetch', fetchMock)
+    const qc = testClient()
+    qc.setQueryData(queryKeys.status(), { revisions: { runtimeRevision: 'sha256:abc' } })
     await render(
-      <QueryClientProvider client={testClient()}>
+      <QueryClientProvider client={qc}>
         <StatePage />
       </QueryClientProvider>,
     )

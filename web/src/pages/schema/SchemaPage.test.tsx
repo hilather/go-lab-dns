@@ -112,8 +112,10 @@ describe('SchemaPage', () => {
       return jsonResponse(403, { code: 'forbidden', detail: 'dns.read required', status: 403, title: 'Forbidden', type: 'about:blank' }, 'application/problem+json')
     })
     vi.stubGlobal('fetch', fetchMock)
+    const qc = testClient()
+    qc.setQueryData(queryKeys.status(), { revisions: { runtimeRevision: 'sha256:x' } })
     await render(
-      <QueryClientProvider client={testClient()}>
+      <QueryClientProvider client={qc}>
         <SchemaPage />
       </QueryClientProvider>,
     )

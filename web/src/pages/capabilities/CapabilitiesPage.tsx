@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
+import { useOutletContext } from 'react-router'
 import { ProblemAlert } from '../../components/ProblemAlert'
+import type { ShellContext } from '../../components/Shell'
 import { queryKeys } from '../../query/keys'
 import { statusRevision, useStatusQuery } from '../../query/status'
 import { capabilityList, fetchCapabilities, problemFrom } from './capabilities'
@@ -13,10 +15,12 @@ function yn(v: boolean | undefined): string {
 
 export function CapabilitiesPage() {
   const status = useStatusQuery()
-  const revision = statusRevision(status.data)
+  const outlet = useOutletContext<ShellContext | null>()
+  const revision = statusRevision(status.data) || outlet?.status?.revisions?.runtimeRevision || ''
   const query = useQuery({
     queryKey: queryKeys.capabilities(revision),
     queryFn: () => fetchCapabilities(),
+    enabled: revision !== '',
   })
   const err = problemFrom(query.error)
   const rows = capabilityList(query.data)
@@ -25,7 +29,7 @@ export function CapabilitiesPage() {
     <article className="dashboard">
       <h1>Capabilities</h1>
       {err ? <ProblemAlert error={err} /> : null}
-      {query.isPending ? <p>Loading capabilities…</p> : null}
+      {revision === '' || query.isFetching ? <p>Loading capabilities…</p> : null}
       {query.isSuccess && rows.length === 0 ? <p>No capabilities reported.</p> : null}
       {rows.length > 0 ? (
         <table>

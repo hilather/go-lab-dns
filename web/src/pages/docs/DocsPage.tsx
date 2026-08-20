@@ -12,7 +12,7 @@ function DocsIndex() {
       <ul>
         {DOC_CATALOG.map((doc) => (
           <li key={doc.id}>
-            <Link to={`/docs/${doc.id}`}>{doc.title}</Link>
+            <Link to={`${ROUTES.docsIndex}/${doc.id}`}>{doc.title}</Link>
           </li>
         ))}
       </ul>
