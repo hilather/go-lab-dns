@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, type ReactNode } from 'react'
+import { act, useState, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { client } from '../../api/client'
@@ -135,10 +135,22 @@ describe('EmergencyControl', () => {
   })
 
   it('confirms emergency disable once without a typed phrase', async () => {
-    mockSession(adminSession)
+    let inhibited = false
+    vi.spyOn(client, 'GET').mockImplementation((async (path: string) => {
+      if (path === '/v1/session') {
+        return ok(adminSession)
+      }
+      if (path === '/v1/chaos/status') {
+        return ok({ enabled: true, emergencyDisabled: inhibited })
+      }
+      return fail(404, { code: 'not_found', detail: path })
+    }) as typeof client.GET)
     const posts: { path: string; body: unknown }[] = []
     vi.spyOn(client, 'POST').mockImplementation((async (path: string, init?: unknown) => {
       posts.push({ path, body: (init as { body?: unknown } | undefined)?.body })
+      if (path === '/v1/chaos:emergency-disable') {
+        inhibited = true
+      }
       return ok({ applied: true, candidateRevision: 'sha256:x' })
     }) as typeof client.POST)
     await render(<EmergencyControl emergencyDisabled={false} />)
@@ -166,6 +178,66 @@ describe('EmergencyControl', () => {
       })
     })
     expect(host?.textContent).toContain('Chaos emergency disabled')
+  })
+
+  it('keeps the banner inhibited after enable when GET /v1/chaos/status still reports the lock', async () => {
+    vi.spyOn(client, 'GET').mockImplementation((async (path: string) => {
+      if (path === '/v1/session') {
+        return ok(adminSession)
+      }
+      if (path === '/v1/chaos/status') {
+        return ok({ enabled: true, emergencyDisabled: true })
+      }
+      return fail(404, { code: 'not_found', detail: path })
+    }) as typeof client.GET)
+    vi.spyOn(client, 'POST').mockResolvedValue(ok({ applied: true, candidateRevision: 'sha256:x' }) as never)
+    await render(<EmergencyControl emergencyDisabled={true} />)
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(buttonNamed('Emergency enable')?.disabled).toBe(false)
+      })
+    })
+    expect(host?.textContent).toContain('Chaos emergency disabled')
+    await act(async () => {
+      buttonNamed('Emergency enable')?.click()
+    })
+    await act(async () => {
+      const submit = document.querySelector('dialog button[type="submit"]') as HTMLButtonElement
+      submit.click()
+    })
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(host?.textContent).toContain('Chaos emergency disabled')
+      })
+    })
+    expect(host?.textContent).not.toContain('Chaos engine live')
+  })
+
+  it('follows emergencyDisabled from the shell status poll', async () => {
+    mockSession(adminSession)
+    function Wrap() {
+      const [off, setOff] = useState(true)
+      return (
+        <div>
+          <button type="button" onClick={() => setOff(false)}>
+            sync-status
+          </button>
+          <EmergencyControl emergencyDisabled={off} />
+        </div>
+      )
+    }
+    await render(<Wrap />)
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(buttonNamed('Emergency disable')?.disabled).toBe(false)
+      })
+    })
+    expect(host?.textContent).toContain('Chaos emergency disabled')
+    await act(async () => {
+      buttonNamed('sync-status')?.click()
+    })
+    expect(host?.textContent).toContain('Chaos engine live')
+    expect(host?.textContent).not.toContain('Chaos emergency disabled')
   })
 
   it('does not flash Missing scope while session is pending', async () => {

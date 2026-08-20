@@ -405,12 +405,35 @@ describe('ChaosPolicyPage', () => {
       })
     })
     const reason = host!.querySelector('input[name="reason"]') as HTMLInputElement
+    const expiry = host!.querySelector('input[name="expiresAt"]') as HTMLInputElement
     await act(async () => {
       setNativeValue(reason, 'lab')
+      setNativeValue(expiry, '2026-09-01T00:00')
     })
     expect(host?.textContent).toContain('Missing scope dns.chaos.emergency')
     expect(buttonNamed('Activate')?.disabled).toBe(true)
     expect(buttonNamed('Deactivate')?.disabled).toBe(false)
+    expect(buttonNamed('Set expiry')?.disabled).toBe(true)
+    expect(post).not.toHaveBeenCalled()
+  })
+
+  it('lets a chaos-operator set expiry on an inactive high policy', async () => {
+    mockGets(operatorSession, { policy: { ...policy, safetyClass: 'high', enabled: false } })
+    const post = vi.spyOn(client, 'POST')
+    await render(<ChaosPolicyPage />, '/chaos/slow-tools', '/chaos/:policyId')
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(host?.textContent).toContain('high')
+      })
+    })
+    const reason = host!.querySelector('input[name="reason"]') as HTMLInputElement
+    const expiry = host!.querySelector('input[name="expiresAt"]') as HTMLInputElement
+    await act(async () => {
+      setNativeValue(reason, 'lab')
+      setNativeValue(expiry, '2026-09-01T00:00')
+    })
+    expect(buttonNamed('Activate')?.disabled).toBe(true)
+    expect(buttonNamed('Set expiry')?.disabled).toBe(false)
     expect(post).not.toHaveBeenCalled()
   })
 

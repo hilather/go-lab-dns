@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { components } from '../../api/openapi'
 import { client } from '../../api/client'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
@@ -10,6 +10,7 @@ import {
   EMERGENCY_REASON,
   emergencyDisableMissingScope,
   emergencyEnableMissingScope,
+  parseChaosStatus,
   parseSessionActor,
   SCOPE_CHAOS_EMERGENCY,
   scopeGateAllowed,
@@ -37,10 +38,24 @@ export function EmergencyControl({ emergencyDisabled }: { emergencyDisabled?: bo
   const [confirm, setConfirm] = useState<Pending>(null)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<unknown>(null)
-  const [localOff, setLocalOff] = useState<boolean | null>(null)
-  const off = localOff ?? emergencyDisabled
+  const [off, setOff] = useState<boolean | undefined>(emergencyDisabled)
   const canDisable = sessionKnown && disableMissing === '' && !busy
   const canEnable = sessionKnown && enableMissing === '' && !busy
+
+  useEffect(() => {
+    setOff(emergencyDisabled)
+  }, [emergencyDisabled])
+
+  async function refreshOff() {
+    const res = await client.GET('/v1/chaos/status')
+    if (!res.response.ok) {
+      return
+    }
+    const st = parseChaosStatus(res.data)
+    if (st && typeof st.emergencyDisabled === 'boolean') {
+      setOff(st.emergencyDisabled)
+    }
+  }
 
   async function run(kind: Exclude<Pending, null>) {
     setBusy(true)
@@ -52,7 +67,7 @@ export function EmergencyControl({ emergencyDisabled }: { emergencyDisabled?: bo
         setProblem(res.error ?? { code: 'internal_error', detail: `emergency ${kind} failed` })
         return
       }
-      setLocalOff(kind === 'disable')
+      await refreshOff()
       setConfirm(null)
       await Promise.all([
         invalidateSnapshotQueries(queryClient),
