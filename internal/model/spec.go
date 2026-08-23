@@ -84,6 +84,14 @@ type ObservabilitySpec struct {
 type ManagementSpec struct {
 	Auth           AuthSpec `json:"auth"`
 	AllowedOrigins []string `json:"allowedOrigins,omitempty"`
+	MCP            *MCPSpec `json:"mcp,omitempty"`
+}
+
+// MCPSpec is Streamable HTTP MCP adapter policy. Omitted (nil) means
+// allowLegacyClients false (ADR 0006 pin stays on). Pointer so Canonical
+// JSON does not emit `"mcp":{}` for the default.
+type MCPSpec struct {
+	AllowLegacyClients bool `json:"allowLegacyClients,omitempty"`
 }
 
 // AuthSpec names an auth profile and optional secret references.

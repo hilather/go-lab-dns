@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: Architecture, Release Engineering
-Last reviewed: 2026-08-15 (MCP-001 2026-07-28 pin)
+Last reviewed: 2026-08-23 (allowLegacyClients overlay knob)
 Last reviewed: 2026-08-15 (OBS-001 metrics catalog)
 Last reviewed: 2026-08-15 (REL-001 release-diff surfaces)
 Last reviewed: 2026-08-15 (PERF-001 interop matrix)
@@ -42,7 +42,7 @@ Use `/v1` for the first stable family. Additive optional fields are preferred. B
 
 ## MCP
 
-First GA pins **2026-07-28 only** (ADR 0006). The adapter records the pin in `buildinfo.Protocols.MCP` and [api/mcp/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/mcp/v1.json). Do not automatically claim support for a newly published protocol revision. Adapter updates require conformance and parity tests. Tool schemas have their own capability version metadata when needed.
+First GA pins **2026-07-28 only** (ADR 0006). The adapter records the pin in `buildinfo.Protocols.MCP` and [api/mcp/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/mcp/v1.json). `spec.management.mcp.allowLegacyClients` (default false) skips the HTTP-level pin for older SDK clients; it does not add a claimed protocol version. Do not automatically claim support for a newly published protocol revision. Adapter updates require conformance and parity tests. Tool schemas have their own capability version metadata when needed.
 
 ## Chaos algorithm versions
 
