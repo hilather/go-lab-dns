@@ -199,6 +199,23 @@ func TestLoadUIDisabledPreservesFalse(t *testing.T) {
 	}
 }
 
+func TestLoadMCPAllowLegacyClients(t *testing.T) {
+	st, err := LoadFile(testdata(t, "valid", "mcp-legacy.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Spec.Management.MCP == nil || !st.Spec.Management.MCP.AllowLegacyClients {
+		t.Fatal("mcp-legacy.yaml did not decode allowLegacyClients true")
+	}
+	omitted, err := LoadFile(testdata(t, "valid", "ui-disabled.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if omitted.Spec.Management.MCP != nil && omitted.Spec.Management.MCP.AllowLegacyClients {
+		t.Fatal("omitted mcp.allowLegacyClients must stay false")
+	}
+}
+
 func TestLoadOmitUINoAccessEnabled(t *testing.T) {
 	st, err := LoadFile(testdata(t, "valid", "omit-ui-no-access.yaml"))
 	if err != nil {

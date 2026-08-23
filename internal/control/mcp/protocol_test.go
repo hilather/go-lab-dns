@@ -75,6 +75,58 @@ func TestDiscoverAdvertisesOnlyPinnedVersion(t *testing.T) {
 	}
 }
 
+func TestAllowLegacyClientsNegotiatesViaSDK(t *testing.T) {
+	_, svc := newTestServer(t)
+	s, err := New(Config{Service: svc, RatePerSec: -1, AllowLegacyClients: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(s.Close)
+	body := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"legacy-gateway","version":"0.0.1"}}}`
+	rec := doRaw(t, s.Handler(), body, map[string]string{
+		"Content-Type": "application/json",
+		"Accept":       "application/json, text/event-stream",
+	}, "127.0.0.1:1")
+	if rec.Code != http.StatusOK && rec.Code != http.StatusAccepted {
+		t.Fatalf("legacy initialize status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	got := decodeRPC(t, rec)
+	result, _ := got["result"].(map[string]any)
+	if result == nil || result["protocolVersion"] == "" {
+		t.Fatalf("legacy initialize missing result.protocolVersion: %s", rec.Body.String())
+	}
+	rec2 := doRaw(t, s.Handler(), body, map[string]string{
+		"Content-Type":        "application/json",
+		"Accept":              "application/json, text/event-stream",
+		headerProtocolVersion: "2025-03-26",
+	}, "127.0.0.1:1")
+	if rec2.Code == http.StatusBadRequest {
+		t.Fatalf("legacy mismatched header rejected: %s", rec2.Body.String())
+	}
+}
+
+func TestAllowLegacyClientsLiveSnapshot(t *testing.T) {
+	_, svc := newTestServer(t)
+	on := false
+	s, err := New(Config{Service: svc, RatePerSec: -1, LegacyClients: func() bool { return on }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(s.Close)
+	body := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"legacy-gateway","version":"0.0.1"}}}`
+	hdr := map[string]string{
+		"Content-Type": "application/json",
+		"Accept":       "application/json, text/event-stream",
+	}
+	rec := doRaw(t, s.Handler(), body, hdr, "127.0.0.1:1")
+	requireRPCError(t, rec, http.StatusBadRequest, "unsupported_protocol_version")
+	on = true
+	rec2 := doRaw(t, s.Handler(), body, hdr, "127.0.0.1:1")
+	if rec2.Code == http.StatusBadRequest {
+		t.Fatalf("live allowLegacyClients still pinned: %s", rec2.Body.String())
+	}
+}
+
 func TestStreamableHTTPOnlyPOST(t *testing.T) {
 	s, _ := newTestServer(t)
 	req := doRawMethod(t, s.Handler(), http.MethodGet, DefaultPath, "", map[string]string{

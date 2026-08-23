@@ -72,6 +72,12 @@ type Config struct {
 	// Origins returns the per-request Origin allowlist from the active snapshot.
 	// When non-nil it is preferred over AllowedOrigins.
 	Origins func() []string
+	// AllowLegacyClients relaxes the HTTP-level 2026-07-28 pin so older SDK
+	// clients (MCPJungle) can initialize. Default false (ADR 0006).
+	AllowLegacyClients bool
+	// LegacyClients returns the per-request allowLegacyClients from the active
+	// snapshot. When non-nil it is preferred over AllowLegacyClients.
+	LegacyClients func() bool
 	// RatePerSec is the per-source management QPS. Zero uses the shared default.
 	// Negative disables the token bucket (concurrency cap still applies).
 	RatePerSec float64
@@ -146,8 +152,6 @@ func New(cfg Config) (*Server, error) {
 		},
 		SchemaCache: sdk.NewSchemaCache(),
 	})
-	sdkSrv.AddReceivingMiddleware(pinProtocolMiddleware)
-
 	s := &Server{
 		cfg:      cfg,
 		svc:      cfg.Service,
@@ -158,6 +162,7 @@ func New(cfg Config) (*Server, error) {
 		inflight: make(chan struct{}, n),
 		rate:     auth.ManagementLimiter(cfg.RatePerSec, cfg.RateBurst, nil),
 	}
+	sdkSrv.AddReceivingMiddleware(s.pinProtocolMiddleware)
 	s.registerTools()
 	s.registerResources()
 	s.registerPrompts()
@@ -230,9 +235,11 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	if err := validateProtocolVersion(r); err != nil {
-		writeRPC(w, http.StatusBadRequest, err)
-		return
+	if !s.allowLegacy() {
+		if err := validateProtocolVersion(r); err != nil {
+			writeRPC(w, http.StatusBadRequest, err)
+			return
+		}
 	}
 
 	actor, err := s.authenticate(r)

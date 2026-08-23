@@ -9,8 +9,26 @@ import (
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+func (s *Server) allowLegacy() bool {
+	if s.cfg.LegacyClients != nil {
+		return s.cfg.LegacyClients()
+	}
+	return s.cfg.AllowLegacyClients
+}
+
+func (s *Server) pinProtocolMiddleware(next sdk.MethodHandler) sdk.MethodHandler {
+	pinned := pinProtocolMiddleware(next)
+	return func(ctx context.Context, method string, req sdk.Request) (sdk.Result, error) {
+		if s.allowLegacy() {
+			return next(ctx, method, req)
+		}
+		return pinned(ctx, method, req)
+	}
+}
+
 // validateProtocolVersion pins first GA to 2026-07-28. Older SDK revisions
-// still speak 2025-11-25; claiming them would violate ADR 0006.
+// still speak 2025-11-25; claiming them would violate ADR 0006 unless
+// allowLegacyClients is set (checked by the HTTP adapter).
 func validateProtocolVersion(r *http.Request) error {
 	ver := strings.TrimSpace(r.Header.Get(headerProtocolVersion))
 	if ver == "" {

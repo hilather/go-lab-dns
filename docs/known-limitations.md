@@ -46,7 +46,7 @@ Last reviewed: 2026-08-19
 
 ## Control plane and operations
 
-- MCP protocol **2026-07-28 only** (ADR 0006). Other protocol versions are rejected.
+- MCP protocol **2026-07-28 only** by default (ADR 0006). Other protocol versions are rejected unless `spec.management.mcp.allowLegacyClients` is true.
 - MCP stdio is a developer adapter and is **not** in the production image.
 - Unix-socket management is out of first GA. Emergency control #3 is `SIGUSR1`.
 - Typed CRUD write routes are not added; plan/apply is the write path.

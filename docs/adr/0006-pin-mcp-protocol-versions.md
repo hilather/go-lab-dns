@@ -23,6 +23,10 @@ Target MCP 2026-07-28 initially, record supported versions in build metadata, us
 - Track SDK main automatically: rejected due to nondeterminism.
 - Custom MCP implementation: rejected unless the official SDK cannot satisfy required behavior and an ADR replaces this one.
 
+## Amendment (2026-08-23)
+
+`spec.management.mcp.allowLegacyClients` (default **false**) skips the HTTP-level pin so older SDK clients can initialize. It does **not** add a claimed MCP protocol version to build metadata or `server/discover` when the pin is on. The default remains 2026-07-28 only.
+
 ## Review triggers
 
 Review this decision when its assumptions no longer hold, a major protocol or library change occurs, or a new requirement conflicts with an invariant.

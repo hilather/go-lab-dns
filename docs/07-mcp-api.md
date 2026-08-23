@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: MCP, Application
-Last reviewed: 2026-08-19 (Origins from active snapshot; cookies ignored)
+Last reviewed: 2026-08-23 (allowLegacyClients overlay knob)
 Target protocol baseline: 2026-07-28
 Related ADRs: 0004, 0006
 Implementation: `internal/control/mcp` wrapping `github.com/modelcontextprotocol/go-sdk v1.7.0`
@@ -204,7 +204,7 @@ MCP protocol versions, tool names, schemas, resource URIs, and result/error stru
 
 ## First-GA pin
 
-- Protocol **2026-07-28 only**. The Streamable HTTP handler requires `Mcp-Protocol-Version: 2026-07-28` and rejects every other value with `unsupported_protocol_version`.
+- Protocol **2026-07-28 only** by default. The Streamable HTTP handler requires `Mcp-Protocol-Version: 2026-07-28` and rejects every other value with `unsupported_protocol_version`. `spec.management.mcp.allowLegacyClients: true` skips that HTTP pin so older SDK clients (MCPJungle) can initialize; it does not add a claimed protocol version. Default is false.
 - Official SDK `github.com/modelcontextprotocol/go-sdk v1.7.0`. Stateless Streamable HTTP (`Stateless=true`) is required for this protocol revision.
 - Origin: missing Origin is allowed (SDK/curl). A present Origin must be loopback (`http://127.0.0.1`, `http://localhost`, `http://[::1]`) or on the per-request Origins allowlist (`spec.management.allowedOrigins` from the active snapshot); otherwise 403 `forbidden`. Cookies are ignored; off-loopback cookie-only MCP is 401.
 - Auth matches REST (SEC-001): loopback may omit a bearer under `dev-loopback-unauth`; remote peers need `Authorization: Bearer`. Tools and resources use the same `internal/auth` capability and resource checks as REST.

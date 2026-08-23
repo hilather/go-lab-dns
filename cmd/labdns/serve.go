@@ -218,7 +218,15 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 		sessions := auth.NewSessionTable(auth.SessionTableConfig{
 			Digest: auth.IdentityDigest(pol),
 		})
-		mcpSrv, err := mcpctl.New(mcpctl.Config{Service: svc, Auth: authn, Origins: origins})
+		legacy := func() bool {
+			cur := store.Load()
+			if cur == nil || cur.Canonical == nil {
+				return false
+			}
+			mcp := cur.Canonical.Spec.Management.MCP
+			return mcp != nil && mcp.AllowLegacyClients
+		}
+		mcpSrv, err := mcpctl.New(mcpctl.Config{Service: svc, Auth: authn, Origins: origins, LegacyClients: legacy})
 		if err != nil {
 			_ = rt.Shutdown(context.Background())
 			return nil, err

@@ -393,6 +393,17 @@
           "type": "array",
           "items": { "type": "string" },
           "description": "Exact http(s)://host[:port] Origin strings. Omitted is empty. Invalid entries fail validation."
+        },
+        "mcp": { "$ref": "#/$defs/mcp" }
+      }
+    },
+    "mcp": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allowLegacyClients": {
+          "type": "boolean",
+          "description": "When true, skip the HTTP-level 2026-07-28 pin so older SDK clients can initialize. Default false (omitted). Does not add a claimed MCP protocol version."
         }
       }
     },

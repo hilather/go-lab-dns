@@ -6,6 +6,18 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 - None.
 
+## v1.1.1 — 2026-08-23
+
+Curated notes: [docs/releases/v1.1.1.md](https://github.com/hilather/go-lab-dns/blob/v1.1.1/docs/releases/v1.1.1.md).
+
+### Added
+
+- Additive `spec.management.mcp.allowLegacyClients` (default **false**). When true, skip the HTTP-level MCP `2026-07-28` pin so older SDK clients (MCPJungle) can initialize. Does not add a claimed protocol version. Default remains 2026-07-28 only (ADR 0006).
+
+### Changed
+
+- Direct dependency `github.com/miekg/dns` 1.1.72 → 1.1.73.
+
 ## v1.1.0 — 2026-08-20
 
 Curated notes: [docs/releases/v1.1.0.md](https://github.com/hilather/go-lab-dns/blob/v1.1.0/docs/releases/v1.1.0.md). rc.1/rc.2 notes were not rewritten.
