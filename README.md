@@ -231,7 +231,7 @@ Operations are `add` / `update` / `remove` against `zone`, `record`, `forwarding
 
 ### MCP (`/mcp`)
 
-Same application layer as REST. Protocol **2026-07-28** only (`Mcp-Protocol-Version` required). Manifest: [api/mcp/v1.json](api/mcp/v1.json).
+Same application layer as REST. Protocol **2026-07-28** only by default (`Mcp-Protocol-Version` required). `spec.management.mcp.allowLegacyClients: true` skips that HTTP pin so older SDK clients (MCPJungle) can initialize without `MCP-Protocol-Version`; it does not add a claimed protocol version. Manifest: [api/mcp/v1.json](api/mcp/v1.json).
 
 | Tool | REST twin |
 |---|---|
