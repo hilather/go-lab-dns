@@ -3,7 +3,8 @@
 Status: Implementation-confirmed for local resolution (RES-001) and forwarding/cache/orchestrator (FWD-001)
 Owners: DNS
 Last reviewed: 2026-08-18 (overlay CNAME kept when forward refused)
-Related ADRs: 0002, 0005
+Last reviewed: 2026-08-23 (over-length desired-state names; ADR 0009)
+Related ADRs: 0002, 0005, 0007, 0009
 
 ## Problem statement
 
@@ -28,7 +29,7 @@ The product needs predictable behavior when local records, wildcard records, aut
 - Internally store fully qualified, lower-case ASCII DNS names with a trailing dot.
 - Preserve presentation data where required but compare canonical wire-equivalent names.
 - Apply IDNA processing only through one reviewed adapter and document the selected profile.
-- Reject names that exceed DNS wire limits.
+- Accept lab/QA names that exceed RFC 1035 hostname length (a label longer than 63 octets, or a presentation FQDN longer than 254 characters). They are stored as lower-case FQDNs with a trailing dot and answer on the local/management resolve path. UDP/TCP messages still obey RFC 1035 wire maxima; LabDNS does not emit malformed packets (ADR 0007, ADR 0009). Incoming wire QNAMEs that exceed those maxima cannot be unpacked.
 - Give every configured RRset a stable record ID independent of owner text.
 
 ## Zone modes

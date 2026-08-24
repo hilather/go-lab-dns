@@ -73,6 +73,7 @@ This page is the catalog. Normative design documents win over task summaries.
 | [0006](adr/0006-pin-mcp-protocol-versions.md) | Pin MCP protocol versions |
 | [0007](adr/0007-defer-unsafe-wire-chaos.md) | Defer unsafe wire chaos |
 | [0008](adr/0008-embedded-operator-web-ui.md) | Embedded operator web UI |
+| [0009](adr/0009-accept-overlength-desired-state-names.md) | Accept over-length desired-state names |
 
 ## Task lists
 

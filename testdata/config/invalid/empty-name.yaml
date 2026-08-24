@@ -1,0 +1,14 @@
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: empty-name
+spec:
+  zones:
+    - id: z
+      name: lab.example.net.
+      mode: overlay
+      records:
+        - id: a1
+          owner: ""
+          type: A
+          values: [10.0.0.1]

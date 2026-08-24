@@ -18,7 +18,7 @@
       "description": "Go time.ParseDuration syntax, exported in a single-unit canonical form (30s, 5m, 1h)."
     },
     "id": { "type": "string", "minLength": 1 },
-    "name": { "type": "string", "description": "ASCII DNS name; normalized to lower-case FQDN with trailing dot." },
+    "name": { "type": "string", "description": "ASCII DNS name; normalized to lower-case FQDN with trailing dot. Label and presentation FQDN length are not capped at RFC 1035 wire maxima." },
     "metadata": {
       "type": "object",
       "additionalProperties": false,

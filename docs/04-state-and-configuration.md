@@ -4,7 +4,8 @@ Status: Proposed normative behavior
 Owners: Configuration, Application
 Last reviewed: 2026-08-18 (plan idempotency rechecks expectedRevision; emergency cancel)
 Last reviewed: 2026-08-19 (spec.ui.enabled, TargetUI, management.allowedOrigins)
-Related ADRs: 0003, 0005
+Last reviewed: 2026-08-23 (over-length desired-state names; ADR 0009)
+Related ADRs: 0003, 0005, 0009
 
 Canonical Go types live in `internal/model`. YAML/JSON decode, default materialization, validation, canonical export, revision hashing, and the published schema live in `internal/config` and [api/jsonschema/labdns.dev.v1alpha1.json](https://github.com/hilather/go-lab-dns/blob/main/api/jsonschema/labdns.dev.v1alpha1.json). `compiler.Compile` orchestrates normalize/validate plus zone, forwarding, and access indexes into an immutable `snapshot.Snapshot`. `internal/app.Service` is the HTTP-less mutation core: copy candidate, apply `Operation`s, normalize, validate, compile, diff/impact, then dry-run (`Plan`) or atomic `Store.Swap` (`Apply`). REST/MCP adapters are not in this slice.
 
@@ -298,7 +299,7 @@ Typed change sets use:
 - Unknown fields fail validation at every nesting level.
 - Stable IDs are required for zones, records, forwarding policies, upstreams, client groups, and chaos policies.
 - IDs are user-supplied and immutable within an API version.
-- Names are canonicalized during normalization to lower-case ASCII FQDNs with a trailing dot. Labels may include `_` (SRV / RFC 8552 underscore-labels). Non-ASCII names are rejected in v1alpha1.
+- Names are canonicalized during normalization to lower-case ASCII FQDNs with a trailing dot. Labels may include `_` (SRV / RFC 8552 underscore-labels). Non-ASCII names are rejected in v1alpha1. Label length and presentation FQDN length are not capped at RFC 1035 wire maxima so QA can load over-length names; those names remain local/management-only because the wire encoder does not emit illegal length prefixes (ADR 0007, ADR 0009). Empty labels, invalid characters, leading or trailing `-`, and `*` that is not the leftmost label are still rejected.
 - Durations use [Go `time.ParseDuration`](https://pkg.go.dev/time#ParseDuration) syntax (`30s`, `5m`, `1h`, `100ms`). Bare numbers (`ttl: 30`) are rejected; they are not nanoseconds. Canonical export uses a single whole unit (`30s`, not `30000ms` or `1h0m0s`).
 - Cross-references must resolve (forwarding pools, chaos policy refs, chaos scope IDs).
 - Duplicate semantic RRsets are merged only when explicitly allowed; otherwise reject ambiguity.

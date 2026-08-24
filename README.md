@@ -357,6 +357,7 @@ Full catalog: [docs/README.md](docs/README.md).
 - [0006 Pin MCP protocol versions](docs/adr/0006-pin-mcp-protocol-versions.md)
 - [0007 Defer unsafe wire chaos](docs/adr/0007-defer-unsafe-wire-chaos.md)
 - [0008 Embedded operator web UI](https://github.com/hilather/go-lab-dns/blob/main/docs/adr/0008-embedded-operator-web-ui.md)
+- [0009 Accept over-length desired-state names](docs/adr/0009-accept-overlength-desired-state-names.md)
 
 ### Task lists and program board
 

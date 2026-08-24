@@ -13,8 +13,6 @@ const (
 	DefaultMCPPath              = "/mcp"
 	MaxDocumentBytes            = 1 << 20
 	MinTimeBucket               = time.Second
-	maxFQDNPresentation         = 254
-	maxDNSLabel                 = 63
 	dnameTypeCode               = 39
 	violationUnknownField       = "unknown_field"
 	violationRequired           = "required"

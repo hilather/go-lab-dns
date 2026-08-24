@@ -1242,7 +1242,7 @@ Greenfield: no migration from a previous shipped schema. Still implement a **mig
 
 Canonicalization rules that must be tested:
 
-- Names: FQDN, lower-case ASCII, trailing dot. **Non-ASCII names are rejected** in `v1alpha1` until an IDNA profile is chosen in a later release.
+- Names: FQDN, lower-case ASCII, trailing dot. **Non-ASCII names are rejected** in `v1alpha1` until an IDNA profile is chosen in a later release. Label and presentation FQDN length are **not** capped at RFC 1035 wire maxima (ADR 0009); UDP/TCP still cannot pack or unpack over-limit names (ADR 0007).
 - Durations: Go `time.ParseDuration` syntax; recorded in config docs in PR-03.
 - Defaults materialized in export so formatting-only YAML changes do not change revision.
 - Duplicate semantic RRsets: reject unless an explicit merge flag is added later.

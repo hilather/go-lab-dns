@@ -19,6 +19,8 @@ func hasNonASCII(s string) bool {
 
 // CanonicalName lower-cases ASCII names, ensures a trailing dot, and expands
 // relative owners against origin. Non-ASCII names are rejected (no IDNA yet).
+// Label and presentation FQDN length are not capped at RFC 1035 wire maxima
+// so lab/QA documents can store over-length names (ADR 0009).
 func CanonicalName(s string, origin model.Name) (model.Name, *domainerr.FieldViolation) {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -60,9 +62,6 @@ func checkDNSName(s string) *domainerr.FieldViolation {
 	if s == "." {
 		return nil
 	}
-	if len(s) > maxFQDNPresentation {
-		return &domainerr.FieldViolation{Code: violationInvalidName, Message: "name exceeds DNS presentation length"}
-	}
 	labels := strings.Split(s[:len(s)-1], ".")
 	if len(labels) == 0 {
 		return &domainerr.FieldViolation{Code: violationInvalidName, Message: "name has no labels"}
@@ -70,9 +69,6 @@ func checkDNSName(s string) *domainerr.FieldViolation {
 	for i, lab := range labels {
 		if lab == "" {
 			return &domainerr.FieldViolation{Code: violationInvalidName, Message: "name contains an empty label"}
-		}
-		if len(lab) > maxDNSLabel {
-			return &domainerr.FieldViolation{Code: violationInvalidName, Message: "label exceeds 63 octets"}
 		}
 		if lab == "*" {
 			if i != 0 {

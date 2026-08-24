@@ -6,6 +6,14 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 - None.
 
+## v1.2.0 — 2026-08-23
+
+Curated notes: [docs/releases/v1.2.0.md](https://github.com/hilather/go-lab-dns/blob/v1.2.0/docs/releases/v1.2.0.md).
+
+### Changed
+
+- Desired-state DNS names are no longer rejected solely because a label is longer than 63 octets or the presentation FQDN is longer than 254 characters. Over-length names (zone name, record owner, SOA/NS names, forwarding suffix, chaos protected/scope owners, and name tokens in MX/SRV/SVCB/HTTPS RDATA) load as lower-case FQDNs with a trailing dot and answer on the local/management resolve path. RFC 1035 wire maxima still apply to UDP/TCP messages: LabDNS does not emit malformed packets (ADR 0007). Non-length name syntax is unchanged (empty labels, non-ASCII, invalid characters, leading/trailing `-`, misplaced `*`). See [ADR 0009](docs/adr/0009-accept-overlength-desired-state-names.md).
+
 ## v1.1.1 — 2026-08-23
 
 Curated notes: [docs/releases/v1.1.1.md](https://github.com/hilather/go-lab-dns/blob/v1.1.1/docs/releases/v1.1.1.md).

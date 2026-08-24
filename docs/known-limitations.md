@@ -3,6 +3,7 @@
 Honest residual last reviewed against **1.1.0** (console shipped) and the **1.0.0-rc.2** candidate. These are not defects hidden from the notes; they are out of scope, operator steps that a given change does not perform, or documented bounds. See [docs/18-roadmap-and-non-goals.md](https://github.com/hilather/go-lab-dns/blob/main/docs/18-roadmap-and-non-goals.md) for deferred product work. The embedded operator console is **implemented** in 1.1.0 ([docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md)); it is no longer a residual non-goal. 1.0.0-rc.1 / rc.2 remain UI-less — those notes were not rewritten.
 
 Last reviewed: 2026-08-19
+Last reviewed: 2026-08-23 (over-length desired-state names; ADR 0009)
 
 ## Tag and image publish
 
@@ -37,6 +38,7 @@ Last reviewed: 2026-08-19
 
 - Config API is `labdns.dev/v1alpha1` only. `internal/config.Migrator` is empty.
 - Record types: A, AAAA, CNAME, TXT, MX, SRV, PTR, CAA, NS, SOA, SVCB, HTTPS, plus validated generic RDATA. Wildcard NS and wildcard DNAME are rejected.
+- Desired-state names may exceed RFC 1035 label (63) and presentation FQDN (254) length. Those owners resolve locally/management-side only; UDP/TCP still cannot pack or unpack over-limit names (ADR 0007, ADR 0009).
 - Overlay CNAME may terminate in a forwarded name, subject to the CNAME depth cap (default 8; zero means 8, not unlimited).
 - Upstream transport is UDP and TCP. DoT / DoH / DoQ are not first GA.
 - No host `/etc/resolv.conf` fallback. Empty `clientGroups` serves local zones and forwards to no one.

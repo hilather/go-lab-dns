@@ -9,6 +9,7 @@ Last reviewed: 2026-08-15 (PERF-001 interop matrix)
 Last reviewed: 2026-08-15 (GA-001 known limitations)
 Last reviewed: 2026-08-19 (hashed web/dist is not a release-diff surface)
 Last reviewed: 2026-08-19 (Canonical revision-hash change from materialized spec.ui)
+Last reviewed: 2026-08-23 (over-length desired-state names; ADR 0009)
 
 ## Public compatibility surfaces
 
@@ -35,6 +36,8 @@ A DNS correctness fix may alter observable output. Release notes must describe i
 Use `apiVersion` and `kind`. First GA ships **`labdns.dev/v1alpha1` only**. `internal/config.Migrator` is the extension point for a later version; `Migrations()` is empty until then. Unknown `apiVersion` values fail with `unsupported_protocol_version`. Unknown fields fail rather than being silently discarded.
 
 **1.1.0 compatibility event (Canonical revision hash):** omitted `spec.ui` now materializes `{enabled: true}` into Canonical JSON. Content-addressed `sha256:` revisions therefore change for documents that previously omitted `spec.ui`, even when no other fields changed. `hash-v1` chaos vectors are unaffected. Operators storing `expectedRevision` from 1.0.0-rc.* must re-GET state after upgrade (normal after any Canonical change). `spec.management.allowedOrigins` is additive and omitted-empty.
+
+**1.2.0 compatibility event (over-length names):** v1alpha1 desired-state names are no longer rejected for exceeding RFC 1035 label (63 octet) or presentation FQDN (254 character) length. Documents that previously failed `invalid_name` for length now load. Canonical JSON for previously valid documents is unchanged. UDP/TCP encoding is unchanged (ADR 0007, ADR 0009).
 
 ## REST
 

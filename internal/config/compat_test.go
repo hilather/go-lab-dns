@@ -36,6 +36,11 @@ var expectedInvalid = map[string]string{
 	"ui-enabled-yes.yaml":           violationInvalidValue,
 	"ui-theme.yaml":                 violationUnknownField,
 	"allowed-origin-no-scheme.yaml": violationInvalidValue,
+	"empty-label.yaml":              violationInvalidName,
+	"empty-name.yaml":               violationRequired,
+	"leading-hyphen.yaml":           violationInvalidName,
+	"trailing-hyphen.yaml":          violationInvalidName,
+	"non-leftmost-wildcard.yaml":    violationInvalidName,
 }
 
 // TestConfigCompat is the positive+negative fixture matrix for make test-config-compat.

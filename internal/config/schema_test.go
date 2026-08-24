@@ -51,6 +51,13 @@ func TestSchemaPublished(t *testing.T) {
 	if uc["const"] != "refuse-forward" {
 		t.Fatalf("unknownClient const=%v", uc["const"])
 	}
+	nameDef, ok := defs["name"].(map[string]any)
+	if !ok {
+		t.Fatal("missing $defs.name")
+	}
+	if _, capped := nameDef["maxLength"]; capped {
+		t.Fatal("$defs.name must not set maxLength (over-length lab/QA names are accepted)")
+	}
 }
 
 func TestSchemaListsModelJSONFields(t *testing.T) {

@@ -1,0 +1,18 @@
+# Presentation FQDN is 272 characters (RFC 1035 presentation cap is 254).
+# Each label is 63 octets or fewer so this fixture isolates the FQDN-length check.
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: overlength-presentation
+spec:
+  access:
+    clientGroups: []
+  zones:
+    - id: lab-zone
+      name: lab.example.net.
+      mode: overlay
+      records:
+        - id: long-fqdn-a
+          owner: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.Lab.Example.NET.
+          type: A
+          values: [10.42.0.65]

@@ -2,6 +2,8 @@ package resolver
 
 import (
 	"errors"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -184,6 +186,58 @@ func TestNilSnapshot(t *testing.T) {
 	_, err := Resolve(t.Context(), nil, model.Query{Name: "x.", Type: model.TypeA}, authZoneID)
 	if !errors.Is(err, ErrNilSnapshot) {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestResolveOverlengthOwners(t *testing.T) {
+	cases := []struct {
+		file string
+		data string
+	}{
+		{"overlength-label.yaml", "10.42.0.64"},
+		{"overlength-presentation.yaml", "10.42.0.65"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.file, func(t *testing.T) {
+			st, err := config.LoadFile(filepath.Join(repoRoot(t), "testdata/config/valid", tc.file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(st.Spec.Zones) != 1 || len(st.Spec.Zones[0].Records) != 1 {
+				t.Fatalf("fixture %s: zones=%d", tc.file, len(st.Spec.Zones))
+			}
+			owner := st.Spec.Zones[0].Records[0].Owner
+			if owner != strings.ToLower(owner) || !strings.HasSuffix(owner, ".") {
+				t.Fatalf("compiled owner not canonical: %q", owner)
+			}
+			idx, err := Compile(st)
+			if err != nil {
+				t.Fatal(err)
+			}
+			zd, ok := idx.Lookup("lab-zone")
+			if !ok || zd == nil {
+				t.Fatal("lab-zone missing from compiled index")
+			}
+			if _, exists := zd.Exist[model.Name(owner)]; !exists {
+				t.Fatalf("compiled snapshot missing owner %q", owner)
+			}
+			snap := &snapshot.Snapshot{
+				Zones:      idx,
+				Defaults:   snapshot.DefaultsView{TTL: 30 * time.Second, NegativeTTL: 10 * time.Second, CNAMEDepth: 8},
+				Revision:   "sha256:overlength",
+				Generation: 1,
+			}
+			res := resolve(t, snap, owner, model.TypeA, "lab-zone")
+			wantRCode(t, res, model.RCodeNoError)
+			wantData(t, res, model.TypeA, tc.data)
+			wantOwner(t, res, model.TypeA, model.Name(owner))
+			if res.Source != model.SourceExact {
+				t.Fatalf("source=%s, want exact (not NXDOMAIN/NODATA)", res.Source)
+			}
+			if res.Fallthrough {
+				t.Fatal("over-length exact owner must not fall through")
+			}
+		})
 	}
 }
 

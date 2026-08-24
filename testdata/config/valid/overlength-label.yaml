@@ -1,0 +1,17 @@
+# Owner leftmost label is 64 octets (RFC 1035 wire maximum is 63).
+apiVersion: labdns.dev/v1alpha1
+kind: LabDNS
+metadata:
+  name: overlength-label
+spec:
+  access:
+    clientGroups: []
+  zones:
+    - id: lab-zone
+      name: lab.example.net.
+      mode: overlay
+      records:
+        - id: long-label-a
+          owner: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+          type: A
+          values: [10.42.0.64]
