@@ -4,10 +4,16 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+- None.
+
+## v1.3.0 — 2026-08-29
+
+Curated notes: [docs/releases/v1.3.0.md](https://github.com/hilather/go-lab-dns/blob/v1.3.0/docs/releases/v1.3.0.md).
+
 ### Changed
 
 - Operator console shell is LabDNS dark. Primary nav is grouped Inspect / Mutate / Ref and includes Reset. The header shows one emergency verb (Disable when chaos is live, Enable when inhibited).
-- `/login` and the remaining operator pages (`/`, `/state`, `/changes`, record detail, `/resolve`, `/forwarding`, `/cache`, `/chaos`, `/audit`, `/schema`, `/docs`, `/capabilities`, `/reset`) use the same charcoal/amber chrome as `/zones` (`#0d0d0c` / `#161614` / `#f2efe6`, accent `#e09a3e`). Mutations still enqueue via `/changes`.
+- `/login` and the remaining operator pages (`/`, `/state`, `/changes`, `/zones/:zoneId/records/:recordId`, `/resolve`, `/forwarding`, `/cache`, `/chaos`, `/chaos/:policyId`, `/audit`, `/audit/:eventId`, `/schema`, `/docs`, `/docs/:id`, `/capabilities`, `/reset`) use the same charcoal/amber chrome as `/zones` (`#0d0d0c` / `#161614` / `#f2efe6`, accent `#e09a3e`). Mutations still enqueue via `/changes`.
 - `/zones` is an inventory rail plus selected-zone records (Owner, Type, TTL, Values, Chaos, ID). Create/Edit/Delete and Create record hop to `/changes` with operations prefilled. The `mutations in UI-003` stub is removed.
 
 ### Fixed

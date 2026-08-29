@@ -18,6 +18,7 @@
 - `docs/releases/v1.1.0.md`: curated 1.1.0 notes (operator console).
 - `docs/releases/v1.1.1.md`: curated 1.1.1 notes (allowLegacyClients overlay knob).
 - `docs/releases/v1.2.0.md`: curated 1.2.0 notes (over-length desired-state names; ADR 0009).
+- `docs/releases/v1.3.0.md`: curated 1.3.0 notes (dark operator chrome; leftover-route restyle; README MCP docs).
 - `docs/releases/acceptance-evidence.md`: docs/19 criterion → test/command index (rc.1 plus 1.1.0 console appendix).
 - `CI-FAILURE-HARDENING-TEMPLATE.md`: root-cause and pipeline-hardening record.
 
