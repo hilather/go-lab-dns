@@ -258,10 +258,14 @@ export function ChangesPage() {
 
   return (
     <article className="changes-page">
-      <h1>Changes</h1>
-      <p className="revision" title={revision || undefined}>
-        Runtime revision {shortRevision(revision)}
-      </p>
+      <div className="page-head">
+        <div>
+          <h1>Changes</h1>
+          <p className="page-lede revision" title={revision || undefined}>
+            Runtime revision {shortRevision(revision)}. Validate, plan, then apply with a reason.
+          </p>
+        </div>
+      </div>
       {problem ? (
         <div>
           <ProblemAlert code={problem.code} detail={problem.detail} />
@@ -274,7 +278,7 @@ export function ChangesPage() {
         </div>
       ) : null}
 
-      <section>
+      <section className="surface">
         <h2>Candidate</h2>
         <div className="changes-mode" role="radiogroup" aria-label="Candidate source">
           <label>
@@ -308,7 +312,7 @@ export function ChangesPage() {
         </p>
       </section>
 
-      <section>
+      <section className="surface">
         <h2>Reason</h2>
         <label className="changes-reason">
           Reason (required to apply)
@@ -335,7 +339,7 @@ export function ChangesPage() {
             </button>
           </ScopeGate>
           <ScopeGate allowed={canWrite} missingScope="dns.write">
-            <button type="button" disabled={!canApply} onClick={openConfirm}>
+            <button type="button" className="btn-accent" disabled={!canApply} onClick={openConfirm}>
               Apply
             </button>
           </ScopeGate>
@@ -366,7 +370,7 @@ function PlanPanel({ title, plan, applied }: { title: string; plan: PlanView; ap
   const warnings = plan.warnings ?? []
   const impact = plan.impact
   return (
-    <section>
+    <section className="surface">
       <h2>{title}</h2>
       {applied ? <p>Applied. Audit event {plan.auditEventId || '—'}</p> : null}
       <dl>
@@ -413,7 +417,7 @@ function PlanPanel({ title, plan, applied }: { title: string; plan: PlanView; ap
       {diff.length > 0 ? (
         <div className="plan-diff">
           <h3>Diff</h3>
-          <table>
+          <table className="data-table">
             <thead>
               <tr>
                 <th>Path</th>
@@ -439,7 +443,7 @@ function PlanPanel({ title, plan, applied }: { title: string; plan: PlanView; ap
           </table>
         </div>
       ) : (
-        <p>No diff entries.</p>
+        <p className="empty">No diff entries.</p>
       )}
     </section>
   )

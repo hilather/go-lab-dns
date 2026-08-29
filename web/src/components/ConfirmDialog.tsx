@@ -60,7 +60,7 @@ export function ConfirmDialog({
           <button type="button" onClick={onCancel}>
             {cancelLabel}
           </button>
-          <button type="submit" disabled={confirmDisabled}>
+          <button type="submit" className="btn-accent" disabled={confirmDisabled}>
             {confirmLabel}
           </button>
         </p>

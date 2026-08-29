@@ -61,6 +61,7 @@ describe('ConfirmDialog', () => {
     expect(dialog?.open).toBe(true)
     expect(document.getElementById('confirm-dialog-title')?.textContent).toBe('Disable chaos?')
     const submit = document.querySelector('dialog button[type="submit"]') as HTMLButtonElement
+    expect(submit.classList.contains('btn-accent')).toBe(true)
     await act(async () => {
       submit.click()
     })

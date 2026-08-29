@@ -212,6 +212,8 @@ describe('ChangesPage', () => {
     expect(actionButton('Apply').disabled).toBe(false)
     expect(document.body.textContent).toContain('Required permissions')
     expect(document.body.textContent).toContain('dns.write')
+    expect(actionButton('Apply').classList.contains('btn-accent')).toBe(true)
+    expect(document.querySelector('table.data-table')).not.toBeNull()
   })
 
   it('does not skip plan: apply is not posted without a plan', async () => {

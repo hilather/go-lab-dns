@@ -191,6 +191,8 @@ describe('ChaosPage', () => {
     expect(host?.textContent).toContain('platform-lab')
     expect(host?.querySelector('a')?.getAttribute('href')).toBe('/chaos/slow-tools')
     expect(host?.textContent).toContain('Side-effect free')
+    expect(host?.querySelector('table.data-table')).not.toBeNull()
+    expect(buttonNamed('Simulate')?.classList.contains('btn-accent')).toBe(true)
     expect(buttonNamed('Simulate')?.disabled).toBe(true)
     expect(get.mock.calls.map((c) => c[0])).toContain('/v1/chaos/status')
     expect(get.mock.calls.map((c) => c[0])).toContain('/v1/chaos/policies')
@@ -378,6 +380,7 @@ describe('ChaosPolicyPage', () => {
       setNativeValue(reason, 'lab')
     })
     expect(buttonNamed('Activate')?.disabled).toBe(false)
+    expect(buttonNamed('Activate')?.classList.contains('btn-accent')).toBe(true)
     await act(async () => {
       buttonNamed('Activate')?.click()
     })

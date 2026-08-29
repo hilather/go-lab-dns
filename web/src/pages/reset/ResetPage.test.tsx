@@ -193,6 +193,7 @@ describe('ResetPage', () => {
     await renderPage()
     expect(host?.textContent).toContain('lab-dns')
     expect(host?.textContent).toContain(REV.slice('sha256:'.length, 'sha256:'.length + 12))
+    expect(actionButton('Reset to bootstrap').classList.contains('btn-danger')).toBe(true)
     expect(actionButton('Reset to bootstrap').disabled).toBe(true)
     await fillRequired('wrong')
     expect(actionButton('Reset to bootstrap').disabled).toBe(true)

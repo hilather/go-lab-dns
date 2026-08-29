@@ -24,8 +24,13 @@ export function CachePage() {
 
   return (
     <article className="dashboard">
-      <h1>Cache</h1>
-      <section>
+      <div className="page-head">
+        <div>
+          <h1>Cache</h1>
+          <p className="page-lede">Live process cache counters. Flush does not change desired state.</p>
+        </div>
+      </div>
+      <section className="surface">
         <h2>Status</h2>
         {cacheQuery.isPending && !cacheQuery.data ? (
           <p>Loading…</p>

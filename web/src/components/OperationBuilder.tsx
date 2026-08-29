@@ -27,7 +27,9 @@ export function OperationBuilder({
           Add operation
         </button>
       </p>
-      {rows.length === 0 ? <p>No operations. Add one, or paste a YAML/JSON change envelope.</p> : null}
+      {rows.length === 0 ? (
+        <p className="empty">No operations. Add one, or paste a YAML/JSON change envelope.</p>
+      ) : null}
       <ol className="operation-list">
         {rows.map((row, i) => {
           const valueError = builderValueError(row)

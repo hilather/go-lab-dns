@@ -2,6 +2,8 @@
 
 Status: Implemented
 Owners: Control Plane, REST, Security, UI
+Last reviewed: 2026-08-29 (charcoal/amber chrome on login and remaining operator pages)
+Last reviewed: 2026-08-29 (operator shell groups, single emergency verb, zones inventory)
 Last reviewed: 2026-08-19 (UI-004 onboarding, 1.1.0 notes; console complete)
 Related ADRs: [0004](https://github.com/hilather/go-lab-dns/blob/main/docs/adr/0004-shared-capability-registry.md), [0008](https://github.com/hilather/go-lab-dns/blob/main/docs/adr/0008-embedded-operator-web-ui.md)
 
@@ -157,13 +159,14 @@ Session create/get/delete and UI assets are `REST_ONLY_PROTOCOL` catalog rows (`
 Shell (authenticated):
 
 - Product name, revision short hash, ready/degraded, chaos emergency state.
-- Nav: Overview, State, Changes, Zones, Resolve, Forwarding, Cache, Chaos, Audit, Schema, Docs, Capabilities.
-- Scope-aware: actions the principal cannot perform are visible but disabled, with the missing scope named. Do not hide emergency disable from principals who have `dns.chaos.emergency`.
+- Nav (grouped, one `aria-label="Primary"`): Inspect — Overview, Zones, Resolve, Forwarding, Cache, Chaos, Audit; Mutate — Changes, State, Reset; Ref — Schema, Docs, Capabilities. Active item uses an accent underline.
+- Scope-aware: actions the principal cannot perform are visible but disabled, with the missing scope named. A principal with `dns.chaos.emergency` always sees exactly one emergency control (Disable when chaos is live, Enable when inhibited); never hide both.
 - Status uses a symbol plus a text label, not color alone.
 - Problem+json `code` and `detail` are announced to assistive tech (`role="alert"`).
 
 `/login`:
 
+- Same charcoal/amber tokens as the authenticated shell (`#0d0d0c` / `#161614` / `#f2efe6`, accent `#e09a3e`). Login is outside `.shell`; tokens are declared on both `.login` and `.shell`.
 - Paste bearer token when the peer is not loopback-unauth.
 - Loopback `dev-loopback-unauth`: allow “Continue as local administrator” which `POST /v1/session` with no bearer (same principal as today’s REST loopback).
 - No HTTP Basic (LabDNS has no maildev Basic compat).
@@ -175,6 +178,7 @@ Shell (authenticated):
 - Live/ready widgets.
 - Recent audit (if `dns.audit.read`).
 - Quick actions gated by scope (plan, reset, cache flush, emergency disable).
+- Page chrome matches `/zones`: `page-head` / `page-lede`, `surface` sections, accent primary actions, `data-table` / `code-block` where the page has tables or documents.
 
 `/state` and `/changes`:
 
@@ -189,10 +193,12 @@ Shell (authenticated):
 
 `/zones`:
 
-- Cursor pagination. Zone detail lists records with type/name/TTL. Record create/edit/delete enqueue operations and jump to `/changes` with those operations filled.
+- 260px inventory rail (FQDN first, `id · N records`, mode pill) plus a selected-zone panel. `/zones` selects the first zone on the current list page without redirecting; `/zones/:zoneId` is the deep link. Records table columns: Owner, Type, TTL, Values, Chaos, ID. Chaos policy refs use the accent color. Distinct inventory vs records cursor labels.
+- Create zone (page head), Edit zone / Delete zone / Create record (selected zone), and record Edit/Delete on `/zones/:zoneId/records/:recordId` hop to `/changes` with `location.state.operations` prefilled. Edit hops pass through the raw GET JSON (not the display view). The literal `mutations in UI-003` stub is gone.
 
-`/resolve`:
+`/resolve` and the other leftover bodies (`/state`, `/changes`, `/zones/:zoneId/records/:recordId`, `/forwarding`, `/cache`, `/chaos`, `/chaos/:policyId`, `/audit`, `/audit/:eventId`, `/schema`, `/docs`, `/docs/:id`, `/capabilities`, `/reset`):
 
+- Same charcoal/amber page chrome as `/zones` (headers, surfaces, tables, forms, empty states, confirm dialogs). `/zones` and `/zones/:zoneId` inventory is unchanged.
 - Name, type, client group, transport, useCache, applyChaos (default off, matching REST).
 - Side-by-side answer vs explain (matched zone, wildcard source, forwarder, cache, chaos decision).
 

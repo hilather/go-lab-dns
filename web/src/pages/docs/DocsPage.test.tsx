@@ -98,6 +98,8 @@ describe('docs API', () => {
 describe('DocsPage', () => {
   it('lists both documents on the index', async () => {
     await render(page('/docs'))
+    expect(host?.querySelector('.page-lede')).not.toBeNull()
+    expect(host?.querySelector('section.surface')).not.toBeNull()
     for (const doc of DOC_CATALOG) {
       expect(host?.textContent).toContain(doc.title)
       const link = host?.querySelector(`a[href="/docs/${doc.id}"]`)
@@ -133,6 +135,7 @@ describe('DocsPage', () => {
       })
     })
     expect(host?.textContent).toContain('<script>alert(1)</script>')
+    expect(host?.querySelector('pre.code-block')).not.toBeNull()
     expect(host?.innerHTML).toContain('&lt;script&gt;alert(1)&lt;/script&gt;')
     expect(host?.querySelector('script')).toBeNull()
     expect(qc.getQueryCache().find({ queryKey: queryKeys.docs('dns-semantics') })).toBeTruthy()

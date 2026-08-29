@@ -83,8 +83,6 @@
 
 .plan-diff th,
 .plan-diff td {
-  border: 1px solid #ccc;
-  padding: 0.25rem 0.5rem;
   text-align: left;
   vertical-align: top;
 }

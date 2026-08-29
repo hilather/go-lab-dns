@@ -43,11 +43,16 @@ export function StatePage() {
 
   return (
     <article className="dashboard">
-      <h1>State</h1>
+      <div className="page-head">
+        <div>
+          <h1>State</h1>
+          <p className="page-lede">Compiled runtime snapshot. Export is read-only; writes go through Changes.</p>
+        </div>
+      </div>
       {err ? <ProblemAlert error={err} /> : null}
-      {revision === '' || query.isFetching ? <p>Loading state…</p> : null}
+      {revision === '' || query.isFetching ? <p className="empty">Loading state…</p> : null}
       {data ? (
-        <section>
+        <section className="surface">
           <h2>Revisions</h2>
           <dl>
             <dt>Runtime revision</dt>
@@ -63,7 +68,7 @@ export function StatePage() {
           </dl>
         </section>
       ) : null}
-      <section>
+      <section className="surface">
         <h2>Export</h2>
         <p>Download canonical desired state. YAML is the default REST encoding; JSON includes export metadata.</p>
         <p>
@@ -76,9 +81,9 @@ export function StatePage() {
         </p>
       </section>
       {data ? (
-        <section>
+        <section className="surface">
           <h2>Canonical</h2>
-          <pre>{prettyJSON(data.canonical ?? data)}</pre>
+          <pre className="code-block">{prettyJSON(data.canonical ?? data)}</pre>
         </section>
       ) : null}
     </article>

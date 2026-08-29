@@ -92,30 +92,35 @@ export function EmergencyControl({ emergencyDisabled }: { emergencyDisabled?: bo
     <div className="emergency-control">
       <p className={`status ${off === true ? 'status-emergency' : ''}`}>{stateLabel}</p>
       {problem ? <QueryError error={problem} /> : null}
-      <ScopeGate allowed={disableAllowed} missingScope={namedDisable}>
-        <button
-          type="button"
-          disabled={!canDisable}
-          onClick={() => {
-            setProblem(null)
-            setConfirm('disable')
-          }}
-        >
-          Emergency disable
-        </button>
-      </ScopeGate>
-      <ScopeGate allowed={enableAllowed} missingScope={namedEnable}>
-        <button
-          type="button"
-          disabled={!canEnable}
-          onClick={() => {
-            setProblem(null)
-            setConfirm('enable')
-          }}
-        >
-          Emergency enable
-        </button>
-      </ScopeGate>
+      {off === true ? (
+        <ScopeGate allowed={enableAllowed} missingScope={namedEnable}>
+          <button
+            type="button"
+            className="btn-danger"
+            disabled={!canEnable}
+            onClick={() => {
+              setProblem(null)
+              setConfirm('enable')
+            }}
+          >
+            Emergency enable
+          </button>
+        </ScopeGate>
+      ) : (
+        <ScopeGate allowed={disableAllowed} missingScope={namedDisable}>
+          <button
+            type="button"
+            className="btn-danger"
+            disabled={!canDisable}
+            onClick={() => {
+              setProblem(null)
+              setConfirm('disable')
+            }}
+          >
+            Emergency disable
+          </button>
+        </ScopeGate>
+      )}
       <ConfirmDialog
         open={confirm !== null}
         title={confirm === 'enable' ? 'Re-enable chaos?' : 'Disable chaos?'}

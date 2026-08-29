@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router'
 import { APIError, deleteSession, getJSON, getSession } from '../auth/sessionApi'
-import { NAV } from '../nav'
+import { NAV_GROUPS } from '../nav'
 import { readyKind, readyLabel, shortRevision, type StatusView } from '../status'
 import { EmergencyControl } from '../pages/chaos/EmergencyControl'
 import { Nav } from './Nav'
@@ -122,7 +122,7 @@ export function Shell() {
           Sign out
         </button>
       </header>
-      <Nav items={NAV} />
+      <Nav groups={NAV_GROUPS} />
       <main className="shell-main">
         <Outlet context={{ status } satisfies ShellContext} />
       </main>

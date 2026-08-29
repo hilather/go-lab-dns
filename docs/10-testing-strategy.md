@@ -2,6 +2,9 @@
 
 Status: Proposed normative quality gate
 Owners: All teams
+Last reviewed: 2026-08-29 (app tsc excludes Vitest files; web-test runs tsc --noEmit)
+Last reviewed: 2026-08-29 (operator chrome leftover-color grep and per-route class assertions)
+Last reviewed: 2026-08-29 (grouped nav, single emergency verb, zones inventory/hops)
 Last reviewed: 2026-08-19 (Playwright operator matrix; testdata/web fixture)
 Last reviewed: 2026-08-19 (openapi-fetch client; revision-aware query keys)
 Last reviewed: 2026-08-19 (make web-test / web-build and CI job web)
@@ -89,7 +92,7 @@ For each capability:
 
 ### Operator UI tests
 
-`make web-test` runs Vitest in `web/` (fail closed if Node is missing; not Playwright) and fails if committed `web/src/api/openapi.d.ts` is stale versus `api/openapi/v1.json`. `make web-generate` writes that file; `make generate` stays Go-only. `make web-build` emits `web/dist` only. GitHub job id `web` is required. Session-memory and login tests must prove CSRF and bearer tokens are not written to `localStorage`, `sessionStorage`, IndexedDB, or the URL. Query-key tests must prove snapshot keys include revision and invalidate on revision change without touching live upstream/cache/chaos keys. REST/cmd tests prove non-loopback `GET /` is 200 HTML without a bearer when the UI is enabled, and `GET /v1/state` is 401.
+`make web-test` runs `tsc --noEmit` then Vitest in `web/` (fail closed if Node is missing; not Playwright) and fails if committed `web/src/api/openapi.d.ts` is stale versus `api/openapi/v1.json`. App `web/tsconfig.json` excludes `src/**/*.test.ts` and `src/**/*.test.tsx` so Docker `npm run build` does not typecheck Vitest files (those stay on Vitest). `make web-generate` writes that file; `make generate` stays Go-only. `make web-build` emits `web/dist` only. GitHub job id `web` is required. Session-memory and login tests must prove CSRF and bearer tokens are not written to `localStorage`, `sessionStorage`, IndexedDB, or the URL. Query-key tests must prove snapshot keys include revision and invalidate on revision change without touching live upstream/cache/chaos keys. Shell/nav tests cover Inspect/Mutate/Ref grouping (including Reset). Emergency-control tests cover a single visible verb plus ScopeGate. Zones tests cover the FQDN-first inventory, records columns, and `/changes` hops with raw GET JSON. Chrome tests read operator CSS for leftover `#ccc` / Segoe / Google Fonts and assert charcoal/amber tokens on both `.login` and `.shell`; page tests assert `page-lede` / `surface` / `data-table` / `code-block` / `btn-accent` on the leftover routes. Login contrast remains a Playwright check (`web/e2e/a11y.spec.ts`). REST/cmd tests prove non-loopback `GET /` is 200 HTML without a bearer when the UI is enabled, and `GET /v1/state` is 401.
 
 Operator Playwright (`make web-e2e` / `npm run test:e2e`) talks to loopback `labdns serve` with [`testdata/web/`](https://github.com/hilather/go-lab-dns/blob/main/testdata/web) (pack-sample plus viewer vs admin tokens). Job `web` installs Chromium via `npx playwright install --with-deps chromium` and runs the matrix after Vitest/`web-build`. Assertions are DOM and HTTP, not screenshot diffs. The operator scenario restores bootstrap at the start of each attempt so a CI retry does not plan/apply against a dirty snapshot.
 

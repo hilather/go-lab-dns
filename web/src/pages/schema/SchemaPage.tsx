@@ -19,10 +19,19 @@ export function SchemaPage() {
 
   return (
     <article className="dashboard">
-      <h1>Config schema</h1>
+      <div className="page-head">
+        <div>
+          <h1>Config schema</h1>
+          <p className="page-lede">JSON Schema for the LabDNS desired-state document.</p>
+        </div>
+      </div>
       {err ? <ProblemAlert error={err} /> : null}
-      {revision === '' || query.isFetching ? <p>Loading schema…</p> : null}
-      {query.data !== undefined ? <pre>{prettyJSON(query.data)}</pre> : null}
+      {revision === '' || query.isFetching ? <p className="empty">Loading schema…</p> : null}
+      {query.data !== undefined ? (
+        <section className="surface">
+          <pre className="code-block">{prettyJSON(query.data)}</pre>
+        </section>
+      ) : null}
     </article>
   )
 }

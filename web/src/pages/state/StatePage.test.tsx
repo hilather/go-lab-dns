@@ -183,6 +183,8 @@ describe('StatePage', () => {
     expect(host?.textContent).toContain('sha256:boot')
     expect(host?.textContent).toContain('7')
     expect(host?.textContent).toContain('"kind": "LabDNS"')
+    expect(host?.querySelector('pre.code-block')).not.toBeNull()
+    expect(host?.querySelector('.page-lede')).not.toBeNull()
     expect(qc.getQueryCache().find({ queryKey: queryKeys.state('sha256:abc') })).toBeTruthy()
     const methods = fetchMock.mock.calls.map((c) => requestOf(c as unknown[]).method)
     expect(methods.every((m) => m === 'GET')).toBe(true)

@@ -86,35 +86,41 @@ export function LoginPage() {
 
   return (
     <main className="login">
-      <h1>LabDNS</h1>
-      <p>Sign in to the operator console.</p>
-      {error !== '' ? (
-        <p role="alert" className="problem">
-          {error}
-        </p>
-      ) : null}
-      {loopback ? (
-        <p>
-          <button type="button" disabled={disabled} onClick={onContinue}>
-            Continue as local administrator
+      <div className="login-card surface">
+        <div className="page-head">
+          <div>
+            <h1>LabDNS</h1>
+            <p className="page-lede">Sign in to the operator console.</p>
+          </div>
+        </div>
+        {error !== '' ? (
+          <p role="alert" className="problem">
+            {error}
+          </p>
+        ) : null}
+        {loopback ? (
+          <p>
+            <button type="button" disabled={disabled} onClick={onContinue}>
+              Continue as local administrator
+            </button>
+          </p>
+        ) : null}
+        <form className="stack-form" method="post" action="/login" onSubmit={onBearer}>
+          <label>
+            Bearer token
+            <input
+              type="password"
+              autoComplete="off"
+              value={token}
+              disabled={disabled}
+              onChange={(e) => setToken(e.target.value)}
+            />
+          </label>
+          <button type="submit" className="btn-accent" disabled={disabled}>
+            Sign in
           </button>
-        </p>
-      ) : null}
-      <form method="post" action="/login" onSubmit={onBearer}>
-        <label>
-          Bearer token
-          <input
-            type="password"
-            autoComplete="off"
-            value={token}
-            disabled={disabled}
-            onChange={(e) => setToken(e.target.value)}
-          />
-        </label>
-        <button type="submit" disabled={disabled}>
-          Sign in
-        </button>
-      </form>
+        </form>
+      </div>
     </main>
   )
 }
