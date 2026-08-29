@@ -118,11 +118,11 @@ describe('EmergencyControl', () => {
       })
     })
     expect(buttonNamed('Emergency disable')?.disabled).toBe(true)
-    expect(buttonNamed('Emergency enable')?.disabled).toBe(true)
+    expect(buttonNamed('Emergency enable')).toBeUndefined()
     expect(post).not.toHaveBeenCalled()
   })
 
-  it('lets an emergency-only operator disable but not re-enable', async () => {
+  it('lets an emergency-only operator disable while live without showing enable', async () => {
     mockSession(emergencyOnly)
     await render(<EmergencyControl emergencyDisabled={false} />)
     await act(async () => {
@@ -130,8 +130,20 @@ describe('EmergencyControl', () => {
         expect(buttonNamed('Emergency disable')?.disabled).toBe(false)
       })
     })
-    expect(host?.textContent).toContain('Missing scope dns.chaos.activate')
+    expect(buttonNamed('Emergency enable')).toBeUndefined()
+    expect(host?.textContent).not.toContain('Missing scope dns.chaos.activate')
+  })
+
+  it('lets an emergency-only operator see enable gated when inhibited', async () => {
+    mockSession(emergencyOnly)
+    await render(<EmergencyControl emergencyDisabled={true} />)
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(host?.textContent).toContain('Missing scope dns.chaos.activate')
+      })
+    })
     expect(buttonNamed('Emergency enable')?.disabled).toBe(true)
+    expect(buttonNamed('Emergency disable')).toBeUndefined()
   })
 
   it('confirms emergency disable once without a typed phrase', async () => {
@@ -197,6 +209,7 @@ describe('EmergencyControl', () => {
         expect(buttonNamed('Emergency enable')?.disabled).toBe(false)
       })
     })
+    expect(buttonNamed('Emergency disable')).toBeUndefined()
     expect(host?.textContent).toContain('Chaos emergency disabled')
     await act(async () => {
       buttonNamed('Emergency enable')?.click()
@@ -229,15 +242,18 @@ describe('EmergencyControl', () => {
     await render(<Wrap />)
     await act(async () => {
       await vi.waitFor(() => {
-        expect(buttonNamed('Emergency disable')?.disabled).toBe(false)
+        expect(buttonNamed('Emergency enable')?.disabled).toBe(false)
       })
     })
     expect(host?.textContent).toContain('Chaos emergency disabled')
+    expect(buttonNamed('Emergency disable')).toBeUndefined()
     await act(async () => {
       buttonNamed('sync-status')?.click()
     })
     expect(host?.textContent).toContain('Chaos engine live')
     expect(host?.textContent).not.toContain('Chaos emergency disabled')
+    expect(buttonNamed('Emergency disable')?.disabled).toBe(false)
+    expect(buttonNamed('Emergency enable')).toBeUndefined()
   })
 
   it('does not flash Missing scope while session is pending', async () => {

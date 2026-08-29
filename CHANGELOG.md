@@ -4,6 +4,11 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+### Changed
+
+- Operator console shell is LabDNS dark (tokens under `.shell` only; login stays light). Primary nav is grouped Inspect / Mutate / Ref and includes Reset. The header shows one emergency verb (Disable when chaos is live, Enable when inhibited).
+- `/zones` is an inventory rail plus selected-zone records (Owner, Type, TTL, Values, Chaos, ID). Create/Edit/Delete and Create record hop to `/changes` with operations prefilled. The `mutations in UI-003` stub is removed.
+
 ### Fixed
 
 - Operator README MCP (`/mcp`) section now matches ADR 0006 and [docs/07-mcp-api.md](docs/07-mcp-api.md): default pin remains **2026-07-28** (`Mcp-Protocol-Version` required); `spec.management.mcp.allowLegacyClients: true` skips the HTTP pin so MCPJungle can initialize without that header.

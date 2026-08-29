@@ -1,7 +1,5 @@
-import type { ReactNode } from 'react'
 import { APIError } from '../../auth/sessionApi'
 import { ProblemAlert } from '../../components/ProblemAlert'
-import { MUTATIONS_UI003 } from './zones'
 
 export function queryProblem(err: unknown): { code?: string; detail?: string } | null {
   if (!err) {
@@ -24,24 +22,20 @@ export function QueryError({ error }: { error: unknown }) {
   return <ProblemAlert error={problem} />
 }
 
-export function MutationsPending({ children }: { children: ReactNode }) {
-  return (
-    <p className="mutations-pending">
-      {children} <span>{MUTATIONS_UI003}</span>
-    </p>
-  )
-}
-
 export function CursorPager({
   cursor,
   nextCursor,
   onFirst,
   onNext,
+  firstLabel = 'First page',
+  nextLabel = 'Next',
 }: {
   cursor: string
   nextCursor: string
   onFirst: () => void
   onNext: (cursor: string) => void
+  firstLabel?: string
+  nextLabel?: string
 }) {
   if (cursor === '' && nextCursor === '') {
     return null
@@ -50,12 +44,12 @@ export function CursorPager({
     <p className="cursor-pager">
       {cursor !== '' ? (
         <button type="button" onClick={onFirst}>
-          First page
+          {firstLabel}
         </button>
       ) : null}{' '}
       {nextCursor !== '' ? (
         <button type="button" onClick={() => onNext(nextCursor)}>
-          Next
+          {nextLabel}
         </button>
       ) : null}
     </p>

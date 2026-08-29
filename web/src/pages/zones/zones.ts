@@ -1,18 +1,31 @@
 import { useState } from 'react'
+import type { NavigateFunction } from 'react-router'
 import { client, throwOnError } from '../../api/client'
+import type { Operation } from '../changes/changeIn'
 import { queryKeys } from '../../query/keys'
 import { statusRevision, useStatusQuery } from '../../query/status'
+import { ROUTES } from '../../routes'
 
 // Matches internal/app defaultPageLimit. Zero is not "return everything".
 export const DEFAULT_PAGE_LIMIT = 100
 
-export const MUTATIONS_UI003 = 'mutations in UI-003'
+export type SOAView = {
+  primary: string
+  administrator: string
+  serial: string
+  refresh: string
+  retry: string
+  expire: string
+  minimum: string
+}
 
 export type ZoneView = {
   id: string
   name: string
   mode: string
   nameservers: string[]
+  soa: SOAView | null
+  records: RecordView[]
 }
 
 export type RecordView = {
@@ -32,6 +45,16 @@ export type ZoneListPage = {
 export type RecordListPage = {
   records: RecordView[]
   nextCursor: string
+}
+
+export type ZoneBundle = {
+  view: ZoneView
+  raw: unknown
+}
+
+export type RecordBundle = {
+  view: RecordView
+  raw: unknown
 }
 
 export function zoneHref(zoneId: string): string {
@@ -88,6 +111,35 @@ function formatTTL(v: unknown): string {
   return ''
 }
 
+export function parseSOA(data: unknown): SOAView | null {
+  if (!data || typeof data !== 'object') {
+    return null
+  }
+  const o = data as Record<string, unknown>
+  return {
+    primary: str(o.primary),
+    administrator: str(o.administrator),
+    serial: str(o.serial),
+    refresh: formatTTL(o.refresh),
+    retry: formatTTL(o.retry),
+    expire: formatTTL(o.expire),
+    minimum: formatTTL(o.minimum),
+  }
+}
+
+export function formatSOA(soa: SOAView | null): string {
+  if (!soa) {
+    return '—'
+  }
+  const parts = [
+    soa.primary,
+    soa.administrator,
+    soa.serial,
+    [soa.refresh, soa.retry, soa.expire].filter((p) => p !== '').join('/'),
+  ].filter((p) => p !== '')
+  return parts.length > 0 ? parts.join(' · ') : '—'
+}
+
 export function parseZone(data: unknown): ZoneView | null {
   if (!data || typeof data !== 'object') {
     return null
@@ -97,11 +149,16 @@ export function parseZone(data: unknown): ZoneView | null {
   if (id === '') {
     return null
   }
+  const records = Array.isArray(o.records)
+    ? o.records.map(parseRecord).filter((r): r is RecordView => r !== null)
+    : []
   return {
     id,
     name: str(o.name),
     mode: str(o.mode),
     nameservers: strList(o.nameservers),
+    soa: parseSOA(o.soa),
+    records,
   }
 }
 
@@ -161,15 +218,19 @@ export async function fetchZoneList(cursor: string, limit: number): Promise<Zone
   return parseZoneList(data)
 }
 
-export async function fetchZone(zoneId: string): Promise<ZoneView> {
-  const data: unknown = throwOnError(
+export async function fetchZoneBundle(zoneId: string): Promise<ZoneBundle> {
+  const raw: unknown = throwOnError(
     await client.GET('/v1/zones/{zoneId}', { params: { path: { zoneId } } }),
   )
-  const zone = parseZone(data)
-  if (!zone) {
+  const view = parseZone(raw)
+  if (!view) {
     throw new Error('zone response missing id')
   }
-  return zone
+  return { view, raw }
+}
+
+export async function fetchZone(zoneId: string): Promise<ZoneView> {
+  return (await fetchZoneBundle(zoneId)).view
 }
 
 export async function fetchRecordList(
@@ -185,15 +246,68 @@ export async function fetchRecordList(
   return parseRecordList(data)
 }
 
-export async function fetchRecord(zoneId: string, recordId: string): Promise<RecordView> {
-  const data: unknown = throwOnError(
+export async function fetchRecordBundle(zoneId: string, recordId: string): Promise<RecordBundle> {
+  const raw: unknown = throwOnError(
     await client.GET('/v1/zones/{zoneId}/records/{recordId}', {
       params: { path: { zoneId, recordId } },
     }),
   )
-  const rec = parseRecord(data)
-  if (!rec) {
+  const view = parseRecord(raw)
+  if (!view) {
     throw new Error('record response missing id')
   }
-  return rec
+  return { view, raw }
+}
+
+export async function fetchRecord(zoneId: string, recordId: string): Promise<RecordView> {
+  return (await fetchRecordBundle(zoneId, recordId)).view
+}
+
+export function goToChanges(navigate: NavigateFunction, operations: Operation[], reason?: string) {
+  navigate(ROUTES.changes, { state: { operations, reason } })
+}
+
+export function createZoneOperation(): Operation {
+  return {
+    op: 'add',
+    target: { kind: 'zone', id: 'new-zone' },
+    value: {
+      id: 'new-zone',
+      name: 'new.example.',
+      mode: 'authoritative',
+      soa: {
+        primary: 'ns1.new.example.',
+        administrator: 'hostmaster.new.example.',
+        serial: 'auto',
+        refresh: '1h',
+        retry: '5m',
+        expire: '24h',
+      },
+      records: [],
+    },
+  }
+}
+
+export function editZoneOperation(id: string, raw: unknown): Operation {
+  return { op: 'update', target: { kind: 'zone', id }, value: raw }
+}
+
+export function deleteZoneOperation(id: string): Operation {
+  return { op: 'remove', target: { kind: 'zone', id } }
+}
+
+export function createRecordOperation(zoneId: string): Operation {
+  return {
+    op: 'add',
+    target: { kind: 'record', id: 'new-record', zoneId },
+    value: { id: 'new-record', owner: 'new', type: 'A', values: ['192.0.2.1'] },
+  }
+}
+
+export function editRecordOperation(zoneId: string, id: string, raw: unknown): Operation {
+  return { op: 'update', target: { kind: 'record', id, zoneId }, value: raw }
+}
+
+export function deleteRecordOperation(zoneId: string, id: string): Operation {
+  return { op: 'remove', target: { kind: 'record', id, zoneId } }
 }
