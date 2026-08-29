@@ -229,10 +229,6 @@ export async function fetchZoneBundle(zoneId: string): Promise<ZoneBundle> {
   return { view, raw }
 }
 
-export async function fetchZone(zoneId: string): Promise<ZoneView> {
-  return (await fetchZoneBundle(zoneId)).view
-}
-
 export async function fetchRecordList(
   zoneId: string,
   cursor: string,
@@ -257,10 +253,6 @@ export async function fetchRecordBundle(zoneId: string, recordId: string): Promi
     throw new Error('record response missing id')
   }
   return { view, raw }
-}
-
-export async function fetchRecord(zoneId: string, recordId: string): Promise<RecordView> {
-  return (await fetchRecordBundle(zoneId, recordId)).view
 }
 
 export function goToChanges(navigate: NavigateFunction, operations: Operation[], reason?: string) {

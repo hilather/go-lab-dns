@@ -550,4 +550,20 @@ describe('RecordDetailPage', () => {
     expect(host?.textContent).not.toContain('mutations in UI-003')
     expect(qc?.getQueryState(queryKeys.record(REV, 'lab-zone', 'ns1-a'))?.status).toBe('success')
   })
+
+  it('hops Delete record with zoneId', async () => {
+    mockAPI(defaultHandler())
+    await renderAt('/zones/lab-zone/records/ns1-a')
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(btn('Delete record')?.disabled).toBe(false)
+      })
+    })
+    await act(async () => {
+      btn('Delete record')!.click()
+    })
+    expect(changesState().operations).toEqual([
+      { op: 'remove', target: { kind: 'record', id: 'ns1-a', zoneId: 'lab-zone' } },
+    ])
+  })
 })
