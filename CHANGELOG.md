@@ -12,6 +12,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Fixed
 
+- Operator image `npm run build` (`tsc --noEmit`) no longer typechecks Vitest files, so `chrome.test.ts` `node:fs` imports do not fail the container web build.
 - Operator README MCP (`/mcp`) section now matches ADR 0006 and [docs/07-mcp-api.md](docs/07-mcp-api.md): default pin remains **2026-07-28** (`Mcp-Protocol-Version` required); `spec.management.mcp.allowLegacyClients: true` skips the HTTP pin so MCPJungle can initialize without that header.
 
 ## v1.2.0 — 2026-08-23
