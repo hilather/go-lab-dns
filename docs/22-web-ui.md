@@ -2,6 +2,7 @@
 
 Status: Implemented
 Owners: Control Plane, REST, Security, UI
+Last reviewed: 2026-08-29 (unknown /zones/:zoneId shows one not_found)
 Last reviewed: 2026-08-29 (charcoal/amber chrome on login and remaining operator pages)
 Last reviewed: 2026-08-29 (operator shell groups, single emergency verb, zones inventory)
 Last reviewed: 2026-08-19 (UI-004 onboarding, 1.1.0 notes; console complete)
@@ -193,7 +194,7 @@ Shell (authenticated):
 
 `/zones`:
 
-- 260px inventory rail (FQDN first, `id · N records`, mode pill) plus a selected-zone panel. `/zones` selects the first zone on the current list page without redirecting; `/zones/:zoneId` is the deep link. Records table columns: Owner, Type, TTL, Values, Chaos, ID. Chaos policy refs use the accent color. Distinct inventory vs records cursor labels.
+- 260px inventory rail (FQDN first, `id · N records`, mode pill) plus a selected-zone panel. `/zones` selects the first zone on the current list page without redirecting; `/zones/:zoneId` is the deep link. An unknown `zoneId` announces a single `not_found` (`role="alert"`); the records list is not fetched until the zone GET succeeds. Records table columns: Owner, Type, TTL, Values, Chaos, ID. Chaos policy refs use the accent color. Distinct inventory vs records cursor labels.
 - Create zone (page head), Edit zone / Delete zone / Create record (selected zone), and record Edit/Delete on `/zones/:zoneId/records/:recordId` hop to `/changes` with `location.state.operations` prefilled. Edit hops pass through the raw GET JSON (not the display view). The literal `mutations in UI-003` stub is gone.
 
 `/resolve` and the other leftover bodies (`/state`, `/changes`, `/zones/:zoneId/records/:recordId`, `/forwarding`, `/cache`, `/chaos`, `/chaos/:policyId`, `/audit`, `/audit/:eventId`, `/schema`, `/docs`, `/docs/:id`, `/capabilities`, `/reset`):

@@ -523,6 +523,36 @@ describe('ZonesPage', () => {
     await waitForText('forbidden: dns.read required')
     expect(host?.querySelector('[role="alert"]')?.textContent).toBe('forbidden: dns.read required')
   })
+
+  it('shows a single not_found alert for an unknown zoneId', async () => {
+    mockAPI((url) => {
+      if (url.pathname === '/v1/session') {
+        return jsonResponse(200, writerSession)
+      }
+      if (url.pathname === '/v1/status') {
+        return jsonResponse(200, { revisions: { runtimeRevision: REV } })
+      }
+      if (url.pathname === '/v1/zones') {
+        return jsonResponse(200, { zones: [labZoneRaw] })
+      }
+      if (
+        url.pathname === '/v1/zones/does-not-exist' ||
+        url.pathname === '/v1/zones/does-not-exist/records'
+      ) {
+        return jsonResponse(404, { code: 'not_found', detail: 'zone does-not-exist not found' })
+      }
+      return jsonResponse(404, { code: 'not_found', detail: url.pathname })
+    })
+
+    await renderAt('/zones/does-not-exist')
+    await waitForText('not_found: zone does-not-exist not found')
+    const alerts = [...(host?.querySelectorAll('[role="alert"]') ?? [])]
+    expect(alerts).toHaveLength(1)
+    expect(alerts[0]?.textContent).toBe('not_found: zone does-not-exist not found')
+    expect(host?.textContent).toContain('lab.example.net.')
+    expect(host?.textContent).not.toContain('Loading records…')
+    expect(requested().some((u) => u.pathname === '/v1/zones/does-not-exist/records')).toBe(false)
+  })
 })
 
 describe('RecordDetailPage', () => {

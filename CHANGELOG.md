@@ -18,6 +18,7 @@ Curated notes: [docs/releases/v1.3.0.md](https://github.com/hilather/go-lab-dns/
 
 ### Fixed
 
+- Operator `/zones/:zoneId` for an unknown zone id shows one `not_found` alert. The records list waits for the zone GET to succeed so `GET /v1/zones/{zoneId}` and `GET /v1/zones/{zoneId}/records` no longer each render the same problem+json.
 - Operator image `npm run build` (`tsc --noEmit`) no longer typechecks Vitest files, so `chrome.test.ts` `node:fs` imports do not fail the container web build.
 - Operator README MCP (`/mcp`) section now matches ADR 0006 and [docs/07-mcp-api.md](docs/07-mcp-api.md): default pin remains **2026-07-28** (`Mcp-Protocol-Version` required); `spec.management.mcp.allowLegacyClients: true` skips the HTTP pin so MCPJungle can initialize without that header.
 
