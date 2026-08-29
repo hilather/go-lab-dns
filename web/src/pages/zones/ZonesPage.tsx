@@ -56,7 +56,7 @@ export function ZonesPage() {
   const recordsQuery = useQuery({
     queryKey: recordsListKey(revision, selectedId, recordsCursor, DEFAULT_PAGE_LIMIT),
     queryFn: () => fetchRecordList(selectedId, recordsCursor, DEFAULT_PAGE_LIMIT),
-    enabled: selectedId !== '',
+    enabled: selectedId !== '' && zoneQuery.isSuccess,
   })
 
   const zone = zoneQuery.data?.view
@@ -180,7 +180,7 @@ export function ZonesPage() {
               </>
             ) : null}
             {recordsQuery.isError ? <QueryError error={recordsQuery.error} /> : null}
-            {selectedId !== '' && recordsQuery.isPending ? <p>Loading records…</p> : null}
+            {selectedId !== '' && recordsQuery.isLoading ? <p>Loading records…</p> : null}
             {records && records.records.length === 0 && !recordsQuery.isPending ? (
               <p>No records.</p>
             ) : null}
