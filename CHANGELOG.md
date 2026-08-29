@@ -4,6 +4,12 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+- None.
+
+## v1.3.0 — 2026-08-29
+
+Curated notes: [docs/releases/v1.3.0.md](https://github.com/hilather/go-lab-dns/blob/v1.3.0/docs/releases/v1.3.0.md).
+
 ### Changed
 
 - Operator console shell is LabDNS dark. Primary nav is grouped Inspect / Mutate / Ref and includes Reset. The header shows one emergency verb (Disable when chaos is live, Enable when inhibited).

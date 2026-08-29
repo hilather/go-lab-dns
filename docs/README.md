@@ -111,6 +111,7 @@ See [tasks/README.md](../tasks/README.md) and the [program board](../tasks/00-pr
 | [releases/v1.0.0-rc.1.md](releases/v1.0.0-rc.1.md) | 1.0.0-rc.1 candidate notes (UI-less) |
 | [releases/v1.0.0-rc.2.md](releases/v1.0.0-rc.2.md) | 1.0.0-rc.2 notes (MCP mount, toolchain, action pins; UI-less) |
 | [releases/v1.1.0.md](releases/v1.1.0.md) | 1.1.0 candidate notes (operator console) |
+| [releases/v1.3.0.md](releases/v1.3.0.md) | 1.3.0 notes (dark operator chrome; leftover-route restyle) |
 | [releases/acceptance-evidence.md](releases/acceptance-evidence.md) | Acceptance index |
 | [ci-failure-hardening/2026-08-15-cli-help-not-generated.md](ci-failure-hardening/2026-08-15-cli-help-not-generated.md) | CI hardening note |
 | [../api/openapi/v1.json](../api/openapi/v1.json) | OpenAPI 3.1 |
