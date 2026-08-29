@@ -27,12 +27,18 @@ export function CapabilitiesPage() {
 
   return (
     <article className="dashboard">
-      <h1>Capabilities</h1>
+      <div className="page-head">
+        <div>
+          <h1>Capabilities</h1>
+          <p className="page-lede">Registry rows the console uses for scope gating and parity.</p>
+        </div>
+      </div>
       {err ? <ProblemAlert error={err} /> : null}
-      {revision === '' || query.isFetching ? <p>Loading capabilities…</p> : null}
-      {query.isSuccess && rows.length === 0 ? <p>No capabilities reported.</p> : null}
+      {revision === '' || query.isFetching ? <p className="empty">Loading capabilities…</p> : null}
+      {query.isSuccess && rows.length === 0 ? <p className="empty">No capabilities reported.</p> : null}
       {rows.length > 0 ? (
-        <table>
+        <section className="surface">
+        <table className="data-table">
           <thead>
             <tr>
               <th scope="col">Name</th>
@@ -54,6 +60,7 @@ export function CapabilitiesPage() {
             ))}
           </tbody>
         </table>
+        </section>
       ) : null}
     </article>
   )

@@ -115,6 +115,8 @@ describe('AuditPage', () => {
     expect(host?.textContent).toContain('<img src=x onerror=alert(1)>')
     expect(host?.querySelector('img')).toBeNull()
     expect(host?.querySelector('a')?.getAttribute('href')).toBe('/audit/aud-2')
+    expect(host?.querySelector('table.data-table')).not.toBeNull()
+    expect(host?.querySelector('.page-lede')).not.toBeNull()
     expect(get).toHaveBeenCalledWith(
       '/v1/audit',
       expect.objectContaining({ params: { query: { limit: DEFAULT_AUDIT_LIMIT } } }),

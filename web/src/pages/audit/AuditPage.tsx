@@ -29,16 +29,21 @@ export function AuditPage() {
 
   return (
     <article className="dashboard">
-      <h1>Audit</h1>
-      <p>
-        In-memory ring of {AUDIT_RING_MAX} events; oldest fall off the front. LabDNS does not persist a durable
-        audit log. Secret-looking values stay redacted as the API returns them. Requires {SCOPE_AUDIT_READ}.
-      </p>
+      <div className="page-head">
+        <div>
+          <h1>Audit</h1>
+          <p className="page-lede">
+            In-memory ring of {AUDIT_RING_MAX} events; oldest fall off the front. LabDNS does not persist a durable
+            audit log. Secret-looking values stay redacted as the API returns them. Requires {SCOPE_AUDIT_READ}.
+          </p>
+        </div>
+      </div>
       {query.isError ? <QueryError error={query.error} /> : null}
 
-      <section>
+      <section className="surface">
         <h2>Filters</h2>
         <p>Capability, result, and actor filters apply to the fetched page only. GET /v1/audit accepts limit, not typed filters.</p>
+        <div className="stack-form">
         <p>
           <label>
             Limit
@@ -91,16 +96,17 @@ export function AuditPage() {
             />
           </label>
         </p>
+        </div>
       </section>
 
-      <section>
+      <section className="surface">
         <h2>Events</h2>
-        {query.isPending ? <p>Loading audit…</p> : null}
+        {query.isPending ? <p className="empty">Loading audit…</p> : null}
         {!query.isPending && !query.isError && visible.length === 0 ? (
-          <p>{events.length > 0 ? 'No events match these filters.' : 'No audit events.'}</p>
+          <p className="empty">{events.length > 0 ? 'No events match these filters.' : 'No audit events.'}</p>
         ) : null}
         {visible.length > 0 ? (
-          <table>
+          <table className="data-table">
             <caption>Newest-first in-memory audit ring</caption>
             <thead>
               <tr>

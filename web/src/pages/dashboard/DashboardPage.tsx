@@ -47,13 +47,20 @@ export function DashboardPage() {
 
   return (
     <article className="dashboard">
-      <h1>Overview</h1>
+      <div className="page-head">
+        <div>
+          <h1>Overview</h1>
+          <p className="page-lede">
+            Listeners, revisions, drift, cache, upstreams, and chaos from the live status snapshot.
+          </p>
+        </div>
+      </div>
       {error !== '' ? (
         <p role="alert" className="problem">
           {error}
         </p>
       ) : null}
-      <section>
+      <section className="surface">
         <h2>Process</h2>
         <dl>
           <dt>Ready</dt>
@@ -77,7 +84,7 @@ export function DashboardPage() {
           <dd>{yn(status?.revisions?.drifted, known)}</dd>
         </dl>
       </section>
-      <section>
+      <section className="surface">
         <h2>Version</h2>
         <dl>
           <dt>Version</dt>
@@ -88,7 +95,7 @@ export function DashboardPage() {
           <dd>{version?.buildTime || status?.version?.buildTime || '—'}</dd>
         </dl>
       </section>
-      <section>
+      <section className="surface">
         <h2>Listeners</h2>
         {status === null ? (
           <p>—</p>
@@ -101,10 +108,10 @@ export function DashboardPage() {
             ))}
           </ul>
         ) : (
-          <p>No listeners reported.</p>
+          <p className="empty">No listeners reported.</p>
         )}
       </section>
-      <section>
+      <section className="surface">
         <h2>Cache</h2>
         <dl>
           <dt>Enabled</dt>
@@ -119,7 +126,7 @@ export function DashboardPage() {
           </dd>
         </dl>
       </section>
-      <section>
+      <section className="surface">
         <h2>Upstreams</h2>
         {status === null ? (
           <p>—</p>
@@ -132,10 +139,10 @@ export function DashboardPage() {
             ))}
           </ul>
         ) : (
-          <p>No upstreams reported.</p>
+          <p className="empty">No upstreams reported.</p>
         )}
       </section>
-      <section>
+      <section className="surface">
         <h2>Chaos</h2>
         <dl>
           <dt>Enabled</dt>
@@ -147,7 +154,7 @@ export function DashboardPage() {
         </dl>
       </section>
       {status?.warnings && status.warnings.length > 0 ? (
-        <section>
+        <section className="surface">
           <h2>Warnings</h2>
           <ul>
             {status.warnings.map((w) => (

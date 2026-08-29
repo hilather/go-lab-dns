@@ -2,6 +2,8 @@ html,
 body {
   margin: 0;
   font-family: system-ui, sans-serif;
+  background: #0d0d0c;
+  color: #f2efe6;
 }
 
 #root {
@@ -14,21 +16,7 @@ body {
   padding: 1rem 1.25rem;
 }
 
-.login {
-  max-width: 28rem;
-}
-
-.login form {
-  display: grid;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.login label {
-  display: grid;
-  gap: 0.35rem;
-}
-
+.login,
 .shell {
   --bg: #0d0d0c;
   --surface: #161614;
@@ -39,13 +27,40 @@ body {
   --danger: #d46a5c;
   --radius: 4px;
   --line: #2a2926;
+  accent-color: var(--accent);
   color-scheme: dark;
-  min-height: 100vh;
   box-sizing: border-box;
   background: var(--bg);
   color: var(--text);
 }
 
+.login {
+  min-height: 100vh;
+  max-width: none;
+}
+
+.login-card {
+  max-width: 28rem;
+}
+
+.login form,
+.stack-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.login label,
+.stack-form label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.shell {
+  min-height: 100vh;
+}
+
+.login a,
 .shell a {
   color: var(--accent);
 }
@@ -69,12 +84,34 @@ body {
   margin: 0;
 }
 
-.shell .status-ready {
+.login .status-ready,
+.shell .status-ready,
+.login .status-healthy,
+.shell .status-healthy,
+.login .status-enabled,
+.shell .status-enabled {
   color: var(--ready);
 }
 
-.shell .status-emergency {
+.login .status-degraded,
+.shell .status-degraded {
+  color: var(--accent);
+}
+
+.login .status-emergency,
+.shell .status-emergency,
+.login .status-unhealthy,
+.shell .status-unhealthy,
+.login .status-not-ready,
+.shell .status-not-ready {
   color: var(--danger);
+}
+
+.login .status-disabled,
+.shell .status-disabled,
+.login .status-unknown,
+.shell .status-unknown {
+  color: var(--muted);
 }
 
 .emergency-slot {
@@ -133,12 +170,18 @@ body {
   padding-top: 0.5rem;
 }
 
-.dashboard section {
+.dashboard section,
+.record-detail section,
+.reset-page section,
+.changes-page section {
   margin: 1.25rem 0;
 }
 
 .dashboard dl,
-.zone-meta {
+.zone-meta,
+.meta-list,
+.changes-page dl,
+.reset-page dl {
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: 0.25rem 1rem;
@@ -146,13 +189,19 @@ body {
 }
 
 .dashboard dt,
-.zone-meta dt {
+.zone-meta dt,
+.meta-list dt,
+.changes-page dt,
+.reset-page dt {
   font-weight: 600;
   color: var(--muted);
 }
 
 .dashboard dd,
-.zone-meta dd {
+.zone-meta dd,
+.meta-list dd,
+.changes-page dd,
+.reset-page dd {
   margin: 0;
 }
 
@@ -160,6 +209,7 @@ body {
   color: #7a1212;
 }
 
+.login .problem,
 .shell .problem {
   color: var(--danger);
 }
@@ -173,6 +223,7 @@ input {
   font: inherit;
 }
 
+.login button,
 .shell button {
   border-radius: var(--radius);
   border: 1px solid #3a3834;
@@ -182,22 +233,28 @@ input {
   cursor: pointer;
 }
 
+.login button.btn-accent,
 .shell button.btn-accent {
   background: var(--accent);
   border-color: var(--accent);
   color: #0d0d0c;
 }
 
+.login button.btn-danger,
 .shell button.btn-danger {
   border-color: var(--danger);
   color: var(--danger);
 }
 
+.login button:disabled,
 .shell button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
+.login input,
+.login textarea,
+.login select,
 .shell input,
 .shell textarea,
 .shell select {
@@ -205,26 +262,19 @@ input {
   color: var(--text);
   border: 1px solid #3a3834;
   border-radius: var(--radius);
-}
-
-input[type='password'] {
   padding: 0.35rem 0.5rem;
 }
 
 dialog.confirm-dialog {
   padding: 1rem 1.25rem;
-  border: 1px solid #ccc;
-}
-
-.shell dialog.confirm-dialog {
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  background: #161614;
+  color: #f2efe6;
+  border: 1px solid #2a2926;
+  border-radius: 4px;
 }
 
 dialog.confirm-dialog::backdrop {
-  background: rgb(0 0 0 / 30%);
+  background: rgb(0 0 0 / 55%);
 }
 
 .confirm-actions {
@@ -246,6 +296,7 @@ dialog.confirm-dialog::backdrop {
   color: var(--muted);
 }
 
+.page-head,
 .zones-head {
   display: flex;
   flex-wrap: wrap;
@@ -254,10 +305,31 @@ dialog.confirm-dialog::backdrop {
   gap: 1rem;
 }
 
+.page-lede,
 .zones-lede {
   margin: 0.35rem 0 0;
   color: var(--muted);
   max-width: 40rem;
+}
+
+.surface {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+}
+
+.empty {
+  color: var(--muted);
+}
+
+.code-block {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
 }
 
 .zones-layout {
@@ -331,7 +403,8 @@ dialog.confirm-dialog::backdrop {
   min-width: 0;
 }
 
-.zone-crumb {
+.zone-crumb,
+.page-crumb {
   margin: 0 0 0.35rem;
   color: var(--muted);
   font-size: 0.875rem;
@@ -348,18 +421,27 @@ dialog.confirm-dialog::backdrop {
   margin: 1rem 0;
 }
 
-.zones-table {
+.data-table,
+.zones-table,
+.login table,
+.shell table {
   width: 100%;
   border-collapse: collapse;
 }
 
-.zones-table caption {
+.data-table caption,
+.zones-table caption,
+.login table caption,
+.shell table caption {
   text-align: left;
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
 
-.zones-table th {
+.data-table th,
+.zones-table th,
+.login table th,
+.shell table th {
   text-align: left;
   color: var(--muted);
   font-size: 0.75rem;
@@ -370,7 +452,10 @@ dialog.confirm-dialog::backdrop {
   border-bottom: 1px solid var(--line);
 }
 
-.zones-table td {
+.data-table td,
+.zones-table td,
+.login table td,
+.shell table td {
   padding: 0.55rem 0.5rem 0.55rem 0;
   border-bottom: 1px solid var(--line);
   vertical-align: top;

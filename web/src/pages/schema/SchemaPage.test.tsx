@@ -99,6 +99,8 @@ describe('SchemaPage', () => {
       })
     })
     expect(host?.textContent).toContain('Config schema')
+    expect(host?.querySelector('pre.code-block')).not.toBeNull()
+    expect(host?.querySelector('.page-lede')).not.toBeNull()
     expect(qc.getQueryCache().find({ queryKey: queryKeys.schema('sha256:schema') })).toBeTruthy()
     expect(fetchMock.mock.calls.every((c) => requestOf(c as unknown[]).method === 'GET')).toBe(true)
   })

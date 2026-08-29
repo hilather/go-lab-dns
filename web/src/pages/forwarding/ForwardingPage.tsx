@@ -62,9 +62,14 @@ export function ForwardingPage() {
 
   return (
     <article className="dashboard">
-      <h1>Forwarding</h1>
+      <div className="page-head">
+        <div>
+          <h1>Forwarding</h1>
+          <p className="page-lede">Policies, upstream pools, and live health. Health polls independently of snapshot revision.</p>
+        </div>
+      </div>
 
-      <section>
+      <section className="surface">
         <h2>Policies</h2>
         {revision === '' ? (
           <p>—</p>
@@ -73,9 +78,9 @@ export function ForwardingPage() {
         ) : policiesQuery.error ? (
           <QueryError err={policiesQuery.error} />
         ) : policies.length === 0 ? (
-          <p>No forwarding policies.</p>
+          <p className="empty">No forwarding policies.</p>
         ) : (
-          <table>
+          <table className="data-table">
             <caption>Compiled forwarding policies</caption>
             <thead>
               <tr>
@@ -99,7 +104,7 @@ export function ForwardingPage() {
         )}
       </section>
 
-      <section>
+      <section className="surface">
         <h2>Pools</h2>
         {revision === '' ? (
           <p>—</p>
@@ -108,9 +113,9 @@ export function ForwardingPage() {
         ) : poolsQuery.error ? (
           <QueryError err={poolsQuery.error} />
         ) : pools.length === 0 ? (
-          <p>No upstream pools.</p>
+          <p className="empty">No upstream pools.</p>
         ) : (
-          <table>
+          <table className="data-table">
             <caption>Configured upstream pools</caption>
             <thead>
               <tr>
@@ -138,16 +143,16 @@ export function ForwardingPage() {
         )}
       </section>
 
-      <section>
+      <section className="surface">
         <h2>Upstream health</h2>
         {upstreamsQuery.isPending && !upstreamsQuery.data ? (
           <p>Loading…</p>
         ) : upstreamsQuery.error ? (
           <QueryError err={upstreamsQuery.error} />
         ) : upstreams.length === 0 ? (
-          <p>No upstreams reported.</p>
+          <p className="empty">No upstreams reported.</p>
         ) : (
-          <table>
+          <table className="data-table">
             <caption>Live upstream status (5s poll, independent of snapshot revision)</caption>
             <thead>
               <tr>

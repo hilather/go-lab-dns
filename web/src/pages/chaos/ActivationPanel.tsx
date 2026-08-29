@@ -123,7 +123,7 @@ export function ActivationPanel({
   }
 
   return (
-    <section>
+    <section className="surface">
       <h2>Activation</h2>
       <p>Same privilege split as REST. High-impact policies need dns.chaos.activate and dns.chaos.emergency.</p>
       {problem ? <QueryError error={problem} /> : null}
@@ -133,6 +133,7 @@ export function ActivationPanel({
           {result.auditEventId !== '' ? `. Audit event ${result.auditEventId}` : ''}
         </p>
       ) : null}
+      <div className="stack-form">
       <p>
         <label>
           Reason
@@ -158,9 +159,10 @@ export function ActivationPanel({
           />
         </label>
       </p>
+      </div>
       <p>
         <ScopeGate allowed={activateAllowed} missingScope={namedActivate}>
-          <button type="button" disabled={!canActivate} onClick={() => void run('activate')}>
+          <button type="button" className="btn-accent" disabled={!canActivate} onClick={() => void run('activate')}>
             Activate
           </button>
         </ScopeGate>{' '}

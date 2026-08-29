@@ -142,6 +142,8 @@ describe('ForwardingPage', () => {
     expect(host?.textContent).toContain('ordered')
     expect(host?.textContent).toContain('timeout 1s; on timeout')
     expect(host?.querySelector('.status-symbol')?.textContent).toBe('●')
+    expect(host?.querySelectorAll('table.data-table').length).toBe(3)
+    expect(host?.querySelector('.page-lede')).not.toBeNull()
 
     const paths = get.mock.calls.map((c) => c[0])
     expect(paths).toContain('/v1/forwarding/policies')

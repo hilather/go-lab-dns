@@ -111,20 +111,24 @@ export function ResolvePage({ api = client }: { api?: LabdnsClient } = {}) {
   const result = resultFromOut(answer)
   const expl = explanationFromOut(explain)
   const submit = (
-    <button type="submit" disabled={disabled}>
+    <button type="submit" className="btn-accent" disabled={disabled}>
       Resolve
     </button>
   )
 
   return (
     <article className={styles.page}>
-      <h1>Resolve</h1>
-      <p className={styles.hint}>
-        Management-plane lookup. Apply chaos defaults to off, matching REST.
-      </p>
+      <div className="page-head">
+        <div>
+          <h1>Resolve</h1>
+          <p className={`page-lede ${styles.hint}`}>
+            Management-plane lookup. Apply chaos defaults to off, matching REST.
+          </p>
+        </div>
+      </div>
       {sessionQuery.isError ? <ProblemAlert error={problemFromUnknown(sessionQuery.error)} /> : null}
       {formError !== '' ? <ProblemAlert detail={formError} /> : null}
-      <form className={styles.form} onSubmit={(ev) => void onSubmit(ev)}>
+      <form className={`${styles.form} stack-form`} onSubmit={(ev) => void onSubmit(ev)}>
         <label>
           Name
           <input
@@ -206,7 +210,7 @@ export function ResolvePage({ api = client }: { api?: LabdnsClient } = {}) {
         )}
       </form>
       <div className={styles.columns}>
-        <section className={styles.panel} aria-labelledby="resolve-answer-heading">
+        <section className={`${styles.panel} surface`} aria-labelledby="resolve-answer-heading">
           <h2 id="resolve-answer-heading">Answer</h2>
           {answerError ? <ProblemAlert error={answerError} /> : null}
           {result ? (
@@ -217,16 +221,16 @@ export function ResolvePage({ api = client }: { api?: LabdnsClient } = {}) {
               <RRSet title="Additional" records={rrList(result.additional)} />
             </>
           ) : answerError ? null : (
-            <p>Submit a query to see the answer.</p>
+            <p className="empty">Submit a query to see the answer.</p>
           )}
         </section>
-        <section className={styles.panel} aria-labelledby="resolve-explain-heading">
+        <section className={`${styles.panel} surface`} aria-labelledby="resolve-explain-heading">
           <h2 id="resolve-explain-heading">Explain</h2>
           {explainError ? <ProblemAlert error={explainError} /> : null}
           {expl ? (
             <Rows rows={explainRows(expl)} />
           ) : explainError ? null : (
-            <p>Submit a query to see the explanation.</p>
+            <p className="empty">Submit a query to see the explanation.</p>
           )}
         </section>
       </div>

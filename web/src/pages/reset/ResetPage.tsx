@@ -106,13 +106,17 @@ export function ResetPage() {
 
   return (
     <article className="reset-page">
-      <h1>Reset</h1>
-      <p className="revision" title={revision || undefined}>
-        Runtime revision {shortRevision(revision)}
-      </p>
-      <p>Reread the bootstrap mount, compile, and swap. This never writes the bootstrap file.</p>
+      <div className="page-head">
+        <div>
+          <h1>Reset</h1>
+          <p className="page-lede revision" title={revision || undefined}>
+            Runtime revision {shortRevision(revision)}. Reread the bootstrap mount, compile, and swap. This never
+            writes the bootstrap file.
+          </p>
+        </div>
+      </div>
       {problem ? <ProblemAlert code={problem.code} detail={problem.detail} /> : null}
-      {stateQuery.isPending && stateQuery.data === undefined ? <p>Loading compiled state…</p> : null}
+      {stateQuery.isPending && stateQuery.data === undefined ? <p className="empty">Loading compiled state…</p> : null}
       {stateQuery.error ? (
         <ProblemAlert
           error={
@@ -123,7 +127,7 @@ export function ResetPage() {
         />
       ) : null}
 
-      <section>
+      <section className="surface">
         <h2>Confirmation</h2>
         <dl>
           <dt>Compiled metadata name</dt>
@@ -156,7 +160,7 @@ export function ResetPage() {
         </label>
         <div className="reset-actions">
           <ScopeGate allowed={canAdmin} missingScope="dns.admin">
-            <button type="button" disabled={!canSubmit} onClick={openConfirm}>
+            <button type="button" className="btn-danger" disabled={!canSubmit} onClick={openConfirm}>
               Reset to bootstrap
             </button>
           </ScopeGate>
@@ -164,7 +168,7 @@ export function ResetPage() {
       </section>
 
       {result ? (
-        <section>
+        <section className="surface">
           <h2>Reset result</h2>
           <p>{result.applied === false ? 'Reset did not apply.' : 'Reset applied.'}</p>
           <dl>

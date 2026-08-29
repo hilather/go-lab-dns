@@ -41,13 +41,19 @@ export function RecordDetailPage() {
 
   return (
     <article className="record-detail">
-      <p>
+      <p className="page-crumb">
         <Link to={zoneHref(zoneId)}>{zoneId || 'Zone'}</Link>
       </p>
-      <h1>{rec?.id || recordId || 'Record'}</h1>
+      <div className="page-head">
+        <div>
+          <h1>{rec?.id || recordId || 'Record'}</h1>
+          <p className="page-lede">Record fields from the compiled snapshot. Writes enqueue operations on Changes.</p>
+        </div>
+      </div>
       {query.isError ? <QueryError error={query.error} /> : null}
-      {query.isPending ? <p>Loading record…</p> : null}
+      {query.isPending ? <p className="empty">Loading record…</p> : null}
       {rec ? (
+        <section className="surface">
         <dl className="zone-meta">
           <dt>ID</dt>
           <dd>{rec.id}</dd>
@@ -72,11 +78,13 @@ export function RecordDetailPage() {
             )}
           </dd>
         </dl>
+        </section>
       ) : null}
       <p className="zone-actions">
         <ScopeGate allowed={writeAllowed} missingScope="dns.write">
           <button
             type="button"
+            className="btn-accent"
             disabled={!editReady}
             onClick={() =>
               goToChanges(navigate, [editRecordOperation(zoneId, recordId, raw)], 'edit record')

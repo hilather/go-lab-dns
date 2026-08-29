@@ -39,9 +39,14 @@ export function ChaosPage() {
 
   return (
     <article className="dashboard">
-      <h1>Chaos</h1>
+      <div className="page-head">
+        <div>
+          <h1>Chaos</h1>
+          <p className="page-lede">Policy list, simulate, and activation. Emergency disable stays on the shell.</p>
+        </div>
+      </div>
 
-      <section>
+      <section className="surface">
         <h2>Status</h2>
         {statusQuery.isPending && !statusQuery.data ? (
           <p>Loading…</p>
@@ -69,7 +74,7 @@ export function ChaosPage() {
         <p>Emergency disable is on the shell for principals with dns.chaos.emergency.</p>
       </section>
 
-      <section>
+      <section className="surface">
         <h2>Policies</h2>
         {revision === '' ? (
           <p>—</p>
@@ -78,9 +83,9 @@ export function ChaosPage() {
         ) : policiesQuery.error ? (
           <QueryError error={policiesQuery.error} />
         ) : policies.length === 0 ? (
-          <p>No chaos policies.</p>
+          <p className="empty">No chaos policies.</p>
         ) : (
-          <table>
+          <table className="data-table">
             <caption>Compiled chaos policies</caption>
             <thead>
               <tr>

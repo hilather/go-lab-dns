@@ -16,14 +16,19 @@ export function AuditEventPage() {
 
   return (
     <article className="dashboard">
-      <p>
+      <p className="page-crumb">
         <Link to={ROUTES.audit}>Audit</Link>
       </p>
-      <h1>{ev?.id || eventId || 'Audit event'}</h1>
+      <div className="page-head">
+        <div>
+          <h1>{ev?.id || eventId || 'Audit event'}</h1>
+          <p className="page-lede">Single ring event. Secret-looking values stay redacted as the API returns them.</p>
+        </div>
+      </div>
       {query.isError ? <QueryError error={query.error} /> : null}
-      {query.isPending ? <p>Loading event…</p> : null}
+      {query.isPending ? <p className="empty">Loading event…</p> : null}
       {ev ? (
-        <section>
+        <section className="surface">
           <h2>Event</h2>
           <dl>
             <dt>ID</dt>

@@ -531,11 +531,13 @@ describe('RecordDetailPage', () => {
     await renderAt('/zones/lab-zone/records/ns1-a')
     await waitForText('10.42.0.53')
     expect(host?.textContent).toContain('slow-tools')
+    expect(host?.querySelector('article.record-detail .surface')).not.toBeNull()
     await act(async () => {
       await vi.waitFor(() => {
         expect(btn('Edit record')?.disabled).toBe(false)
       })
     })
+    expect(btn('Edit record')?.classList.contains('btn-accent')).toBe(true)
     await act(async () => {
       btn('Edit record')!.click()
     })

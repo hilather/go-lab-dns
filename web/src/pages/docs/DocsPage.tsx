@@ -8,7 +8,13 @@ import { DOC_CATALOG, docTitle, fetchDoc, isDocId, problemFrom } from './docs'
 function DocsIndex() {
   return (
     <article className="dashboard">
-      <h1>Docs</h1>
+      <div className="page-head">
+        <div>
+          <h1>Docs</h1>
+          <p className="page-lede">Operator documents served from the management API.</p>
+        </div>
+      </div>
+      <section className="surface">
       <ul>
         {DOC_CATALOG.map((doc) => (
           <li key={doc.id}>
@@ -16,6 +22,7 @@ function DocsIndex() {
           </li>
         ))}
       </ul>
+      </section>
     </article>
   )
 }
@@ -32,13 +39,22 @@ function DocDetail({ id }: { id: string }) {
 
   return (
     <article className="dashboard">
-      <h1>{docTitle(id)}</h1>
-      <p>
+      <p className="page-crumb">
         <Link to={ROUTES.docsIndex}>All docs</Link>
       </p>
+      <div className="page-head">
+        <div>
+          <h1>{docTitle(id)}</h1>
+          <p className="page-lede">Rendered as text. HTML in the document is not executed.</p>
+        </div>
+      </div>
       {err ? <ProblemAlert error={err} /> : null}
-      {known && query.isPending ? <p>Loading document…</p> : null}
-      {typeof query.data === 'string' ? <pre>{query.data}</pre> : null}
+      {known && query.isPending ? <p className="empty">Loading document…</p> : null}
+      {typeof query.data === 'string' ? (
+        <section className="surface">
+          <pre className="code-block">{query.data}</pre>
+        </section>
+      ) : null}
     </article>
   )
 }

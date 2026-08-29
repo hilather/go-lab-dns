@@ -88,6 +88,8 @@ describe('CachePage', () => {
     })
 
     expect(host?.textContent).toContain('Yes')
+    expect(host?.querySelector('.page-lede')).not.toBeNull()
+    expect(host?.querySelectorAll('section.surface').length).toBeGreaterThanOrEqual(2)
     const flush = [...(host?.querySelectorAll('button') ?? [])].find((b) => b.textContent === 'Flush cache')
     expect(flush).toBeDefined()
     expect(flush?.disabled).toBe(true)

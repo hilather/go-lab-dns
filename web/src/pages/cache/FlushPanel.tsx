@@ -100,7 +100,7 @@ export function FlushPanel() {
   }
 
   return (
-    <section>
+    <section className="surface">
       <h2>Flush</h2>
       <p>Requires dns.admin. Flush does not change desired state.</p>
       {problem ? <ProblemAlert error={problem} /> : null}

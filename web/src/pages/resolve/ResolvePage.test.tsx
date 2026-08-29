@@ -132,6 +132,7 @@ describe('ResolvePage', () => {
     const cache = document.querySelector('input[name="useCache"]') as HTMLInputElement
     expect(chaos.checked).toBe(false)
     expect(cache.checked).toBe(false)
+    expect(document.body.querySelectorAll('.empty').length).toBeGreaterThanOrEqual(2)
 
     const name = document.querySelector('input[name="name"]') as HTMLInputElement
     await act(async () => {
@@ -145,6 +146,13 @@ describe('ResolvePage', () => {
 
     expect(document.getElementById('resolve-answer-heading')?.textContent).toBe('Answer')
     expect(document.getElementById('resolve-explain-heading')?.textContent).toBe('Explain')
+    expect(document.querySelector('button[type="submit"]')?.classList.contains('btn-accent')).toBe(true)
+    expect(document.getElementById('resolve-answer-heading')?.closest('section')?.classList.contains('surface')).toBe(
+      true,
+    )
+    expect(document.getElementById('resolve-explain-heading')?.closest('section')?.classList.contains('surface')).toBe(
+      true,
+    )
     expect(document.body.textContent).toContain('Matched zone')
     expect(document.body.textContent).toContain('lab-zone / authoritative')
     expect(document.body.textContent).toContain('Chaos decision')

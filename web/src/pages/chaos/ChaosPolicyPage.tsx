@@ -48,15 +48,20 @@ export function ChaosPolicyPage() {
 
   return (
     <article className="dashboard">
-      <p>
+      <p className="page-crumb">
         <Link to={ROUTES.chaos}>Chaos</Link>
       </p>
-      <h1>{policy?.id || policyId || 'Chaos policy'}</h1>
+      <div className="page-head">
+        <div>
+          <h1>{policy?.id || policyId || 'Chaos policy'}</h1>
+          <p className="page-lede">Compiled policy, scope, selector, and activation with the same privilege split as REST.</p>
+        </div>
+      </div>
       {query.isError ? <QueryError error={query.error} /> : null}
-      {revision === '' || policyId === '' ? <p>—</p> : query.isPending ? <p>Loading policy…</p> : null}
+      {revision === '' || policyId === '' ? <p className="empty">—</p> : query.isPending ? <p className="empty">Loading policy…</p> : null}
       {policy ? (
         <>
-          <section>
+          <section className="surface">
             <h2>Policy</h2>
             <dl>
               <dt>ID</dt>
@@ -96,7 +101,7 @@ export function ChaosPolicyPage() {
               </dd>
             </dl>
           </section>
-          <section>
+          <section className="surface">
             <h2>Scope</h2>
             <dl>
               {scopeRows(policy.scope).map((row) => (
@@ -107,7 +112,7 @@ export function ChaosPolicyPage() {
               ))}
             </dl>
           </section>
-          <section>
+          <section className="surface">
             <h2>Selector</h2>
             <dl>
               <dt>Mode</dt>
@@ -126,10 +131,10 @@ export function ChaosPolicyPage() {
               <dd>{dash(policy.selector.period)}</dd>
             </dl>
           </section>
-          <section>
+          <section className="surface">
             <h2>Outcomes</h2>
             {policy.outcomes.length === 0 ? (
-              <p>No outcomes.</p>
+              <p className="empty">No outcomes.</p>
             ) : (
               <ul>
                 {policy.outcomes.map((o) => (
@@ -143,7 +148,7 @@ export function ChaosPolicyPage() {
             )}
           </section>
           {policy.budget ? (
-            <section>
+            <section className="surface">
               <h2>Budget</h2>
               <dl>
                 <dt>Max delay</dt>

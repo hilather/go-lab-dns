@@ -107,6 +107,8 @@ describe('CapabilitiesPage', () => {
     })
     expect(host?.textContent).toContain('dns_change_apply')
     expect(host?.textContent).toContain('Apply operations')
+    expect(host?.querySelector('table.data-table')).not.toBeNull()
+    expect(host?.querySelector('.page-lede')).not.toBeNull()
     expect(qc.getQueryCache().find({ queryKey: queryKeys.capabilities('sha256:caps') })).toBeTruthy()
     expect(fetchMock.mock.calls.every((c) => requestOf(c as unknown[]).method === 'GET')).toBe(true)
   })

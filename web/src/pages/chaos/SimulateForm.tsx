@@ -69,11 +69,11 @@ export function SimulateForm({
   }
 
   return (
-    <section>
+    <section className="surface">
       <h2>Simulate</h2>
       <p>Side-effect free. Does not change live chaos state.</p>
       {problem ? <QueryError error={problem} /> : null}
-      <form onSubmit={(ev) => void onSubmit(ev)}>
+      <form className="stack-form" onSubmit={(ev) => void onSubmit(ev)}>
         <p>
           <label>
             Name
@@ -115,7 +115,7 @@ export function SimulateForm({
         </p>
         <p>
           <ScopeGate allowed={allowed} missingScope={SCOPE_CHAOS_READ}>
-            <button type="submit" disabled={!canSubmit}>
+            <button type="submit" className="btn-accent" disabled={!canSubmit}>
               Simulate
             </button>
           </ScopeGate>
@@ -135,7 +135,7 @@ export function SimulateForm({
             <dd>{result.reason || '—'}</dd>
           </dl>
           {result.decisions.length === 0 ? (
-            <p>No policy decisions.</p>
+            <p className="empty">No policy decisions.</p>
           ) : (
             <ul>
               {result.decisions.map((d) => (
