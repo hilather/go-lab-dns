@@ -4,7 +4,9 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
-- None.
+### Fixed
+
+- DNS editors can no longer delete or retarget a protected name by replacing the whole zone (omitting the record) or by using a relative owner that expands to a protected FQDN. Plan/apply/validate now expand owners against the zone origin and deny zone update/remove when the current zone already contains a protected record.
 
 ## v1.3.0 — 2026-08-29
 

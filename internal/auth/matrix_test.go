@@ -303,6 +303,65 @@ func TestProtectedObjectsOrdinaryRoles(t *testing.T) {
 	if err := AuthorizeChange(editor, []model.Operation{safety}, st); err == nil {
 		t.Fatal("editor changed safety")
 	}
+
+	// Zone replace is whole-object: omitting a protected record deletes it.
+	dropProtected := model.Operation{
+		Op:     model.OpUpdate,
+		Target: model.Target{Kind: model.TargetZone, ID: "lab"},
+		Value:  []byte(`{"id":"lab","name":"lab.example.net.","records":[]}`),
+	}
+	if err := AuthorizeChange(editor, []model.Operation{dropProtected}, st); err == nil {
+		t.Fatal("editor omitted protected record via zone replace")
+	} else if de, ok := domainerr.As(err); !ok || de.Code != domainerr.CodeProtectedObject {
+		t.Fatalf("want protected_object for zone replace omit, got %v", err)
+	}
+	if err := AuthorizeChange(adm, []model.Operation{dropProtected}, st); err != nil {
+		t.Fatalf("admin zone replace: %v", err)
+	}
+
+	removeZone := model.Operation{
+		Op:     model.OpRemove,
+		Target: model.Target{Kind: model.TargetZone, ID: "lab"},
+	}
+	if err := AuthorizeChange(editor, []model.Operation{removeZone}, st); err == nil {
+		t.Fatal("editor removed zone that contains a protected name")
+	} else if de, ok := domainerr.As(err); !ok || de.Code != domainerr.CodeProtectedObject {
+		t.Fatalf("want protected_object for zone remove, got %v", err)
+	}
+
+	// Relative owners expand against the zone origin before the protected-name check.
+	addRelative := model.Operation{
+		Op:     model.OpAdd,
+		Target: model.Target{Kind: model.TargetRecord, ID: "dns-aaaa", ZoneID: "lab"},
+		Value:  []byte(`{"id":"dns-aaaa","owner":"dns","type":"AAAA","values":["2001:db8::1"]}`),
+	}
+	if err := AuthorizeChange(editor, []model.Operation{addRelative}, st); err == nil {
+		t.Fatal("editor added relative owner that expands to a protected name")
+	} else if de, ok := domainerr.As(err); !ok || de.Code != domainerr.CodeProtectedObject {
+		t.Fatalf("want protected_object for relative owner add, got %v", err)
+	}
+
+	retarget := model.Operation{
+		Op:     model.OpUpdate,
+		Target: model.Target{Kind: model.TargetRecord, ID: "www-a", ZoneID: "lab"},
+		Value:  []byte(`{"id":"www-a","owner":"dns","type":"A","values":["10.0.0.9"]}`),
+	}
+	st.Spec.Zones[0].Records = append(st.Spec.Zones[0].Records, model.Record{
+		ID: "www-a", Owner: "www.lab.example.net.", Type: "A", Values: []string{"10.0.0.8"},
+	})
+	if err := AuthorizeChange(editor, []model.Operation{retarget}, st); err == nil {
+		t.Fatal("editor retargeted a record onto a protected name via relative owner")
+	} else if de, ok := domainerr.As(err); !ok || de.Code != domainerr.CodeProtectedObject {
+		t.Fatalf("want protected_object for relative owner retarget, got %v", err)
+	}
+	addWWW := model.Operation{
+		Op:     model.OpAdd,
+		Target: model.Target{Kind: model.TargetRecord, ID: "api-a", ZoneID: "lab"},
+		Value:  []byte(`{"id":"api-a","owner":"api","type":"A","values":["10.0.0.10"]}`),
+	}
+	if err := AuthorizeChange(editor, []model.Operation{addWWW}, st); err != nil {
+		t.Fatalf("editor should still add a non-protected relative owner: %v", err)
+	}
 }
 
 func TestDNSEditorCannotTouchForwarders(t *testing.T) {

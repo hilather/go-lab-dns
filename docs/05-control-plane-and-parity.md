@@ -2,7 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Application, REST, MCP, UI
-Last reviewed: 2026-08-19 (session and UI assets REST_ONLY rows; UI omitted on those rows)
+Last reviewed: 2026-08-30 (protected-name zone replace and relative owners)
 Related ADRs: 0004, 0006
 
 ## Problem statement
@@ -180,7 +180,7 @@ dns.chaos.emergency
 dns.audit.read
 ```
 
-The application handler receives an authenticated actor context from the adapter and makes one shared authorization decision.
+The application handler receives an authenticated actor context from the adapter and makes one shared authorization decision. Resource-aware checks for `dns.write` expand relative owners against the zone origin and reject zone replace/remove when the current zone already holds a protected name.
 
 ## Failure modes
 

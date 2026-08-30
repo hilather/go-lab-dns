@@ -2,7 +2,7 @@
 
 Status: Implemented (SEC-001)
 Owners: Security, DNS, Control Plane
-Last reviewed: 2026-08-19 (browser session cookie + CSRF)
+Last reviewed: 2026-08-30 (protected-name zone replace and relative owners)
 Related ADRs: 0003, 0004, 0005, 0007
 
 ## Goals
@@ -124,6 +124,8 @@ Deployment policy defines:
 - Maximum address ranges for alternate answers.
 - Upstream endpoints that ordinary roles cannot change.
 - Emergency controls that cannot be removed through runtime mutation.
+
+Plan/apply/validate expand relative record owners against the zone origin before the protected-name check, matching desired-state canonicalization. A zone update or remove is denied for ordinary roles when the current zone is protected or already contains a protected record — zone replace is whole-object, so omitting that record would delete it. Administrators may still mutate protected objects.
 
 ## Secret management
 

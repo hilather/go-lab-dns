@@ -35,7 +35,7 @@ func authorizeOp(actor Actor, op model.Operation, current *model.State, prot Pro
 		if !actor.HasScope(ScopeDNSWrite) {
 			return domainerr.Forbidden("missing scope " + ScopeDNSWrite)
 		}
-		if !admin && (prot.hasZone(model.ZoneID(op.Target.ID)) || zoneTouchesProtected(op, prot)) {
+		if !admin && (prot.hasZone(model.ZoneID(op.Target.ID)) || zoneTouchesProtected(op, current, prot)) {
 			return denyProtected("protected zone " + op.Target.ID)
 		}
 		return nil
@@ -43,7 +43,7 @@ func authorizeOp(actor Actor, op model.Operation, current *model.State, prot Pro
 		if !actor.HasScope(ScopeDNSWrite) {
 			return domainerr.Forbidden("missing scope " + ScopeDNSWrite)
 		}
-		if !admin && (prot.hasRecord(model.RecordID(op.Target.ID)) || recordTouchesProtected(op, prot)) {
+		if !admin && (prot.hasRecord(model.RecordID(op.Target.ID)) || recordTouchesProtected(op, current, prot)) {
 			return denyProtected("protected record " + op.Target.ID)
 		}
 		if !admin && prot.hasZone(op.Target.ZoneID) {
@@ -275,34 +275,49 @@ func poolEndpointChanges(op model.Operation, current *model.State) bool {
 	return false
 }
 
-func zoneTouchesProtected(op model.Operation, prot Protected) bool {
+func zoneTouchesProtected(op model.Operation, current *model.State, prot Protected) bool {
+	cur := findZone(current, model.ZoneID(op.Target.ID))
+	if (op.Op == model.OpUpdate || op.Op == model.OpRemove) && zoneHasProtectedRecord(cur, prot) {
+		return true
+	}
+	if op.Op == model.OpRemove {
+		return false
+	}
 	if len(bytes.TrimSpace(op.Value)) == 0 {
 		return false
 	}
 	var z model.Zone
 	if err := json.Unmarshal(op.Value, &z); err != nil {
-		return false
+		return true
 	}
-	if prot.coversName(string(z.Name)) {
+	origin := string(z.Name)
+	if origin == "" && cur != nil {
+		origin = string(cur.Name)
+	}
+	if prot.coversName(origin) {
 		return true
 	}
 	for _, r := range z.Records {
-		if prot.hasRecord(r.ID) || prot.coversName(r.Owner) {
+		if prot.hasRecord(r.ID) || prot.coversName(expandOwner(r.Owner, origin)) {
 			return true
 		}
 	}
 	return false
 }
 
-func recordTouchesProtected(op model.Operation, prot Protected) bool {
+func recordTouchesProtected(op model.Operation, current *model.State, prot Protected) bool {
 	if len(bytes.TrimSpace(op.Value)) == 0 {
 		return false
 	}
 	var r model.Record
 	if err := json.Unmarshal(op.Value, &r); err != nil {
-		return false
+		return true
 	}
-	return prot.hasRecord(r.ID) || prot.coversName(r.Owner)
+	origin := ""
+	if z := findZone(current, op.Target.ZoneID); z != nil {
+		origin = string(z.Name)
+	}
+	return prot.hasRecord(r.ID) || prot.coversName(expandOwner(r.Owner, origin))
 }
 
 // RequiredPermissions lists the scopes a change set needs.
