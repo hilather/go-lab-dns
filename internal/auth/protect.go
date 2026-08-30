@@ -39,7 +39,8 @@ func ProtectFrom(st *model.State) Protected {
 			p.ZoneIDs = append(p.ZoneIDs, z.ID)
 		}
 		for _, r := range z.Records {
-			if zoneHit || nameProtected(canonName(r.Owner), names) {
+			owner := expandOwner(r.Owner, string(z.Name))
+			if zoneHit || nameProtected(owner, names) {
 				p.RecordIDs = append(p.RecordIDs, r.ID)
 			}
 		}
@@ -92,6 +93,58 @@ func canonName(s string) string {
 	s = strings.ToLower(strings.TrimSpace(s))
 	s = strings.TrimSuffix(s, ".")
 	return s
+}
+
+// expandOwner mirrors config.CanonicalName's relative-to-origin expansion
+// without importing config (auth import DAG is model + domainerr only).
+func expandOwner(owner, origin string) string {
+	owner = strings.TrimSpace(owner)
+	if owner == "" {
+		return ""
+	}
+	if owner == "@" {
+		return canonName(origin)
+	}
+	owner = strings.ToLower(owner)
+	if strings.HasSuffix(owner, ".") {
+		return canonName(owner)
+	}
+	orig := strings.ToLower(strings.TrimSpace(origin))
+	if orig == "" || orig == "." {
+		return canonName(owner + ".")
+	}
+	if !strings.HasSuffix(orig, ".") {
+		orig += "."
+	}
+	return canonName(owner + "." + orig)
+}
+
+func findZone(st *model.State, id model.ZoneID) *model.Zone {
+	if st == nil || id == "" {
+		return nil
+	}
+	for i := range st.Spec.Zones {
+		if st.Spec.Zones[i].ID == id {
+			z := st.Spec.Zones[i]
+			return &z
+		}
+	}
+	return nil
+}
+
+func zoneHasProtectedRecord(z *model.Zone, prot Protected) bool {
+	if z == nil {
+		return false
+	}
+	if prot.hasZone(z.ID) || prot.coversName(string(z.Name)) {
+		return true
+	}
+	for _, r := range z.Records {
+		if prot.hasRecord(r.ID) {
+			return true
+		}
+	}
+	return false
 }
 
 func nameProtected(name string, names map[string]struct{}) bool {

@@ -91,6 +91,70 @@ func TestProtectedRecordMutation(t *testing.T) {
 	}
 }
 
+func TestApplyRejectsProtectedNameZoneReplaceAndRelativeOwner(t *testing.T) {
+	svc, boot := mustBoot(t, copyNamedFixture(t, "pack-sample.yaml"))
+	ctx := context.Background()
+	admin := actor()
+	editor := auth.Actor{ID: "e", Class: auth.ClassToken, Role: auth.RoleDNSEditor}
+
+	added, err := svc.Apply(ctx, admin, ChangeIn{
+		ExpectedRevision: boot.Revision,
+		IdempotencyKey:   "add-protected-dns",
+		Reason:           "seed protected name",
+		Operations: []model.Operation{{
+			Op:     model.OpAdd,
+			Target: model.Target{Kind: model.TargetRecord, ID: "dns-a", ZoneID: "lab-zone"},
+			Value:  mustJSON(model.Record{ID: "dns-a", Owner: "dns", Type: model.TypeA, Values: []string{"10.42.0.1"}}),
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	z, err := svc.GetZone(ctx, admin, "lab-zone")
+	if err != nil {
+		t.Fatal(err)
+	}
+	kept := make([]model.Record, 0, len(z.Records))
+	for _, r := range z.Records {
+		if r.ID != "dns-a" {
+			kept = append(kept, r)
+		}
+	}
+	stripped := *z
+	stripped.Records = kept
+	_, err = svc.Apply(ctx, editor, ChangeIn{
+		ExpectedRevision: added.CandidateRevision,
+		IdempotencyKey:   "editor-zone-omit",
+		Reason:           "edit zone soa",
+		Operations: []model.Operation{{
+			Op:     model.OpUpdate,
+			Target: model.Target{Kind: model.TargetZone, ID: "lab-zone"},
+			Value:  mustJSON(stripped),
+		}},
+	})
+	_ = requireCode(t, err, domainerr.CodeProtectedObject)
+	live, err := svc.GetRecord(ctx, admin, "lab-zone", "dns-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if live.Values[0] != "10.42.0.1" {
+		t.Fatalf("protected record mutated: %+v", live)
+	}
+
+	_, err = svc.Apply(ctx, editor, ChangeIn{
+		ExpectedRevision: added.CandidateRevision,
+		IdempotencyKey:   "editor-relative-aaaa",
+		Reason:           "add aaaa",
+		Operations: []model.Operation{{
+			Op:     model.OpAdd,
+			Target: model.Target{Kind: model.TargetRecord, ID: "dns-aaaa", ZoneID: "lab-zone"},
+			Value:  mustJSON(model.Record{ID: "dns-aaaa", Owner: "dns", Type: model.TypeAAAA, Values: []string{"2001:db8::1"}}),
+		}},
+	})
+	_ = requireCode(t, err, domainerr.CodeProtectedObject)
+}
+
 func TestValidateMatchesPlanAuthorization(t *testing.T) {
 	svc, boot := mustBoot(t, copyNamedFixture(t, "pack-sample.yaml"))
 	ctx := context.Background()
