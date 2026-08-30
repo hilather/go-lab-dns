@@ -124,7 +124,7 @@ func TestApplyRejectsProtectedNameZoneReplaceAndRelativeOwner(t *testing.T) {
 	stripped := *z
 	stripped.Records = kept
 	_, err = svc.Apply(ctx, editor, ChangeIn{
-		ExpectedRevision: added.Plan.CandidateRevision,
+		ExpectedRevision: added.CandidateRevision,
 		IdempotencyKey:   "editor-zone-omit",
 		Reason:           "edit zone soa",
 		Operations: []model.Operation{{
@@ -143,7 +143,7 @@ func TestApplyRejectsProtectedNameZoneReplaceAndRelativeOwner(t *testing.T) {
 	}
 
 	_, err = svc.Apply(ctx, editor, ChangeIn{
-		ExpectedRevision: added.Plan.CandidateRevision,
+		ExpectedRevision: added.CandidateRevision,
 		IdempotencyKey:   "editor-relative-aaaa",
 		Reason:           "add aaaa",
 		Operations: []model.Operation{{
