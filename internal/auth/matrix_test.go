@@ -364,6 +364,75 @@ func TestProtectedObjectsOrdinaryRoles(t *testing.T) {
 	}
 }
 
+// TestWildcardCannotSynthesizeProtectedName is the hijack case #38 missed:
+// a dns-editor adds *.zone and the resolver synthesizes the protected QNAME
+// because that name has no exact owner.
+func TestWildcardCannotSynthesizeProtectedName(t *testing.T) {
+	st := &model.State{}
+	st.Spec.Chaos.Safety.ProtectedNames = []model.Name{"dns.lab.example.net."}
+	st.Spec.Zones = []model.Zone{{
+		ID:   "lab",
+		Name: "lab.example.net.",
+		Records: []model.Record{
+			{ID: "www-a", Owner: "www.lab.example.net.", Type: "A", Values: []string{"10.0.0.8"}},
+		},
+	}}
+	editor := Actor{ID: "e", Class: ClassToken, Role: RoleDNSEditor}
+	adm := Actor{ID: "a", Class: ClassToken, Role: RoleAdministrator}
+
+	addCoveringWild := model.Operation{
+		Op:     model.OpAdd,
+		Target: model.Target{Kind: model.TargetRecord, ID: "star-a", ZoneID: "lab"},
+		Value:  []byte(`{"id":"star-a","owner":"*","type":"A","values":["10.0.0.99"]}`),
+	}
+	if err := AuthorizeChange(editor, []model.Operation{addCoveringWild}, st); err == nil {
+		t.Fatal("editor added wildcard that synthesizes a protected name")
+	} else if de, ok := domainerr.As(err); !ok || de.Code != domainerr.CodeProtectedObject {
+		t.Fatalf("want protected_object for covering wildcard, got %v", err)
+	}
+	if err := AuthorizeChange(adm, []model.Operation{addCoveringWild}, st); err != nil {
+		t.Fatalf("admin covering wildcard: %v", err)
+	}
+
+	addFQDNWild := model.Operation{
+		Op:     model.OpAdd,
+		Target: model.Target{Kind: model.TargetRecord, ID: "star-fqdn", ZoneID: "lab"},
+		Value:  []byte(`{"id":"star-fqdn","owner":"*.lab.example.net.","type":"A","values":["10.0.0.99"]}`),
+	}
+	if err := AuthorizeChange(editor, []model.Operation{addFQDNWild}, st); err == nil {
+		t.Fatal("editor added FQDN wildcard that synthesizes a protected name")
+	}
+
+	addScopedWild := model.Operation{
+		Op:     model.OpAdd,
+		Target: model.Target{Kind: model.TargetRecord, ID: "tools-wild", ZoneID: "lab"},
+		Value:  []byte(`{"id":"tools-wild","owner":"*.tools","type":"A","values":["10.0.0.20"]}`),
+	}
+	if err := AuthorizeChange(editor, []model.Operation{addScopedWild}, st); err != nil {
+		t.Fatalf("editor should add a wildcard that does not cover a protected name: %v", err)
+	}
+
+	coverViaZone := model.Operation{
+		Op:     model.OpUpdate,
+		Target: model.Target{Kind: model.TargetZone, ID: "lab"},
+		Value:  []byte(`{"id":"lab","name":"lab.example.net.","records":[{"id":"www-a","owner":"www.lab.example.net.","type":"A","values":["10.0.0.8"]},{"id":"star-a","owner":"*","type":"A","values":["10.0.0.99"]}]}`),
+	}
+	if err := AuthorizeChange(editor, []model.Operation{coverViaZone}, st); err == nil {
+		t.Fatal("editor introduced covering wildcard via zone replace")
+	} else if de, ok := domainerr.As(err); !ok || de.Code != domainerr.CodeProtectedObject {
+		t.Fatalf("want protected_object for zone-replace wildcard, got %v", err)
+	}
+
+	addZone := model.Operation{
+		Op:     model.OpAdd,
+		Target: model.Target{Kind: model.TargetZone, ID: "lab2"},
+		Value:  []byte(`{"id":"lab2","name":"lab.example.net.","records":[{"id":"star-a","owner":"*.lab.example.net.","type":"A","values":["10.0.0.99"]}]}`),
+	}
+	if err := AuthorizeChange(editor, []model.Operation{addZone}, st); err == nil {
+		t.Fatal("editor added a new zone whose wildcard synthesizes a protected name")
+	}
+}
+
 func TestDNSEditorCannotTouchForwarders(t *testing.T) {
 	editor := Actor{ID: "e", Class: ClassToken, Role: RoleDNSEditor}
 	op := model.Operation{

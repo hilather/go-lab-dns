@@ -7,6 +7,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 ### Fixed
 
 - DNS editors can no longer delete or retarget a protected name by replacing the whole zone (omitting the record) or by using a relative owner that expands to a protected FQDN. Plan/apply/validate now expand owners against the zone origin and deny zone update/remove when the current zone already contains a protected record.
+- DNS editors can no longer add a wildcard whose parent is an ancestor of a protected name (`*` in the same zone, or `*.lab.example.net.` when `dns.lab.example.net.` is protected). Closest-encloser synthesis would otherwise answer that QNAME without an exact owner.
 
 ## v1.3.0 — 2026-08-29
 
