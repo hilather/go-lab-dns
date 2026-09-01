@@ -303,6 +303,56 @@ func TestAuthoritativeMissNeverForwards(t *testing.T) {
 	}
 }
 
+func TestFallthroughLocalCacheDoesNotSkipForward(t *testing.T) {
+	up := startQueryFake(t)
+	up.setAnswers(model.RR{Name: "outside.example.", Type: model.TypeA, Class: model.ClassIN, TTL: time.Second, Data: "192.0.2.50"})
+	st := &model.State{Spec: model.Spec{
+		Access:   model.AccessSpec{ClientGroups: []model.ClientGroup{{ID: "fwd", CIDRs: []string{"10.0.0.0/8"}, AllowForward: true}}},
+		Defaults: model.DefaultsSpec{TTL: time.Second, NegativeTTL: time.Second, CNAMEDepth: 8},
+		Zones: []model.Zone{{
+			ID: "ov", Name: "ov.example.", Mode: model.ZoneModeOverlay,
+			Records: []model.Record{{ID: "c", Owner: "alias", Type: model.TypeCNAME, TTL: time.Second, Values: []string{"outside.example."}}},
+		}},
+		Forwarding: model.ForwardingSpec{
+			Policies: []model.ForwardingPolicy{{ID: "def", Suffix: ".", UpstreamPool: "p"}},
+			Pools:    []model.UpstreamPool{{ID: "p", Strategy: model.StrategyOrdered, Upstreams: []model.Upstream{{ID: "u", Endpoint: up.UDPAddr(), Transport: model.TransportUDP}}}},
+		},
+		Cache: model.CacheSpec{Enabled: true, MaxEntries: 8, MinimumTTL: time.Second},
+	}}
+	snap := compileSnap(t, st)
+	store := snapshot.NewStore()
+	store.Swap(snap)
+	c := cache.New(cache.PolicyFromSpec(st.Spec.Cache), nil)
+	// Simulate a management resolve(useCache) that stored an incomplete
+	// overlay CNAME fallthrough under the shared local key.
+	c.Put(cache.Key{
+		Revision: snap.Revision,
+		Name:     "alias.ov.example.",
+		Type:     model.TypeA,
+		Class:    model.ClassIN,
+		Local:    true,
+	}, cache.Entry{Result: model.Result{
+		RCode:       model.RCodeNoError,
+		Fallthrough: true,
+		Answers:     []model.RR{{Name: "alias.ov.example.", Type: model.TypeCNAME, Class: model.ClassIN, TTL: time.Second, Data: "outside.example."}},
+	}}, cache.PutOpts{})
+	h := NewOpts(Opts{Store: store, Cache: c})
+	res := serve(t, h, model.Query{
+		Name: "alias.ov.example.", Type: model.TypeA, Class: model.ClassIN,
+		Client: netip.MustParseAddr("10.0.0.9"), RD: true,
+	})
+	if res.RCode != model.RCodeNoError {
+		t.Fatalf("rcode=%s", res.RCode)
+	}
+	if len(res.Answers) < 2 {
+		t.Fatalf("poisoned fallthrough cache must not skip forward, got %+v", res.Answers)
+	}
+	wantRR(t, res, model.TypeA, "192.0.2.50")
+	if up.Packets.Load() < 1 {
+		t.Fatal("expected upstream exchange after ignoring fallthrough cache")
+	}
+}
+
 func TestOverlayCNAMEFallthroughForwardsTarget(t *testing.T) {
 	up := startQueryFake(t)
 	up.setAnswers(model.RR{Name: "outside.example.", Type: model.TypeA, Class: model.ClassIN, TTL: time.Second, Data: "192.0.2.50"})

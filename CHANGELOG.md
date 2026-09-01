@@ -6,6 +6,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Fixed
 
+- Management `resolve` / `dns_resolve` with `useCache` no longer stores overlay `Fallthrough` results in the shared process cache. Those incomplete answers previously occupied the local cache key, so live DNS skipped forwarding and returned CNAME-only or empty NOERROR until TTL expiry.
 - DNS editors can no longer delete or retarget a protected name by replacing the whole zone (omitting the record) or by using a relative owner that expands to a protected FQDN. Plan/apply/validate now expand owners against the zone origin and deny zone update/remove when the current zone already contains a protected record.
 
 ## v1.3.0 — 2026-08-29

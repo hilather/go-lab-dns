@@ -372,7 +372,7 @@ func (h *Handler) lookupCache(snap *snapshot.Snapshot, q model.Query, cl class, 
 		Class:    q.Class,
 		Local:    true,
 	}
-	if ent, ok := h.cache.Get(localKey, opts); ok {
+	if ent, ok := h.cache.Get(localKey, opts); ok && cache.Cacheable(ent.Result) {
 		h.observeCache("hit")
 		return ent, true
 	}
@@ -390,19 +390,19 @@ func (h *Handler) lookupCache(snap *snapshot.Snapshot, q model.Query, cl class, 
 		Local:        false,
 	}
 	ent, ok := h.cache.Get(upKey, opts)
-	if ok {
+	if ok && cache.Cacheable(ent.Result) {
 		h.observeCache("hit")
-	} else {
-		h.observeCache("miss")
+		return ent, true
 	}
-	return ent, ok
+	h.observeCache("miss")
+	return cache.Entry{}, false
 }
 
 func (h *Handler) storeCache(snap *snapshot.Snapshot, q model.Query, cl class, res model.Result, local bool, plan chaos.ActionPlan) {
 	if h.cache == nil {
 		return
 	}
-	if !cacheable(res) {
+	if !cache.Cacheable(res) {
 		return
 	}
 	if !local && cl.ForwardingID == "" {
@@ -455,15 +455,6 @@ func (h *Handler) pressure() *chaos.Pressure {
 		return e.PressureTracker()
 	}
 	return nil
-}
-
-func cacheable(res model.Result) bool {
-	switch res.RCode {
-	case model.RCodeNoError, model.RCodeNXDomain:
-		return !res.Fallthrough
-	default:
-		return false
-	}
 }
 
 // localOverlayOrRefused keeps a local overlay CNAME (or other local

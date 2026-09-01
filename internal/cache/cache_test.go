@@ -209,6 +209,24 @@ func TestDisabledAndZeroTTL(t *testing.T) {
 	}
 }
 
+func TestCacheableRejectsFallthroughAndErrors(t *testing.T) {
+	if !Cacheable(model.Result{RCode: model.RCodeNoError}) {
+		t.Fatal("complete NOERROR must be cacheable")
+	}
+	if !Cacheable(model.Result{RCode: model.RCodeNXDomain}) {
+		t.Fatal("NXDOMAIN must be cacheable")
+	}
+	if Cacheable(model.Result{RCode: model.RCodeNoError, Fallthrough: true}) {
+		t.Fatal("overlay fallthrough must not be cacheable")
+	}
+	if Cacheable(model.Result{RCode: model.RCodeServFail}) {
+		t.Fatal("SERVFAIL must not be cacheable")
+	}
+	if Cacheable(model.Result{RCode: model.RCodeRefused}) {
+		t.Fatal("REFUSED must not be cacheable")
+	}
+}
+
 func TestPolicyFromSpec(t *testing.T) {
 	p := PolicyFromSpec(model.CacheSpec{Enabled: true, MaxEntries: 9, MinimumTTL: time.Second})
 	if !p.Enabled || p.MaxEntries != 9 || p.MinimumTTL != time.Second {

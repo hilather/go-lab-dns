@@ -6,5 +6,6 @@
 // clamp on that side. Get advertises min(storedTTL−elapsed, ExpireAt−now)
 // (floor 0) so a MaximumTTL clamp cannot be served past. Chaos hooks
 // (bypass, force-miss, serve-stale, treat-expired, skip-put) change the
-// request path or the returned copy.
+// request path or the returned copy. Cacheable rejects Fallthrough and
+// error RCODEs so management resolve cannot poison live DNS.
 package cache

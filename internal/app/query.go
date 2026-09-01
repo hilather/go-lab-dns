@@ -207,7 +207,7 @@ func (s *App) resolveAgainst(ctx context.Context, snap *snapshot.Snapshot, in Re
 			CD:       q.CD,
 			Local:    true,
 		}
-		if ent, ok := s.cache.Get(key, cache.GetOpts{}); ok {
+		if ent, ok := s.cache.Get(key, cache.GetOpts{}); ok && cache.Cacheable(ent.Result) {
 			return ent.Result, nil
 		}
 		res, err := resolver.Resolve(ctx, snap, q, zoneID)
@@ -215,7 +215,12 @@ func (s *App) resolveAgainst(ctx context.Context, snap *snapshot.Snapshot, in Re
 			return model.Result{}, err
 		}
 		s.annotateExplanation(&res, snap, in)
-		s.cache.Put(key, cache.Entry{Result: res}, cache.PutOpts{})
+		// Management resolve never forwards. Fallthrough (and other
+		// non-cacheable RCODEs) must not occupy the shared local key
+		// or live DNS will skip Exchange.
+		if cache.Cacheable(res) {
+			s.cache.Put(key, cache.Entry{Result: res}, cache.PutOpts{})
+		}
 		return res, nil
 	}
 	res, err := resolver.Resolve(ctx, snap, q, zoneID)

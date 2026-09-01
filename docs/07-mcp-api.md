@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: MCP, Application
+Last reviewed: 2026-09-01 (dns_resolve useCache does not store Fallthrough)
 Last reviewed: 2026-08-23 (allowLegacyClients overlay knob)
 Target protocol baseline: 2026-07-28
 Related ADRs: 0004, 0006
@@ -94,7 +95,7 @@ dns_audit_query
 dns_audit_get
 ```
 
-These names are frozen in `internal/capabilities`. Health live/ready have no tools. `dns_docs_get` is parameterized (`id=dns-semantics` or `id=chaos-safety`).
+These names are frozen in `internal/capabilities`. Health live/ready have no tools. `dns_docs_get` is parameterized (`id=dns-semantics` or `id=chaos-safety`). `dns_resolve` `useCache` shares the process DNS cache and does not store overlay `Fallthrough` (same rule as REST).
 
 Tools use explicit nouns and verbs, stable schemas, and descriptions that state whether the operation is read-only, state-changing, reversible, or high-impact.
 
