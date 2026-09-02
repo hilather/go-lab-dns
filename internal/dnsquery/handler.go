@@ -313,7 +313,11 @@ func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 		}
 	}
 
-	if cl.ForwardingID == "" {
+	// Classification selects a policy from the original QNAME. Overlay CNAME
+	// fallthrough must still re-select on the target (docs/02-dns-semantics.md),
+	// even when the original name matches no suffix. Unknown and local-only
+	// clients stay local: AllowForward is false and ForwardingID is empty.
+	if !cl.AllowForward {
 		return h.localOverlayOrRefused(snap, q, cl, local, haveLocal, plan), nil
 	}
 	if beforeUpstream != nil {
@@ -339,6 +343,9 @@ func (h *Handler) answer(ctx context.Context, snap *snapshot.Snapshot, q model.Q
 			}
 			exchangeID = tid
 		}
+	}
+	if exchangeID == "" {
+		return h.localOverlayOrRefused(snap, q, cl, local, haveLocal, plan), nil
 	}
 	up, err := h.fwd.ExchangeOpts(xctx, snap, fq, exchangeID, effects.Exchange(plan, h.metrics()))
 	if err != nil {

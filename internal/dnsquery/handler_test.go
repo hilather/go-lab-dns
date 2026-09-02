@@ -441,6 +441,112 @@ func TestOverlayCNAMEUsesTargetSuffixPolicy(t *testing.T) {
 	}
 }
 
+func TestOverlayCNAMEForwardsWhenOriginalQNAMEHasNoPolicy(t *testing.T) {
+	// Suffix-only forwarding (no root ".") is the realistic overlay setup:
+	// map lab names to corporate names without becoming an open recursive
+	// resolver. classify() leaves ForwardingID empty for the original QNAME;
+	// Exchange must still use the CNAME target's suffix policy.
+	corp := startQueryFake(t)
+	corp.setAnswers(model.RR{Name: "host.corp.example.net.", Type: model.TypeA, Class: model.ClassIN, TTL: time.Second, Data: "10.0.0.53"})
+	st := &model.State{Spec: model.Spec{
+		Access:   model.AccessSpec{ClientGroups: []model.ClientGroup{{ID: "fwd", CIDRs: []string{"10.0.0.0/8"}, AllowForward: true}}},
+		Defaults: model.DefaultsSpec{TTL: time.Second, NegativeTTL: time.Second, CNAMEDepth: 8},
+		Zones: []model.Zone{{
+			ID: "ov", Name: "ov.example.", Mode: model.ZoneModeOverlay,
+			Records: []model.Record{{ID: "c", Owner: "alias", Type: model.TypeCNAME, TTL: time.Second, Values: []string{"host.corp.example.net."}}},
+		}},
+		Forwarding: model.ForwardingSpec{
+			Policies: []model.ForwardingPolicy{{ID: "corp", Suffix: "corp.example.net.", UpstreamPool: "corporate"}},
+			Pools: []model.UpstreamPool{{
+				ID: "corporate", Strategy: model.StrategyOrdered,
+				Upstreams: []model.Upstream{{ID: "corp-1", Endpoint: corp.UDPAddr(), Transport: model.TransportUDP}},
+			}},
+		},
+	}}
+	snap := compileSnap(t, st)
+	store := snapshot.NewStore()
+	store.Swap(snap)
+	c := cache.New(cache.PolicyFromSpec(model.CacheSpec{Enabled: true, MaxEntries: 64, MinimumTTL: time.Second}), nil)
+	h := NewOpts(Opts{Store: store, Cache: c})
+	q := model.Query{
+		Name: "alias.ov.example.", Type: model.TypeA, Class: model.ClassIN,
+		Client: netip.MustParseAddr("10.0.0.9"), RD: true,
+	}
+	res := serve(t, h, q)
+	if res.RCode != model.RCodeNoError {
+		t.Fatalf("rcode=%s", res.RCode)
+	}
+	if len(res.Answers) < 2 {
+		t.Fatalf("want CNAME+A, got %+v", res.Answers)
+	}
+	if res.Answers[0].Type != model.TypeCNAME {
+		t.Fatalf("first rr %s", res.Answers[0].Type)
+	}
+	wantRR(t, res, model.TypeA, "10.0.0.53")
+	if corp.Packets.Load() < 1 {
+		t.Fatal("CNAME target under corp.example.net. must dial the corporate pool")
+	}
+	if res.ForwardingID != "corp" {
+		t.Fatalf("exchange policy=%s, want corp", res.ForwardingID)
+	}
+
+	// Incomplete CNAME-only must not be stored as a shared local hit.
+	// Unknown clients must still see only the overlay CNAME (no leaked A).
+	unknown := serve(t, h, model.Query{
+		Name: "alias.ov.example.", Type: model.TypeA, Class: model.ClassIN,
+		Client: netip.MustParseAddr("8.8.8.8"), RD: true,
+	})
+	if unknown.RCode != model.RCodeNoError {
+		t.Fatalf("unknown rcode=%s", unknown.RCode)
+	}
+	if len(unknown.Answers) != 1 || unknown.Answers[0].Type != model.TypeCNAME {
+		t.Fatalf("unknown client must not receive cached upstream A, got %+v", unknown.Answers)
+	}
+}
+
+func TestOverlayCNAMELocalOnlyKeepsLocalWhenOnlyTargetHasPolicy(t *testing.T) {
+	corp := startQueryFake(t)
+	corp.setAnswers(model.RR{Name: "host.corp.example.net.", Type: model.TypeA, Class: model.ClassIN, TTL: time.Second, Data: "10.0.0.53"})
+	st := &model.State{Spec: model.Spec{
+		Access: model.AccessSpec{ClientGroups: []model.ClientGroup{{
+			ID: "local", CIDRs: []string{"192.0.2.0/24"}, AllowForward: false,
+		}}},
+		Defaults: model.DefaultsSpec{TTL: time.Second, NegativeTTL: time.Second, CNAMEDepth: 8},
+		Zones: []model.Zone{{
+			ID: "ov", Name: "ov.example.", Mode: model.ZoneModeOverlay,
+			Records: []model.Record{{ID: "c", Owner: "alias", Type: model.TypeCNAME, TTL: time.Second, Values: []string{"host.corp.example.net."}}},
+		}},
+		Forwarding: model.ForwardingSpec{
+			Policies: []model.ForwardingPolicy{{ID: "corp", Suffix: "corp.example.net.", UpstreamPool: "corporate"}},
+			Pools: []model.UpstreamPool{{
+				ID: "corporate", Strategy: model.StrategyOrdered,
+				Upstreams: []model.Upstream{{ID: "corp-1", Endpoint: corp.UDPAddr(), Transport: model.TransportUDP}},
+			}},
+		},
+	}}
+	snap := compileSnap(t, st)
+	store := snapshot.NewStore()
+	store.Swap(snap)
+	h := NewOpts(Opts{Store: store})
+	before := corp.Packets.Load()
+	res := serve(t, h, model.Query{
+		Name: "alias.ov.example.", Type: model.TypeA, Class: model.ClassIN,
+		Client: netip.MustParseAddr("192.0.2.10"), RD: true,
+	})
+	if res.RCode != model.RCodeNoError {
+		t.Fatalf("rcode=%s want NOERROR with local overlay CNAME", res.RCode)
+	}
+	if res.RA {
+		t.Fatal("local-only client must have RA=0")
+	}
+	if len(res.Answers) != 1 || res.Answers[0].Type != model.TypeCNAME {
+		t.Fatalf("want local CNAME, got %+v", res.Answers)
+	}
+	if corp.Packets.Load() != before {
+		t.Fatal("local-only client must not dial upstream")
+	}
+}
+
 func TestOverlayCNAMEUnknownClientKeepsLocalAnswers(t *testing.T) {
 	st := &model.State{Spec: model.Spec{
 		Access:   model.AccessSpec{UnknownClient: model.UnknownClientRefuseForward, ClientGroups: nil},
