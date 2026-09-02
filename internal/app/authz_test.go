@@ -153,6 +153,18 @@ func TestApplyRejectsProtectedNameZoneReplaceAndRelativeOwner(t *testing.T) {
 		}},
 	})
 	_ = requireCode(t, err, domainerr.CodeProtectedObject)
+
+	_, err = svc.Apply(ctx, editor, ChangeIn{
+		ExpectedRevision: added.CandidateRevision,
+		IdempotencyKey:   "editor-covering-wildcard",
+		Reason:           "add catch-all",
+		Operations: []model.Operation{{
+			Op:     model.OpAdd,
+			Target: model.Target{Kind: model.TargetRecord, ID: "star-a", ZoneID: "lab-zone"},
+			Value:  mustJSON(model.Record{ID: "star-a", Owner: "*", Type: model.TypeA, Values: []string{"10.42.0.99"}}),
+		}},
+	})
+	_ = requireCode(t, err, domainerr.CodeProtectedObject)
 }
 
 func TestValidateMatchesPlanAuthorization(t *testing.T) {

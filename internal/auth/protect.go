@@ -86,7 +86,38 @@ func (p Protected) hasGroup(id model.ClientGroupID) bool {
 }
 
 func (p Protected) coversName(name string) bool {
-	return nameProtected(canonName(name), p.nameSet())
+	return nameProtected(canonName(name), p.nameSet()) || wildcardCoversProtected(name, p)
+}
+
+// wildcardCoversProtected reports whether a wildcard owner would synthesize
+// answers for a protected name. Closest-encloser synthesis matches any name
+// under the wildcard parent when no closer owner exists (docs/02).
+func wildcardCoversProtected(owner string, prot Protected) bool {
+	parent, ok := wildcardParent(owner)
+	if !ok {
+		return false
+	}
+	for _, n := range prot.Names {
+		pn := canonName(string(n))
+		if pn == "" || pn == parent {
+			continue
+		}
+		if parent == "" || strings.HasSuffix(pn, "."+parent) {
+			return true
+		}
+	}
+	return false
+}
+
+func wildcardParent(owner string) (string, bool) {
+	name := canonName(owner)
+	if name == "*" {
+		return "", true
+	}
+	if strings.HasPrefix(name, "*.") {
+		return strings.TrimPrefix(name, "*."), true
+	}
+	return "", false
 }
 
 func canonName(s string) string {

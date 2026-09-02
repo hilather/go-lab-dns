@@ -2,7 +2,7 @@
 
 Status: Implemented (SEC-001)
 Owners: Security, DNS, Control Plane
-Last reviewed: 2026-08-30 (protected-name zone replace and relative owners)
+Last reviewed: 2026-08-31 (protected-name wildcard synthesis)
 Related ADRs: 0003, 0004, 0005, 0007
 
 ## Goals
@@ -125,7 +125,7 @@ Deployment policy defines:
 - Upstream endpoints that ordinary roles cannot change.
 - Emergency controls that cannot be removed through runtime mutation.
 
-Plan/apply/validate expand relative record owners against the zone origin before the protected-name check, matching desired-state canonicalization. A zone update or remove is denied for ordinary roles when the current zone is protected or already contains a protected record — zone replace is whole-object, so omitting that record would delete it. Administrators may still mutate protected objects.
+Plan/apply/validate expand relative record owners against the zone origin before the protected-name check, matching desired-state canonicalization. A wildcard owner (`*.<parent>`) is denied for ordinary roles when a protected name sits under that parent — closest-encloser synthesis would otherwise answer the protected QNAME without an exact owner. A zone update or remove is denied for ordinary roles when the current zone is protected or already contains a protected record — zone replace is whole-object, so omitting that record would delete it. Administrators may still mutate protected objects.
 
 ## Secret management
 
