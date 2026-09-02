@@ -3,6 +3,7 @@
 Status: Implemented (API-001)
 Owners: REST, Application
 Last reviewed: 2026-08-19 (serve wires embedded UI handler)
+Last reviewed: 2026-09-01 (resolve useCache does not store Fallthrough)
 Related ADRs: 0004
 
 ## Goals
@@ -136,7 +137,7 @@ Actor JSON copies Identify `id`/`role`/`scopes`/`groups` and sets `class` to `ui
 }
 ```
 
-The normal management resolve operation defaults to not consuming live chaos decisions. An explicit authorized option can model or apply chaos.
+The normal management resolve operation defaults to not consuming live chaos decisions. An explicit authorized option can model or apply chaos. `useCache` reads and writes the process DNS cache; overlay `Fallthrough` results are not stored (management resolve never forwards).
 
 ## Pagination
 

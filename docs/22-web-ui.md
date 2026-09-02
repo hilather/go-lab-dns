@@ -2,6 +2,7 @@
 
 Status: Implemented
 Owners: Control Plane, REST, Security, UI
+Last reviewed: 2026-09-01 (resolve useCache does not store Fallthrough)
 Last reviewed: 2026-08-29 (unknown /zones/:zoneId shows one not_found)
 Last reviewed: 2026-08-29 (charcoal/amber chrome on login and remaining operator pages)
 Last reviewed: 2026-08-29 (operator shell groups, single emergency verb, zones inventory)
@@ -200,7 +201,7 @@ Shell (authenticated):
 `/resolve` and the other leftover bodies (`/state`, `/changes`, `/zones/:zoneId/records/:recordId`, `/forwarding`, `/cache`, `/chaos`, `/chaos/:policyId`, `/audit`, `/audit/:eventId`, `/schema`, `/docs`, `/docs/:id`, `/capabilities`, `/reset`):
 
 - Same charcoal/amber page chrome as `/zones` (headers, surfaces, tables, forms, empty states, confirm dialogs). `/zones` and `/zones/:zoneId` inventory is unchanged.
-- Name, type, client group, transport, useCache, applyChaos (default off, matching REST).
+- Name, type, client group, transport, useCache, applyChaos (default off, matching REST). `useCache` shares the process DNS cache; overlay fallthrough answers are not stored.
 - Side-by-side answer vs explain (matched zone, wildcard source, forwarder, cache, chaos decision).
 
 `/forwarding` and `/cache`:

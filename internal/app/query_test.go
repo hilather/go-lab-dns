@@ -156,6 +156,69 @@ func TestResolveAndExplain(t *testing.T) {
 	}
 }
 
+func TestResolveUseCacheDoesNotStoreFallthrough(t *testing.T) {
+	path := copyNamedFixture(t, "pack-sample.yaml")
+	svc, boot := mustBoot(t, path)
+	c := cache.New(cache.PolicyFromSpec(boot.Canonical.Spec.Cache), nil)
+	svc.cache = c
+	ctx := context.Background()
+
+	miss, err := svc.Resolve(ctx, actor(), ResolveIn{
+		Name:     "other.vendor.example.",
+		Type:     model.TypeA,
+		UseCache: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !miss.Result.Fallthrough || miss.Result.RCode != model.RCodeNoError {
+		t.Fatalf("overlay miss=%+v", miss.Result)
+	}
+	ftKey := cache.Key{
+		Revision: boot.Revision,
+		Name:     "other.vendor.example.",
+		Type:     model.TypeA,
+		Class:    model.ClassIN,
+		Local:    true,
+	}
+	if _, ok := c.Get(ftKey, cache.GetOpts{}); ok {
+		t.Fatal("management resolve must not cache overlay fallthrough")
+	}
+
+	hit, err := svc.Resolve(ctx, actor(), ResolveIn{
+		Name:     "special-api.vendor.example.",
+		Type:     model.TypeA,
+		UseCache: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hit.Result.Fallthrough || len(hit.Result.Answers) == 0 {
+		t.Fatalf("local overlay hit=%+v", hit.Result)
+	}
+	localKey := cache.Key{
+		Revision: boot.Revision,
+		Name:     "special-api.vendor.example.",
+		Type:     model.TypeA,
+		Class:    model.ClassIN,
+		Local:    true,
+	}
+	if _, ok := c.Get(localKey, cache.GetOpts{}); !ok {
+		t.Fatal("complete local answer must still be cached")
+	}
+	again, err := svc.Resolve(ctx, actor(), ResolveIn{
+		Name:     "special-api.vendor.example.",
+		Type:     model.TypeA,
+		UseCache: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Result.Source != model.SourceCache {
+		t.Fatalf("cached source=%s", again.Result.Source)
+	}
+}
+
 func TestForwardingAndCacheStatus(t *testing.T) {
 	path := copyFixture(t)
 	svc, boot := mustBoot(t, path)

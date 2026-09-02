@@ -2,6 +2,7 @@
 
 Status: Proposed normative quality gate
 Owners: All teams
+Last reviewed: 2026-09-01 (resolve useCache fallthrough must not poison DNS cache)
 Last reviewed: 2026-08-29 (app tsc excludes Vitest files; web-test runs tsc --noEmit)
 Last reviewed: 2026-08-29 (operator chrome leftover-color grep and per-route class assertions)
 Last reviewed: 2026-08-29 (grouped nav, single emergency verb, zones inventory/hops)
@@ -24,7 +25,7 @@ Every area must have regression tests. No feature, bug fix, protocol behavior, c
 - Zone and forwarding selection.
 - Wildcard closest-encloser behavior.
 - CNAME and negative answer logic.
-- Cache TTL and key behavior.
+- Cache TTL and key behavior. Management resolve `useCache` must not store overlay Fallthrough; DNS lookup ignores a poisoned fallthrough local entry.
 - Chaos selectors, outcome selection, actions, and safety clamping.
 - Authorization decisions.
 - Error mappings.

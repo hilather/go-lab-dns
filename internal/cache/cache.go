@@ -18,6 +18,18 @@ type Policy struct {
 	StaleServing       bool
 }
 
+// Cacheable reports whether a result may be stored or served from cache.
+// SERVFAIL/REFUSED/FORMERR/NOTIMP are never stored. Overlay Fallthrough
+// is not stored until a forward completes (docs/02-dns-semantics.md).
+func Cacheable(res model.Result) bool {
+	switch res.RCode {
+	case model.RCodeNoError, model.RCodeNXDomain:
+		return !res.Fallthrough
+	default:
+		return false
+	}
+}
+
 // Key identifies a cacheable answer. Revision namespaces local (and
 // forwarded) data so a snapshot swap cannot serve a pre-mutation override.
 // ForwardingID is empty for local answers; CD is only material for upstream.
