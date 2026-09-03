@@ -453,7 +453,7 @@ sequenceDiagram
 - Timeouts, transport errors, SERVFAIL, REFUSED failover are explicit policy fields.
 - Detect self-forwarding and obvious cycles at validation time (PR-03).
 - **Never** use host `/etc/resolv.conf` (no config key in v1alpha1).
-- **Unknown or unmatched client → never forward** (RA=0). Local authoritative/overlay answers are still served. RCODE=REFUSED **only** when there is no local path (no matching zone, or overlay fallthrough with `ForwardingID == none`).
+- **Unknown or unmatched client → never forward** (RA=0). Local authoritative/overlay answers are still served. RCODE=REFUSED **only** when there is no local path (no matching zone, or overlay fallthrough with no usable forwarding policy). Overlay CNAME fallthrough re-selects the policy on the CNAME target even when the original QNAME matched no suffix; `ForwardingID` on the classified query stays the original-QNAME selection.
 
 #### Cache (`internal/cache`)
 

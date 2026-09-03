@@ -5,6 +5,7 @@ Owners: DNS
 Last reviewed: 2026-08-18 (overlay CNAME kept when forward refused)
 Last reviewed: 2026-08-23 (over-length desired-state names; ADR 0009)
 Last reviewed: 2026-09-01 (management resolve useCache does not store Fallthrough)
+Last reviewed: 2026-09-02 (overlay CNAME re-selects target policy when original QNAME has no suffix)
 Related ADRs: 0002, 0005, 0007, 0009
 
 ## Problem statement
@@ -127,7 +128,7 @@ Implemented in `internal/forwarder` + `internal/dnsquery`. `forwarder.Exchange` 
 - UDP truncation from an upstream triggers a TCP retry to the **same** endpoint when `failover.udpTruncateRetryTCP` is true. The Go zero value is false (no retry).
 - NXDOMAIN (and other successful RCODEs except SERVFAIL/REFUSED) do **not** fail over.
 - Timeouts, transport errors, SERVFAIL, and REFUSED failover are explicit `FailoverSpec` bools. They are **not** materialized: the Go zero value means do not fail over. A zero `timeout` is **not** unlimited; Exchange uses a **500ms** per-attempt budget so it stacks under the 2s query-handler total deadline (at least one failover try remains when `onTimeout` is set). Dial uses a 250ms connect budget capped by the remaining attempt time. If the parent deadline expires mid-attempt, Exchange returns the context error (no synthesized SERVFAIL).
-- Overlay CNAME that leaves local data re-selects the forwarding policy on the **CNAME target** for the upstream exchange. Classification (and a future chaos `Decide`) still sees the policy selected from the original QNAME.
+- Overlay CNAME that leaves local data re-selects the forwarding policy on the **CNAME target** for the upstream exchange, including when the original QNAME matches no forwarding suffix (suffix-only policies, no root `.`). Classification (and a future chaos `Decide`) still sees the policy selected from the original QNAME. Unknown and local-only clients never take this path.
 - Self-forwarding and cyclic configurations are rejected at `config.Validate` (they need the listen address).
 - Forwarded answers never set AA or AD. CD is passed through. RA is left false for the orchestrator.
 
