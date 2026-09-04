@@ -461,6 +461,7 @@ sequenceDiagram
 - Keys include every request attribute that materially affects the answer, plus `Revision` for local answers.
 - Positive and negative TTLs clamped to configured bounds.
 - Chaos cache effects change the request path or return a **copy**.
+- Overlay `Fallthrough` is not stored until a forward completes. Refuse-forward may return the local CNAME but must not write that incomplete answer under the shared local key.
 
 #### Default-deny (invariant 9 — lands in CFG + FWD, not SEC)
 
@@ -470,7 +471,7 @@ A query whose source IP matches **no** `clientGroups[].cidrs`:
 
 1. is classified `ClientGroupID = ""`;
 2. receives **local** authoritative or overlay answers (including authoritative NXDOMAIN/NODATA) with **RA=0**;
-3. is **never forwarded** and does not fill cache from upstream;
+3. is **never forwarded** and does not fill cache from upstream (and must not store an incomplete overlay CNAME under the shared local key);
 4. receives **REFUSED** (RA=0) **only when there is no local path** — no matching zone, or overlay fallthrough with no permitted forwarding policy;
 5. does not match client-group-scoped chaos policies. Record/zone/global chaos on a *local* answer may still apply. Forwarding-scoped chaos does not apply.
 6. is counted as `denied_forward` when a forward would have been required (not when a local answer is served).
