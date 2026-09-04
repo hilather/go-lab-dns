@@ -353,6 +353,115 @@ func TestFallthroughLocalCacheDoesNotSkipForward(t *testing.T) {
 	}
 }
 
+func TestUnknownClientLocalCacheMustNotSkipForward(t *testing.T) {
+	// Refuse-forward used to store the CNAME-only overlay answer under the
+	// shared local key (Fallthrough cleared so Cacheable() passed). A later
+	// AllowForward client then hit that key and skipped Exchange.
+	up := startQueryFake(t)
+	up.setAnswers(model.RR{Name: "outside.example.", Type: model.TypeA, Class: model.ClassIN, TTL: time.Second, Data: "192.0.2.50"})
+	st := overlayCNAMECacheState(t, up, true)
+	snap := compileSnap(t, st)
+	store := snapshot.NewStore()
+	store.Swap(snap)
+	c := cache.New(cache.PolicyFromSpec(st.Spec.Cache), nil)
+	h := NewOpts(Opts{Store: store, Cache: c})
+
+	unknown := serve(t, h, model.Query{
+		Name: "alias.ov.example.", Type: model.TypeA, Class: model.ClassIN,
+		Client: netip.MustParseAddr("8.8.8.8"), RD: true,
+	})
+	if unknown.RCode != model.RCodeNoError || len(unknown.Answers) != 1 || unknown.Answers[0].Type != model.TypeCNAME {
+		t.Fatalf("unknown client must keep local CNAME, got %+v", unknown)
+	}
+	if up.Packets.Load() != 0 {
+		t.Fatal("unknown client must not dial upstream")
+	}
+
+	localOnly := serve(t, h, model.Query{
+		Name: "alias.ov.example.", Type: model.TypeA, Class: model.ClassIN,
+		Client: netip.MustParseAddr("192.0.2.10"), RD: true,
+	})
+	if localOnly.RCode != model.RCodeNoError || len(localOnly.Answers) != 1 || localOnly.Answers[0].Type != model.TypeCNAME {
+		t.Fatalf("local-only client must keep local CNAME, got %+v", localOnly)
+	}
+	if up.Packets.Load() != 0 {
+		t.Fatal("local-only client must not dial upstream")
+	}
+
+	res := serve(t, h, model.Query{
+		Name: "alias.ov.example.", Type: model.TypeA, Class: model.ClassIN,
+		Client: netip.MustParseAddr("10.0.0.9"), RD: true,
+	})
+	if res.RCode != model.RCodeNoError {
+		t.Fatalf("rcode=%s", res.RCode)
+	}
+	if len(res.Answers) < 2 {
+		t.Fatalf("unknown-first local cache must not skip forward, got %+v", res.Answers)
+	}
+	wantRR(t, res, model.TypeA, "192.0.2.50")
+	if up.Packets.Load() < 1 {
+		t.Fatal("AllowForward client must exchange after an unknown CNAME-only query")
+	}
+}
+
+func TestForwardThenUnknownThenForwardAgain(t *testing.T) {
+	up := startQueryFake(t)
+	up.setAnswers(model.RR{Name: "outside.example.", Type: model.TypeA, Class: model.ClassIN, TTL: time.Second, Data: "192.0.2.50"})
+	st := overlayCNAMECacheState(t, up, true)
+	snap := compileSnap(t, st)
+	store := snapshot.NewStore()
+	store.Swap(snap)
+	c := cache.New(cache.PolicyFromSpec(st.Spec.Cache), nil)
+	h := NewOpts(Opts{Store: store, Cache: c})
+	fwdQ := model.Query{
+		Name: "alias.ov.example.", Type: model.TypeA, Class: model.ClassIN,
+		Client: netip.MustParseAddr("10.0.0.9"), RD: true,
+	}
+	first := serve(t, h, fwdQ)
+	if len(first.Answers) < 2 {
+		t.Fatalf("first forward %+v", first.Answers)
+	}
+	afterFirst := up.Packets.Load()
+	if afterFirst < 1 {
+		t.Fatal("expected first upstream exchange")
+	}
+
+	unknown := serve(t, h, model.Query{
+		Name: "alias.ov.example.", Type: model.TypeA, Class: model.ClassIN,
+		Client: netip.MustParseAddr("8.8.8.8"), RD: true,
+	})
+	if len(unknown.Answers) != 1 || unknown.Answers[0].Type != model.TypeCNAME {
+		t.Fatalf("unknown must not receive cached upstream A, got %+v", unknown.Answers)
+	}
+
+	second := serve(t, h, fwdQ)
+	if len(second.Answers) < 2 {
+		t.Fatalf("unknown query must not poison later forwarders, got %+v", second.Answers)
+	}
+	wantRR(t, second, model.TypeA, "192.0.2.50")
+}
+
+func overlayCNAMECacheState(t *testing.T, up *queryFake, withLocalOnly bool) *model.State {
+	t.Helper()
+	groups := []model.ClientGroup{{ID: "fwd", CIDRs: []string{"10.0.0.0/8"}, AllowForward: true}}
+	if withLocalOnly {
+		groups = append(groups, model.ClientGroup{ID: "local", CIDRs: []string{"192.0.2.0/24"}, AllowForward: false})
+	}
+	return &model.State{Spec: model.Spec{
+		Access:   model.AccessSpec{ClientGroups: groups},
+		Defaults: model.DefaultsSpec{TTL: time.Second, NegativeTTL: time.Second, CNAMEDepth: 8},
+		Zones: []model.Zone{{
+			ID: "ov", Name: "ov.example.", Mode: model.ZoneModeOverlay,
+			Records: []model.Record{{ID: "c", Owner: "alias", Type: model.TypeCNAME, TTL: time.Second, Values: []string{"outside.example."}}},
+		}},
+		Forwarding: model.ForwardingSpec{
+			Policies: []model.ForwardingPolicy{{ID: "def", Suffix: ".", UpstreamPool: "p"}},
+			Pools:    []model.UpstreamPool{{ID: "p", Strategy: model.StrategyOrdered, Upstreams: []model.Upstream{{ID: "u", Endpoint: up.UDPAddr(), Transport: model.TransportUDP}}}},
+		},
+		Cache: model.CacheSpec{Enabled: true, MaxEntries: 8, MinimumTTL: time.Second},
+	}}
+}
+
 func TestOverlayCNAMEFallthroughForwardsTarget(t *testing.T) {
 	up := startQueryFake(t)
 	up.setAnswers(model.RR{Name: "outside.example.", Type: model.TypeA, Class: model.ClassIN, TTL: time.Second, Data: "192.0.2.50"})

@@ -6,6 +6,7 @@ Last reviewed: 2026-08-18 (overlay CNAME kept when forward refused)
 Last reviewed: 2026-08-23 (over-length desired-state names; ADR 0009)
 Last reviewed: 2026-09-01 (management resolve useCache does not store Fallthrough)
 Last reviewed: 2026-09-02 (overlay CNAME re-selects target policy when original QNAME has no suffix)
+Last reviewed: 2026-09-04 (refuse-forward overlay CNAME is not stored under the shared local cache key)
 Related ADRs: 0002, 0005, 0007, 0009
 
 ## Problem statement
@@ -163,7 +164,7 @@ Implemented in `internal/cache` (process-scoped; **not** a Snapshot field).
 - Keys include Revision, QNAME, QTYPE, QCLASS, a local/upstream bit, and (for upstream) CD + forwarding policy ID. Revision namespaces so a mutation cannot return a pre-swap local override. Unknown/local-only clients never look up or fill upstream entries.
 - Positive TTLs are clamped to `[minimumTTL, maximumTTL]` when those bounds are > 0. Negative TTLs are capped by `maximumNegativeTTL`. A zero bound means no clamp on that side. A clamped TTL of 0 is not stored.
 - Get returns a **copy** whose RR TTLs are `min(storedTTL − elapsed, ExpireAt − now)` (floor 0). `ExpireAt` is the clamped lifetime, so a `maximumTTL` cap cannot be advertised past. Chaos hooks (`bypass`, `force-miss`, `serve-stale`, `treat-expired`/expire-this-request, skip-put) change the request path or the returned copy.
-- SERVFAIL/REFUSED/FORMERR/NOTIMP are not cached. Overlay `Fallthrough` results are not cached until a forward completes. Management `resolve` / `dns_resolve` with `useCache` shares this process cache and applies the same store rule: it never forwards, so a fallthrough result is never written under the local key (a poisoned fallthrough entry is ignored on the DNS path).
+- SERVFAIL/REFUSED/FORMERR/NOTIMP are not cached. Overlay `Fallthrough` results are not cached until a forward completes. Refuse-forward (unknown / local-only) may return that CNAME as a complete overlay answer (`Fallthrough=false`, RA=0) but must **not** store it under the shared local key — otherwise a later `AllowForward` client hits the CNAME-only entry and skips Exchange. Management `resolve` / `dns_resolve` with `useCache` shares this process cache and applies the same store rule: it never forwards, so a fallthrough result is never written under the local key (a poisoned fallthrough entry is ignored on the DNS path).
 
 ## DNS flags
 

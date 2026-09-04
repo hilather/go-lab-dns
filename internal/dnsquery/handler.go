@@ -469,7 +469,15 @@ func (h *Handler) pressure() *chaos.Pressure {
 func (h *Handler) localOverlayOrRefused(snap *snapshot.Snapshot, q model.Query, cl class, local model.Result, haveLocal bool, plan chaos.ActionPlan) model.Result {
 	if haveLocal && len(local.Answers) > 0 {
 		local.Fallthrough = false
-		h.storeCache(snap, q, cl, local, true, plan)
+		// Refuse-forward (unknown / local-only) must not occupy the shared
+		// local key. Clearing Fallthrough makes Cacheable() true, and
+		// lookupCache prefers that key for every client — a later
+		// AllowForward query would skip Exchange (same class as PR #40).
+		// AllowForward with no matching policy: the CNAME is complete for
+		// everyone and may be stored.
+		if cl.AllowForward {
+			h.storeCache(snap, q, cl, local, true, plan)
+		}
 		return local
 	}
 	h.denied.Add(1)
