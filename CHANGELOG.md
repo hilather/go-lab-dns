@@ -4,13 +4,19 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+- None.
+
+## v1.3.1 — 2026-09-07
+
+Curated notes: [docs/releases/v1.3.1.md](https://github.com/hilather/go-lab-dns/blob/v1.3.1/docs/releases/v1.3.1.md).
+
 ### Fixed
 
-- Refuse-forward (unknown / local-only) overlay CNAME answers are no longer stored under the shared local cache key. An unknown query first used to leave a CNAME-only hit that later `AllowForward` clients reused, skipping upstream Exchange until TTL expiry. Unknown and local-only clients still receive the local CNAME (RA=0).
-- Overlay CNAME fallthrough now forwards using the CNAME target's suffix policy when the original QNAME matches no forwarding suffix (typical suffix-only configs with no root `.` policy). Clients receive CNAME plus the upstream answer instead of a CNAME-only NOERROR. Unknown and local-only clients are unchanged.
-- Management `resolve` / `dns_resolve` with `useCache` no longer stores overlay `Fallthrough` results in the shared process cache. Those incomplete answers previously occupied the local cache key, so live DNS skipped forwarding and returned CNAME-only or empty NOERROR until TTL expiry.
-- DNS editors can no longer delete or retarget a protected name by replacing the whole zone (omitting the record) or by using a relative owner that expands to a protected FQDN. Plan/apply/validate now expand owners against the zone origin and deny zone update/remove when the current zone already contains a protected record.
-- DNS editors can no longer add a wildcard whose parent is an ancestor of a protected name (`*` in the same zone, or `*.lab.example.net.` when `dns.lab.example.net.` is protected). Closest-encloser synthesis would otherwise answer that QNAME without an exact owner.
+- Refuse-forward (unknown / local-only) overlay CNAME answers are no longer stored under the shared local cache key. An unknown query first used to leave a CNAME-only hit that later `AllowForward` clients reused, skipping upstream Exchange until TTL expiry. Unknown and local-only clients still receive the local CNAME (RA=0). Fixes #42.
+- Overlay CNAME fallthrough now forwards using the CNAME target's suffix policy when the original QNAME matches no forwarding suffix (typical suffix-only configs with no root `.` policy). Clients receive CNAME plus the upstream answer instead of a CNAME-only NOERROR. Unknown and local-only clients are unchanged. Fixes #41.
+- Management `resolve` / `dns_resolve` with `useCache` no longer stores overlay `Fallthrough` results in the shared process cache. Those incomplete answers previously occupied the local cache key, so live DNS skipped forwarding and returned CNAME-only or empty NOERROR until TTL expiry. Fixes #40.
+- DNS editors can no longer delete or retarget a protected name by replacing the whole zone (omitting the record) or by using a relative owner that expands to a protected FQDN. Plan/apply/validate now expand owners against the zone origin and deny zone update/remove when the current zone already contains a protected record. Fixes #38.
+- DNS editors can no longer add a wildcard whose parent is an ancestor of a protected name (`*` in the same zone, or `*.lab.example.net.` when `dns.lab.example.net.` is protected). Closest-encloser synthesis would otherwise answer that QNAME without an exact owner. Fixes #39.
 
 ## v1.3.0 — 2026-08-29
 

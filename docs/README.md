@@ -114,6 +114,7 @@ See [tasks/README.md](../tasks/README.md) and the [program board](../tasks/00-pr
 | [releases/v1.1.1.md](releases/v1.1.1.md) | 1.1.1 notes (allowLegacyClients overlay knob) |
 | [releases/v1.2.0.md](releases/v1.2.0.md) | 1.2.0 notes (over-length desired-state names; ADR 0009) |
 | [releases/v1.3.0.md](releases/v1.3.0.md) | 1.3.0 notes (dark operator chrome; leftover-route restyle) |
+| [releases/v1.3.1.md](releases/v1.3.1.md) | 1.3.1 notes (overlay CNAME cache/forward; protected-name RBAC; #38–#42) |
 | [releases/acceptance-evidence.md](releases/acceptance-evidence.md) | Acceptance index |
 | [ci-failure-hardening/2026-08-15-cli-help-not-generated.md](ci-failure-hardening/2026-08-15-cli-help-not-generated.md) | CI hardening note |
 | [../api/openapi/v1.json](../api/openapi/v1.json) | OpenAPI 3.1 |
