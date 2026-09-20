@@ -3,7 +3,7 @@
   "generatedBy": "internal/control/mcp.RenderManifest; DO NOT EDIT.",
   "protocol": "2026-07-28",
   "sdk": "github.com/modelcontextprotocol/go-sdk",
-  "sdkVersion": "v1.7.0",
+  "sdkVersion": "v1.8.0",
   "tools": [
     "dns_version_get",
     "dns_capabilities_get",
