@@ -4,7 +4,9 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
-- None.
+### Changed
+
+- Direct dependency `github.com/modelcontextprotocol/go-sdk` 1.7.0 → 1.8.0. MCP cancel test polls for async `notifications/cancelled` delivery under go-sdk 1.8.
 
 ## v1.3.1 — 2026-09-07
 
