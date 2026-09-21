@@ -22,24 +22,23 @@ jobs:
           from pathlib import Path
           path = Path('CHANGELOG.md')
           text = path.read_text()
-          old = """## Unreleased
-
-### Changed
-
-- Direct dependency `github.com/modelcontextprotocol/go-sdk` 1.7.0 → 1.8.0. MCP cancel test polls for async `notifications/cancelled` delivery under go-sdk 1.8.
-
-## v1.3.1 — 2026-09-07"""
-          new = """## Unreleased
-
-## v1.3.2 — 2026-09-21
-
-Curated notes: [docs/releases/v1.3.2.md](https://github.com/hilather/go-lab-dns/blob/v1.3.2/docs/releases/v1.3.2.md).
-
-### Changed
-
-- Direct dependency `github.com/modelcontextprotocol/go-sdk` 1.7.0 → 1.8.0. MCP cancel test polls for async `notifications/cancelled` delivery under go-sdk 1.8.
-
-## v1.3.1 — 2026-09-07"""
+          old = (
+              '## Unreleased\n\n'
+              '### Changed\n\n'
+              '- Direct dependency `github.com/modelcontextprotocol/go-sdk` 1.7.0 \u2192 1.8.0. '
+              'MCP cancel test polls for async `notifications/cancelled` delivery under go-sdk 1.8.\n\n'
+              '## v1.3.1 \u2014 2026-09-07'
+          )
+          new = (
+              '## Unreleased\n\n'
+              '## v1.3.2 \u2014 2026-09-21\n\n'
+              'Curated notes: [docs/releases/v1.3.2.md]'
+              '(https://github.com/hilather/go-lab-dns/blob/v1.3.2/docs/releases/v1.3.2.md).\n\n'
+              '### Changed\n\n'
+              '- Direct dependency `github.com/modelcontextprotocol/go-sdk` 1.7.0 \u2192 1.8.0. '
+              'MCP cancel test polls for async `notifications/cancelled` delivery under go-sdk 1.8.\n\n'
+              '## v1.3.1 \u2014 2026-09-07'
+          )
           if old not in text:
               raise SystemExit('expected Unreleased Changed block not found')
           path.write_text(text.replace(old, new, 1))
