@@ -27,7 +27,7 @@ const (
 	SDKModule = "github.com/modelcontextprotocol/go-sdk"
 
 	// SDKVersion is the pinned official SDK tag.
-	SDKVersion = "v1.7.0"
+	SDKVersion = "v1.8.0"
 
 	// DefaultPath is the Streamable HTTP mount on the management listener.
 	DefaultPath = "/mcp"

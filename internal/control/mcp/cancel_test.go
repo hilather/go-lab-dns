@@ -42,8 +42,12 @@ func TestToolCancellation(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("canceled call did not return")
 	}
-	if slow.sawCancel.Load() == 0 {
-		t.Fatal("service did not observe cancellation")
+	deadline := time.Now().Add(time.Second)
+	for slow.sawCancel.Load() == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("service did not observe cancellation")
+		}
+		time.Sleep(5 * time.Millisecond)
 	}
 }
 

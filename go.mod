@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/miekg/dns v1.1.73
-	github.com/modelcontextprotocol/go-sdk v1.7.0
+	github.com/modelcontextprotocol/go-sdk v1.8.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
