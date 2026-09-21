@@ -4,6 +4,10 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+## v1.3.2 — 2026-09-21
+
+Curated notes: [docs/releases/v1.3.2.md](https://github.com/hilather/go-lab-dns/blob/v1.3.2/docs/releases/v1.3.2.md).
+
 ### Changed
 
 - Direct dependency `github.com/modelcontextprotocol/go-sdk` 1.7.0 → 1.8.0. MCP cancel test polls for async `notifications/cancelled` delivery under go-sdk 1.8.
