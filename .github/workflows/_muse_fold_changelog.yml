@@ -1,0 +1,55 @@
+name: muse-fold-changelog
+on:
+  push:
+    branches: [chore/release-v1.3.2]
+    paths: ['.github/workflows/_muse_fold_changelog.yml']
+permissions:
+  contents: write
+jobs:
+  fold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chore/release-v1.3.2
+          fetch-depth: 0
+      - name: Fold Unreleased into v1.3.2 and remove this workflow
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git show origin/main:CHANGELOG.md > CHANGELOG.md
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('CHANGELOG.md')
+          text = path.read_text()
+          old = """## Unreleased
+
+### Changed
+
+- Direct dependency `github.com/modelcontextprotocol/go-sdk` 1.7.0 → 1.8.0. MCP cancel test polls for async `notifications/cancelled` delivery under go-sdk 1.8.
+
+## v1.3.1 — 2026-09-07"""
+          new = """## Unreleased
+
+## v1.3.2 — 2026-09-21
+
+Curated notes: [docs/releases/v1.3.2.md](https://github.com/hilather/go-lab-dns/blob/v1.3.2/docs/releases/v1.3.2.md).
+
+### Changed
+
+- Direct dependency `github.com/modelcontextprotocol/go-sdk` 1.7.0 → 1.8.0. MCP cancel test polls for async `notifications/cancelled` delivery under go-sdk 1.8.
+
+## v1.3.1 — 2026-09-07"""
+          if old not in text:
+              raise SystemExit('expected Unreleased Changed block not found')
+          path.write_text(text.replace(old, new, 1))
+          print('folded CHANGELOG Unreleased into v1.3.2')
+          PY
+          rm -f .github/workflows/_muse_fold_changelog.yml
+          git config user.name "hilather"
+          git config user.email "hilather@gmail.com"
+          git add CHANGELOG.md
+          git add -u .github/workflows/_muse_fold_changelog.yml
+          git status
+          git commit -m "chore(release): fold Unreleased into v1.3.2 CHANGELOG" -m "— Muse"
+          git push origin HEAD:chore/release-v1.3.2
