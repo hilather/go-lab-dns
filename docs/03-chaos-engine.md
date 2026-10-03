@@ -89,7 +89,7 @@ Precedence controls evaluation order, not automatic cancellation. A policy can d
 - `terminal`: stop after this policy selects an outcome.
 - `exclusive-group`: only the highest-priority selected policy in the named group runs. Winners are per query, shared across the pre-resolution and response `Decide` calls (not reset between phases).
 
-Conflicting terminal transport actions within one outcome are rejected during candidate-state validation. Across matching policies and resolution phases, the higher-precedence selected transport action wins (configuration order breaks ties within one scope class); a lower-precedence outcome with a conflicting transport action is skipped with `transport_conflict`.
+Conflicting terminal transport actions within one outcome are rejected during candidate-state validation. Within one decision phase, a lower-precedence outcome with a conflicting transport action is skipped with `transport_conflict`. Across resolution phases, the listener uses the higher-precedence selected transport action, with configuration order breaking ties within one scope class. Cross-phase transport selection does not undo already selected outcomes or applied actions.
 
 ## Decision modes
 
@@ -180,13 +180,13 @@ Fields:
 - Probability or weighted outcome selection.
 - Maximum effective duration after global clamping.
 
-Per-entry delay is normally applied in `before response` after the RRset is selected. Delay must use context-aware timers and release concurrency budget on cancellation. 
+Per-entry delay is normally applied in `before response` after the RRset is selected. Delay must use context-aware timers and release concurrency budget on cancellation.
 
-The global `maxDelay` bounds the sum of requested sleeps across all actions and phases in one query, and a policy `budget.maxDelay` bounds that policy's cumulative sleeps. 
+The global `maxDelay` bounds the sum of requested sleeps across all actions and phases in one query, and a policy `budget.maxDelay` bounds that policy's cumulative sleeps.
 
-Simulation reports individually clamped action delays and their longest delay; it does not reserve slots or account sleeps from a previous live phase. The execution session enforces the cumulative limits across phases. 
+Simulation reports individually clamped action delays and their longest delay; it does not reserve slots or account sleeps from a previous live phase. The execution session enforces the cumulative limits across phases.
 
-Released delay reservations remove idle policy counters. Pressure tracking records timestamps only for rate-limited policies and prunes expired idle policy histories during admission, so deleted policies do not accumulate process-lifetime bookkeeping. 
+Released delay reservations remove idle policy counters. Pressure tracking records timestamps only for rate-limited policies and prunes expired idle policy histories during admission, so deleted policies do not accumulate process-lifetime bookkeeping.
 
 One query consumes one global delayed slot and one slot for every policy contributing a delay; composing policies cannot bypass a policy concurrency cap.
 
@@ -209,7 +209,7 @@ An optional Extended DNS Error can explain an injected failure. EDE never change
 - UDP: intentionally send no response.
 - TCP: hold only until the configured bounded chaos timeout, then close gracefully or reset according to the selected action.
 - Never retain an operation beyond the global request lifetime.
-- Drop probability is capped globally.
+- Current implementation: a positive global `maxDropProbability` clamps the selector probability of each matching policy that can select a drop action. It does not bound the aggregate drop probability across composed policies. Multiple eligible drop policies can therefore produce an aggregate drop probability above that configured value; this is a current limitation. Zero leaves the per-policy probability unclamped.
 
 ### 4. TCP close or reset
 

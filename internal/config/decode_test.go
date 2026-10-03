@@ -258,7 +258,7 @@ func TestDecodeRejectsTrailingJSONDelimiters(t *testing.T) {
 	for _, suffix := range []string{"}", "]", "} garbage", "{}", "true"} {
 		t.Run(suffix, func(t *testing.T) {
 			_, err := DecodeJSON([]byte(`{"apiVersion":"labdns.dev/v1alpha1","kind":"LabDNS","metadata":{"name":"x"},"spec":{}}` + suffix))
-			requireValidation(t, err, violationInvalidValue)
+			_ = requireValidation(t, err, violationInvalidValue)
 		})
 	}
 }
