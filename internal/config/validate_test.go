@@ -246,3 +246,55 @@ func minimalState(t *testing.T) *model.State {
 	}
 	return n
 }
+
+func TestValidateHighImpactPolicyCap(t *testing.T) {
+	st := minimalState(t)
+	expiry := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
+	st.Spec.Chaos.Safety.MaxActiveHighImpactPolicies = 1
+	for _, id := range []model.PolicyID{"first", "second"} {
+		st.Spec.Chaos.Policies = append(st.Spec.Chaos.Policies, model.ChaosPolicy{ID: id, Owner: "lab", Reason: "cap regression", Enabled: true, SafetyClass: model.SafetyClassHigh, ExpiresAt: &expiry, Selector: model.ChaosSelector{Probability: 1}, Outcomes: []model.ChaosOutcome{{ID: "o", Weight: 1, Actions: []model.ChaosAction{{Type: model.ActionDrop}}}}})
+	}
+	requireValidation(t, Validate(st), violationInvalidValue)
+	st.Spec.Chaos.Policies[1].Enabled = false
+	if err := Validate(st); err != nil {
+		t.Fatal(err)
+	}
+	st.Spec.Chaos.Policies[1].Enabled = true
+	st.Spec.Chaos.Safety.MaxActiveHighImpactPolicies = 0
+	if err := Validate(st); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestValidateRejectsNegativeChaosSafetyCaps(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		set  func(*model.SafetySpec)
+	}{
+		{"concurrency", func(s *model.SafetySpec) { s.MaxConcurrentDelayed = -1 }},
+		{"high-impact", func(s *model.SafetySpec) { s.MaxActiveHighImpactPolicies = -1 }},
+		{"lifetime", func(s *model.SafetySpec) { s.DefaultMaxLifetime = -time.Second }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := minimalState(t)
+			tc.set(&st.Spec.Chaos.Safety)
+			requireValidation(t, Validate(st), violationInvalidValue)
+		})
+	}
+}
+
+func TestValidateChaosBudgetBounds(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		budget model.ChaosBudget
+	}{
+		{"delay", model.ChaosBudget{MaxDelay: -time.Second}}, {"concurrency", model.ChaosBudget{MaxConcurrency: -1}}, {"rate", model.ChaosBudget{MaxRate: -1}}, {"frequency", model.ChaosBudget{MaxFrequency: -1}},
+		{"unsupported-frequency", model.ChaosBudget{MaxFrequency: 0.5}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := minimalState(t)
+			st.Spec.Chaos.Policies = []model.ChaosPolicy{{ID: "p", Owner: "lab", Reason: "bounds", SafetyClass: model.SafetyClassLow, Budget: &tc.budget, Outcomes: []model.ChaosOutcome{{ID: "o", Weight: 1, Actions: []model.ChaosAction{{Type: model.ActionDelay, Duration: time.Millisecond}}}}}}
+			requireValidation(t, Validate(st), violationInvalidValue)
+		})
+	}
+}

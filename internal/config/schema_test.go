@@ -309,3 +309,23 @@ func TestDurationFormatRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestSchemaBytesWithoutSourceCheckout(t *testing.T) {
+	published, err := os.ReadFile(filepath.Join(repoRoot(t), filepath.FromSlash(SchemaRelPath)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(t.TempDir())
+	got, err := SchemaBytes()
+	if err != nil {
+		t.Fatalf("schema unavailable outside checkout: %v", err)
+	}
+	if !reflect.DeepEqual(got, published) {
+		t.Fatal("embedded schema differs from published schema")
+	}
+	got[0] = 'x'
+	again, err := SchemaBytes()
+	if err != nil || !reflect.DeepEqual(again, published) {
+		t.Fatal("schema caller mutated embedded asset")
+	}
+}

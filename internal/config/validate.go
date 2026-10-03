@@ -447,6 +447,27 @@ func validateChaos(c *model.ChaosSpec, cat *catalog, vs *[]domainerr.FieldViolat
 	if c.Safety.MaxDropProbability < 0 || c.Safety.MaxDropProbability > 1 {
 		*vs = append(*vs, domainerr.FieldViolation{Path: "spec.chaos.safety.maxDropProbability", Code: violationInvalidValue, Message: "maxDropProbability must be in [0,1]"})
 	}
+	for _, cap := range []struct {
+		path     string
+		negative bool
+	}{
+		{"maxConcurrentDelayed", c.Safety.MaxConcurrentDelayed < 0},
+		{"maxActiveHighImpactPolicies", c.Safety.MaxActiveHighImpactPolicies < 0},
+		{"defaultMaxLifetime", c.Safety.DefaultMaxLifetime < 0},
+	} {
+		if cap.negative {
+			*vs = append(*vs, domainerr.FieldViolation{Path: "spec.chaos.safety." + cap.path, Code: violationInvalidValue, Message: cap.path + " must be >= 0"})
+		}
+	}
+	activeHigh := 0
+	for _, p := range c.Policies {
+		if p.Enabled && p.SafetyClass == model.SafetyClassHigh {
+			activeHigh++
+		}
+	}
+	if c.Safety.MaxActiveHighImpactPolicies > 0 && activeHigh > c.Safety.MaxActiveHighImpactPolicies {
+		*vs = append(*vs, domainerr.FieldViolation{Path: "spec.chaos.safety.maxActiveHighImpactPolicies", Code: violationInvalidValue, Message: "enabled high-impact policies exceed maxActiveHighImpactPolicies"})
+	}
 	for i, cidr := range c.Safety.AllowedAddressCIDRs {
 		if _, err := netip.ParsePrefix(cidr); err != nil {
 			*vs = append(*vs, domainerr.FieldViolation{Path: indexPath("spec.chaos.safety.allowedAddressCIDRs", i), Code: violationInvalidCIDR, Message: "invalid CIDR"})
@@ -506,6 +527,24 @@ func validateChaos(c *model.ChaosSpec, cat *catalog, vs *[]domainerr.FieldViolat
 		}
 		if p.Composition == model.CompositionExclusiveGroup && p.ExclusiveGroup == "" {
 			*vs = append(*vs, domainerr.FieldViolation{Path: path + ".exclusiveGroup", Code: violationRequired, Message: "exclusive-group composition requires exclusiveGroup"})
+		}
+		if p.Budget != nil {
+			if p.Budget.MaxFrequency > 0 {
+				*vs = append(*vs, domainerr.FieldViolation{Path: path + ".budget.maxFrequency", Code: violationInvalidValue, Message: "maxFrequency is not supported; omit it or set it to zero"})
+			}
+			for _, cap := range []struct {
+				field    string
+				negative bool
+			}{
+				{"maxDelay", p.Budget.MaxDelay < 0},
+				{"maxConcurrency", p.Budget.MaxConcurrency < 0},
+				{"maxRate", p.Budget.MaxRate < 0},
+				{"maxFrequency", p.Budget.MaxFrequency < 0},
+			} {
+				if cap.negative {
+					*vs = append(*vs, domainerr.FieldViolation{Path: path + ".budget." + cap.field, Code: violationInvalidValue, Message: cap.field + " must be >= 0"})
+				}
+			}
 		}
 		validateChaosScope(p.Scope, path+".scope", cat, protectedNames, protectedGroups, vs)
 		if len(p.Outcomes) == 0 {

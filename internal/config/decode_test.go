@@ -1,8 +1,10 @@
 package config
 
 import (
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hilather/go-lab-dns/internal/model"
 )
@@ -249,5 +251,39 @@ func TestDecodeJSONRoundTripSample(t *testing.T) {
 	}
 	if r1 != r2 {
 		t.Fatalf("export/reimport revision %s != %s", r1, r2)
+	}
+}
+
+func TestDecodeRejectsTrailingJSONDelimiters(t *testing.T) {
+	for _, suffix := range []string{"}", "]", "} garbage", "{}", "true"} {
+		t.Run(suffix, func(t *testing.T) {
+			_, err := DecodeJSON([]byte(`{"apiVersion":"labdns.dev/v1alpha1","kind":"LabDNS","metadata":{"name":"x"},"spec":{}}` + suffix))
+			requireValidation(t, err, violationInvalidValue)
+		})
+	}
+}
+
+func TestDurationNamedLabelsRoundTrip(t *testing.T) {
+	st := minimalState(t)
+	labels := map[string]string{"ttl": "team-a", "duration": "not-a-duration", "maxDelay": "30s"}
+	st.Metadata.Labels = labels
+	st.Spec.Chaos.Policies = []model.ChaosPolicy{{ID: "p", Owner: "lab", Reason: "labels", Labels: labels, SafetyClass: model.SafetyClassLow, Selector: model.ChaosSelector{Probability: 1}, Outcomes: []model.ChaosOutcome{{ID: "o", Weight: 1, Actions: []model.ChaosAction{{Type: model.ActionDelay, Duration: time.Millisecond}}}}}}
+	for _, encode := range []struct {
+		name string
+		fn   func(*model.State) ([]byte, error)
+	}{{"json", CanonicalJSON}, {"yaml", CanonicalYAML}} {
+		t.Run(encode.name, func(t *testing.T) {
+			b, err := encode.fn(st)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := Load(b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got.Metadata.Labels, labels) || !reflect.DeepEqual(got.Spec.Chaos.Policies[0].Labels, labels) {
+				t.Fatal("duration-like label keys changed")
+			}
+		})
 	}
 }
