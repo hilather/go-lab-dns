@@ -2,6 +2,7 @@
 
 Status: Proposed normative quality gate
 Owners: All teams
+Last reviewed: 2026-10-03 (forwarding topology churn and stale completion regression coverage)
 Last reviewed: 2026-09-04 (refuse-forward overlay CNAME must not poison AllowForward cache)
 Last reviewed: 2026-09-01 (resolve useCache fallthrough must not poison DNS cache)
 Last reviewed: 2026-08-29 (app tsc excludes Vitest files; web-test runs tsc --noEmit)
@@ -99,6 +100,8 @@ For each capability:
 Operator Playwright (`make web-e2e` / `npm run test:e2e`) talks to loopback `labdns serve` with [`testdata/web/`](https://github.com/hilather/go-lab-dns/blob/main/testdata/web) (pack-sample plus viewer vs admin tokens). Job `web` installs Chromium via `npx playwright install --with-deps chromium` and runs the matrix after Vitest/`web-build`. Assertions are DOM and HTTP, not screenshot diffs. The operator scenario restores bootstrap at the start of each attempt so a CI retry does not plan/apply against a dirty snapshot.
 
 ### Race and leak tests
+
+Forwarder regressions cover repeated singleton topology churn, paused old-snapshot completion after topology replacement, retired pool requests, retained endpoint health/counters, endpoint and transport retargeting, empty topology, and cancellation without false health failures. Existing real-upstream success, failover, timeout, and recovery tests remain required.
 
 - Snapshot swaps under concurrent DNS load.
 - Cache access.

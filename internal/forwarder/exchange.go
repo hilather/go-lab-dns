@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -56,7 +57,11 @@ type Runtime struct {
 	Dial   DialFunc
 	idSeq  atomic.Uint32
 
-	pick *picker
+	pick               *picker
+	topologyMu         sync.Mutex
+	topologyGeneration model.Generation
+	topologyObserved   bool
+	topologyUpstreams  map[model.UpstreamID]snapshot.CompiledUpstream
 
 	// MaxInflight caps concurrent Exchange calls. Zero uses 256.
 	MaxInflight int
@@ -124,6 +129,7 @@ func (rt *Runtime) ExchangeOpts(ctx context.Context, snap *snapshot.Snapshot, q 
 	if rt == nil {
 		rt = NewRuntime(nil, nil, nil, nil)
 	}
+	rt.observeTopology(snap)
 	qname := canonicalSuffix(string(q.Name))
 	if qname == "" {
 		qname = "."
@@ -142,7 +148,7 @@ func (rt *Runtime) ExchangeOpts(ctx context.Context, snap *snapshot.Snapshot, q 
 		return servfail(snap, q, policyID, ""), fmt.Errorf("%w: pool %s", ErrUnknownPolicy, pol.PoolID)
 	}
 
-	order := rt.pick.order(pool)
+	order := rt.orderForSnapshot(snap, pool)
 	if opts.ForceUpstream != "" {
 		order = forceFirst(order, opts.ForceUpstream)
 	}
@@ -177,7 +183,6 @@ func (rt *Runtime) ExchangeOpts(ctx context.Context, snap *snapshot.Snapshot, q 
 			continue
 		}
 		if opts.ForceTimeout {
-			rt.Health.RecordFailure(up.ID)
 			last = servfail(snap, q, policyID, up.ID)
 			if !fo.OnTimeout {
 				return last, nil
@@ -186,7 +191,6 @@ func (rt *Runtime) ExchangeOpts(ctx context.Context, snap *snapshot.Snapshot, q 
 			continue
 		}
 		if opts.ForceTransportError {
-			rt.Health.RecordFailure(up.ID)
 			last = servfail(snap, q, policyID, up.ID)
 			if !fo.OnTransportError {
 				return last, nil
@@ -201,12 +205,12 @@ func (rt *Runtime) ExchangeOpts(ctx context.Context, snap *snapshot.Snapshot, q 
 			res, ferr, _ = rt.attempt(ctx, q, tcp, attemptTO, false)
 		}
 		if ferr != nil {
-			rt.Health.RecordFailure(up.ID)
 			// Parent total deadline expired: surface the error so dnsquery
 			// can HintDrop instead of synthesizing SERVFAIL.
 			if err := ctx.Err(); err != nil {
 				return model.Result{}, err
 			}
+			rt.recordHealth(snap, up.ID, false)
 			last = servfail(snap, q, policyID, up.ID)
 			if isTimeout(ferr) && !fo.OnTimeout {
 				return last, nil
@@ -216,7 +220,7 @@ func (rt *Runtime) ExchangeOpts(ctx context.Context, snap *snapshot.Snapshot, q 
 			}
 			continue
 		}
-		rt.Health.RecordSuccess(up.ID)
+		rt.recordHealth(snap, up.ID, true)
 		res.ForwardingID = policyID
 		res.UpstreamID = up.ID
 		res.Source = model.SourceUpstream
