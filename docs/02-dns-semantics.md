@@ -8,6 +8,7 @@ Last reviewed: 2026-08-23 (over-length desired-state names; ADR 0009)
 Last reviewed: 2026-09-01 (management resolve useCache does not store Fallthrough)
 Last reviewed: 2026-09-02 (overlay CNAME re-selects target policy when original QNAME has no suffix)
 Last reviewed: 2026-09-04 (refuse-forward overlay CNAME is not stored under the shared local cache key)
+Last reviewed: 2026-10-03 (upstream correlation, truncation, cancellation, and negative cache lifetimes)
 Related ADRs: 0002, 0005, 0007, 0009
 
 ## Problem statement
@@ -118,7 +119,7 @@ Known exclusions in this release:
 - NXDOMAIN means the owner name does not exist.
 - NODATA means the owner exists but the requested type does not.
 - Authoritative negative answers include the zone SOA.
-- Negative cache TTL follows SOA and configured bounds.
+- Negative cache TTL follows the smaller of the SOA TTL and SOA MINIMUM, then configured bounds. Zero SOA MINIMUM and negatives without an SOA prevent caching. CNAME chains ending in NXDOMAIN or SOA-backed NODATA follow the same negative bounds, including on management `resolve` with `useCache`.
 - Injected negative chaos responses are marked in explanation and telemetry and must still be syntactically correct.
 
 ## Forwarding
@@ -132,6 +133,7 @@ Implemented in `internal/forwarder` + `internal/dnsquery`. `forwarder.Exchange` 
 - Timeouts, transport errors, SERVFAIL, and REFUSED failover are explicit `FailoverSpec` bools. They are **not** materialized: the Go zero value means do not fail over. A zero `timeout` is **not** unlimited; Exchange uses a **500ms** per-attempt budget so it stacks under the 2s query-handler total deadline (at least one failover try remains when `onTimeout` is set). Dial uses a 250ms connect budget capped by the remaining attempt time. If the parent deadline expires mid-attempt, Exchange returns the context error (no synthesized SERVFAIL).
 - Overlay CNAME that leaves local data re-selects the forwarding policy on the **CNAME target** for the upstream exchange, including when the original QNAME matches no forwarding suffix (suffix-only policies, no root `.`). Classification (and a future chaos `Decide`) still sees the policy selected from the original QNAME. Unknown and local-only clients never take this path.
 - Self-forwarding and cyclic configurations are rejected at `config.Validate` (they need the listen address).
+- Upstream replies must have QR=1, opcode QUERY, the request ID, and exactly one matching QNAME/QTYPE/QCLASS. Mismatches are transport failures and obey `onTransportError`. An incomplete TC reply triggers the configured UDP-to-TCP retry; with retry disabled, or when TCP also returns TC, it is a transport failure and returns SERVFAIL if no failover succeeds. Partial answers are never advertised as complete or cached. Parent cancellation closes an in-flight upstream socket immediately.
 - Forwarded answers never set AA or AD. CD is passed through. RA is left false for the orchestrator.
 
 ### Pool strategies
@@ -205,7 +207,7 @@ Implemented in `internal/dnsserver` using `internal/dnswire`. Malformed input ne
 | QR=1 (a response sent as a query) | Drop |
 | Opcode other than QUERY | NOTIMP |
 | QDCOUNT = 0 or QDCOUNT > `MaxQuestions` (default 1) | FORMERR |
-| QCLASS other than IN | NOTIMP |
+| QCLASS other than IN (including reserved class 0) | NOTIMP; echo the original class |
 | QTYPE AXFR or IXFR | NOTIMP |
 | EDNS version other than 0 | BADVERS (header RCODE 0 + OPT EXTENDED-RCODE 16, OPT VERSION 0) |
 | No EDNS on UDP | Responses capped at 512 octets; TC set if truncated |

@@ -1,6 +1,8 @@
 package cache
 
 import (
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -215,6 +217,7 @@ func (c *Cache) Put(key Key, ent Entry, opts PutOpts) {
 	if !policy.Enabled || policy.MaxEntries <= 0 || !c.policy.Enabled || c.policy.MaxEntries <= 0 {
 		return
 	}
+	ent.Negative = ent.Negative || negativeResult(ent.Result, key.Type)
 	ttl := clampTTL(ent, policy)
 	if ttl <= 0 {
 		return
@@ -282,6 +285,28 @@ func PolicyFromSpec(s model.CacheSpec) Policy {
 	}
 }
 
+// negativeResult includes CNAME chains whose terminal target is negative.
+// Callers need not independently classify responses before storing them.
+func negativeResult(res model.Result, qtype model.RRType) bool {
+	if res.RCode == model.RCodeNXDomain {
+		return true
+	}
+	if res.RCode != model.RCodeNoError || qtype == model.TypeCNAME || qtype == "ANY" {
+		return false
+	}
+	for _, rr := range res.Answers {
+		if rr.Type != model.TypeCNAME {
+			return false
+		}
+	}
+	for _, rr := range res.Authority {
+		if rr.Type == model.TypeSOA {
+			return true
+		}
+	}
+	return false
+}
+
 func clampTTL(ent Entry, p Policy) time.Duration {
 	ttl := entryTTL(ent)
 	if ent.Negative {
@@ -306,6 +331,15 @@ func clampTTL(ent Entry, p Policy) time.Duration {
 }
 
 func entryTTL(ent Entry) time.Duration {
+	if ent.Negative {
+		haveSOA := false
+		for _, rr := range ent.Result.Authority {
+			haveSOA = haveSOA || rr.Type == model.TypeSOA
+		}
+		if !haveSOA {
+			return 0
+		}
+	}
 	if !ent.ExpireAt.IsZero() && !ent.StoredAt.IsZero() {
 		d := ent.ExpireAt.Sub(ent.StoredAt)
 		if d > 0 {
@@ -316,8 +350,20 @@ func entryTTL(ent Entry) time.Duration {
 	found := false
 	consider := func(rrs []model.RR) {
 		for _, rr := range rrs {
-			if !found || rr.TTL < min {
-				min = rr.TTL
+			ttl := rr.TTL
+			if ent.Negative && rr.Type == model.TypeSOA {
+				fields := strings.Fields(rr.Data)
+				if len(fields) == 7 {
+					if seconds, err := strconv.ParseUint(fields[6], 10, 32); err == nil {
+						minimum := time.Duration(seconds) * time.Second
+						if minimum < ttl {
+							ttl = minimum
+						}
+					}
+				}
+			}
+			if !found || ttl < min {
+				min = ttl
 				found = true
 			}
 		}

@@ -63,8 +63,8 @@ func TestNXDOMAINVersusNODATA(t *testing.T) {
 	c := New(Policy{Enabled: true, MaxEntries: 4, MinimumTTL: time.Second, MaximumTTL: time.Minute, MaximumNegativeTTL: time.Minute}, nil)
 	nx := Key{Revision: "r", Name: "miss.example.", Type: model.TypeA, Class: model.ClassIN, Local: true}
 	nd := Key{Revision: "r", Name: "exist.example.", Type: model.TypeAAAA, Class: model.ClassIN, Local: true}
-	c.Put(nx, Entry{Negative: true, Result: model.Result{RCode: model.RCodeNXDomain, Authority: []model.RR{{TTL: 10 * time.Second}}}}, PutOpts{})
-	c.Put(nd, Entry{Negative: true, Result: model.Result{RCode: model.RCodeNoError, Authority: []model.RR{{TTL: 10 * time.Second}}}}, PutOpts{})
+	c.Put(nx, Entry{Negative: true, Result: model.Result{RCode: model.RCodeNXDomain, Authority: []model.RR{{Type: model.TypeSOA, TTL: 10 * time.Second, Data: "ns.example. admin.example. 1 2 3 4 10"}}}}, PutOpts{})
+	c.Put(nd, Entry{Negative: true, Result: model.Result{RCode: model.RCodeNoError, Authority: []model.RR{{Type: model.TypeSOA, TTL: 10 * time.Second, Data: "ns.example. admin.example. 1 2 3 4 10"}}}}, PutOpts{})
 	a, ok := c.Get(nx, GetOpts{})
 	if !ok || a.Result.RCode != model.RCodeNXDomain {
 		t.Fatalf("nx %+v ok=%v", a, ok)
@@ -231,5 +231,61 @@ func TestPolicyFromSpec(t *testing.T) {
 	p := PolicyFromSpec(model.CacheSpec{Enabled: true, MaxEntries: 9, MinimumTTL: time.Second})
 	if !p.Enabled || p.MaxEntries != 9 || p.MinimumTTL != time.Second {
 		t.Fatalf("%+v", p)
+	}
+}
+
+func TestNegativeLifetimeUsesSOAMinimumIncludingCNAME(t *testing.T) {
+	for _, code := range []model.RCode{model.RCodeNXDomain, model.RCodeNoError} {
+		for _, minimum := range []string{"2", "0"} {
+			t.Run(string(code)+"/"+minimum, func(t *testing.T) {
+				clk := testutil.NewFakeClock(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+				c := New(Policy{Enabled: true, MaxEntries: 4, MaximumNegativeTTL: 3 * time.Second}, clk)
+				key := Key{Name: "alias.example.", Type: model.TypeA}
+				c.Put(key, Entry{Result: model.Result{RCode: code,
+					Answers:   []model.RR{{Type: model.TypeCNAME, TTL: time.Minute, Data: "missing.example."}},
+					Authority: []model.RR{{Type: model.TypeSOA, TTL: time.Minute, Data: "ns.example. admin.example. 1 2 3 4 " + minimum}},
+				}}, PutOpts{})
+				if minimum == "0" {
+					if c.Stats().Entries != 0 {
+						t.Fatal("cached zero SOA MINIMUM")
+					}
+					return
+				}
+				ent, ok := c.Get(key, GetOpts{})
+				if !ok || !ent.Negative {
+					t.Fatalf("not identified as negative: %+v", ent)
+				}
+				if ent.Result.Authority[0].TTL != 2*time.Second {
+					t.Fatalf("TTL exceeds SOA MINIMUM: %v", ent.Result.Authority[0].TTL)
+				}
+				clk.Advance(2 * time.Second)
+				if _, ok := c.Get(key, GetOpts{}); ok {
+					t.Fatal("negative outlived SOA MINIMUM")
+				}
+			})
+		}
+	}
+}
+
+func TestNegativeWithoutSOAIsNotCached(t *testing.T) {
+	c := New(Policy{Enabled: true, MaxEntries: 4}, nil)
+	c.Put(Key{Name: "alias.example.", Type: model.TypeA}, Entry{Result: model.Result{
+		RCode: model.RCodeNXDomain, Answers: []model.RR{{Type: model.TypeCNAME, TTL: time.Minute, Data: "missing.example."}},
+	}}, PutOpts{})
+	if c.Stats().Entries != 0 {
+		t.Fatal("cached NXDOMAIN without SOA")
+	}
+}
+
+func TestCNAMEQueryWithSOAIsStillPositive(t *testing.T) {
+	c := New(Policy{Enabled: true, MaxEntries: 4}, nil)
+	key := Key{Name: "alias.example.", Type: model.TypeCNAME}
+	c.Put(key, Entry{Result: model.Result{RCode: model.RCodeNoError,
+		Answers:   []model.RR{{Type: model.TypeCNAME, TTL: time.Minute, Data: "target.example."}},
+		Authority: []model.RR{{Type: model.TypeSOA, TTL: time.Minute, Data: "ns.example. admin.example. 1 2 3 4 0"}},
+	}}, PutOpts{})
+	ent, ok := c.Get(key, GetOpts{})
+	if !ok || ent.Negative {
+		t.Fatalf("positive CNAME misclassified: %+v", ent)
 	}
 }

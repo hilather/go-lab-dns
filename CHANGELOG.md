@@ -4,6 +4,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+### Fixed
+
 - Wire shared upstream health and DNS/REST/MCP/application metrics in production; synthetic chaos faults no longer poison upstream health. Stop runtime signal workers on shutdown and failed startup.
 - Reject unsupported REST paths and MCP paths that collide with REST/operator-console routes or contain mux patterns. REST remains `/v1`; distinct MCP prefixes remain supported.
 - Apply cache policies immediately across DNS and management queries, clear disabled caches, and reject stale-generation cache writes. Reset restores bootstrap cache policy.
@@ -11,6 +13,10 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Keep the displaced snapshot pointer monotonic under concurrent emergency and normal publications.
 
 - Snapshot publication keeps generation monotonic when emergency controls advance it during compilation; apply/reset results report the actual published generation.
+- DNS admission preserves reserved QCLASS zero and returns NOTIMP over UDP and TCP instead of treating it as IN.
+- Forwarding rejects upstream packets whose QR, opcode, question count, name, type, or class does not match the request. Invalid and incomplete truncated replies follow transport-error failover and otherwise return SERVFAIL; disabling TCP retry no longer turns a partial reply into a complete cacheable answer.
+- Canceling an in-flight upstream exchange now closes its socket immediately instead of waiting for the attempt deadline.
+- Negative caching requires an SOA and respects SOA MINIMUM (including zero) and detects CNAME chains ending in NXDOMAIN or SOA-backed NODATA, including management resolve cache writes.
 
 ## v1.3.2 — 2026-09-21
 

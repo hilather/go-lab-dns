@@ -3,6 +3,7 @@ package forwarder
 import (
 	"context"
 	"errors"
+	"net"
 	"testing"
 	"time"
 
@@ -331,5 +332,121 @@ func TestDefaultTimeoutFailoverFitsQueryBudget(t *testing.T) {
 	}
 	if res.RCode != model.RCodeNoError || res.UpstreamID != "good" {
 		t.Fatalf("%+v", res)
+	}
+}
+
+func TestRejectUncorrelatedUpstreamResponse(t *testing.T) {
+	for _, transport := range []model.Transport{model.TransportUDP, model.TransportTCP} {
+		for _, tc := range []struct {
+			name   string
+			mutate func([]byte) []byte
+		}{
+			{"empty-question", func(b []byte) []byte { b[5] = 0; return append(b[:12], b[27:]...) }},
+			{"multiple-questions", func(b []byte) []byte {
+				b[5] = 2
+				return append(append(append([]byte(nil), b[:27]...), b[12:27]...), b[27:]...)
+			}},
+			{"zero-class", func(b []byte) []byte { b[26] = 0; return b }},
+			{"query", func(b []byte) []byte { b[2] &^= 0x80; return b }},
+			{"opcode", func(b []byte) []byte { b[2] |= 0x08; return b }},
+			{"name", func(b []byte) []byte { b[13] = 'z'; return b }},
+			{"type", func(b []byte) []byte { b[24] = 28; return b }},
+			{"class", func(b []byte) []byte { b[26] = 3; return b }},
+		} {
+			t.Run(string(transport)+"/"+tc.name, func(t *testing.T) {
+				up := startFake(t)
+				up.mu.Lock()
+				up.mutate = tc.mutate
+				up.mu.Unlock()
+				snap := snapOne(t, up.UDPAddr(), transport, model.FailoverSpec{})
+				res, err := NewRuntime(nil, nil, nil, nil).Exchange(t.Context(), snap, query("a.example."), "pol")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if res.RCode != model.RCodeServFail {
+					t.Fatalf("accepted unrelated response: %+v", res)
+				}
+			})
+		}
+	}
+}
+
+func TestTruncatedUpstreamWithoutRetryFailsClosed(t *testing.T) {
+	for _, transport := range []model.Transport{model.TransportUDP, model.TransportTCP} {
+		t.Run(string(transport), func(t *testing.T) {
+			up := startFake(t)
+			up.mu.Lock()
+			up.mutate = func(b []byte) []byte { b[2] |= 2; return b }
+			up.mu.Unlock()
+			snap := snapOne(t, up.UDPAddr(), transport, model.FailoverSpec{})
+			res, err := NewRuntime(nil, nil, nil, nil).Exchange(t.Context(), snap, query("a.example."), "pol")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.RCode != model.RCodeServFail {
+				t.Fatalf("truncated reply became complete answer: %+v", res)
+			}
+			if up.Packets.Load() != 1 {
+				t.Fatal("disabled TCP retry sent extra packets")
+			}
+		})
+	}
+}
+
+func TestInvalidUpstreamResponseUsesTransportErrorFailover(t *testing.T) {
+	for _, transport := range []model.Transport{model.TransportUDP, model.TransportTCP} {
+		t.Run(string(transport), func(t *testing.T) {
+			bad := startFake(t)
+			good := startFake(t)
+			bad.mu.Lock()
+			bad.mutate = func(b []byte) []byte { b[2] &^= 0x80; return b }
+			bad.mu.Unlock()
+			good.setAnswers(model.RR{Name: "a.example.", Type: model.TypeA, TTL: time.Second, Data: "192.0.2.9"})
+			snap := snapTwo(t, bad.UDPAddr(), good.UDPAddr(), model.FailoverSpec{OnTransportError: true})
+			for i := range snap.Forwarding.Pools["pool"].Upstreams {
+				snap.Forwarding.Pools["pool"].Upstreams[i].Transport = transport
+			}
+			res, err := NewRuntime(nil, nil, nil, nil).Exchange(t.Context(), snap, query("a.example."), "pol")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.UpstreamID != "good" || len(res.Answers) != 1 {
+				t.Fatalf("did not fail over: %+v", res)
+			}
+		})
+	}
+}
+
+func TestCancelInterruptsInflightSocketRead(t *testing.T) {
+	for _, transport := range []model.Transport{model.TransportUDP, model.TransportTCP} {
+		t.Run(string(transport), func(t *testing.T) {
+			up := startFake(t)
+			up.setHang(true)
+			snap := snapOne(t, up.UDPAddr(), transport, model.FailoverSpec{Timeout: 5 * time.Second})
+			dialed := make(chan struct{})
+			rt := NewRuntime(nil, nil, nil, func(ctx context.Context, network, address string) (net.Conn, error) {
+				conn, err := (&net.Dialer{}).DialContext(ctx, network, address)
+				close(dialed)
+				return conn, err
+			})
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			done := make(chan error, 1)
+			go func() { _, err := rt.Exchange(ctx, snap, query("a.example."), "pol"); done <- err }()
+			select {
+			case <-dialed:
+			case <-time.After(time.Second):
+				t.Fatal("dial did not complete")
+			}
+			cancel()
+			select {
+			case err := <-done:
+				if !errors.Is(err, context.Canceled) {
+					t.Fatalf("err=%v", err)
+				}
+			case <-time.After(250 * time.Millisecond):
+				t.Fatal("cancellation left socket read blocked")
+			}
+		})
 	}
 }
