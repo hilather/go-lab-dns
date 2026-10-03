@@ -48,11 +48,7 @@ func UnpackUpstream(msg []byte) (*UpstreamMsg, error) {
 		RCode:  modelRcode(m.Rcode),
 	}
 	for _, q := range m.Question {
-		class := modelClass(q.Qclass)
-		if q.Qclass == 0 {
-			class = "CLASS0"
-		}
-		u.Questions = append(u.Questions, model.Query{Name: model.Name(canonicalName(q.Name)), Type: modelType(q.Qtype), Class: class})
+		u.Questions = append(u.Questions, model.Query{Name: model.Name(canonicalName(q.Name)), Type: modelType(q.Qtype), Class: modelClass(q.Qclass)})
 	}
 	u.Answers = fromWireRRs(m.Answer)
 	u.Authority = fromWireRRs(m.Ns)

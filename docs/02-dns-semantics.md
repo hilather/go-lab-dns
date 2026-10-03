@@ -206,7 +206,7 @@ Implemented in `internal/dnsserver` using `internal/dnswire`. Malformed input ne
 | QR=1 (a response sent as a query) | Drop |
 | Opcode other than QUERY | NOTIMP |
 | QDCOUNT = 0 or QDCOUNT > `MaxQuestions` (default 1) | FORMERR |
-| QCLASS other than IN | NOTIMP |
+| QCLASS other than IN (including reserved class 0) | NOTIMP; echo the original class |
 | QTYPE AXFR or IXFR | NOTIMP |
 | EDNS version other than 0 | BADVERS (header RCODE 0 + OPT EXTENDED-RCODE 16, OPT VERSION 0) |
 | No EDNS on UDP | Responses capped at 512 octets; TC set if truncated |

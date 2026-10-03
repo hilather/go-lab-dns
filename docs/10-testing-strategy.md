@@ -63,7 +63,7 @@ DNS-001 lands independent localhost UDP/TCP client tests in `internal/dnsserver`
 - Overlay fallthrough.
 - CNAME chains and loops.
 - Forwarding and TCP retry after truncation; fail-closed incomplete replies when retry is disabled or TCP stays truncated; QR/opcode/question correlation over UDP and TCP; in-flight upstream cancellation.
-- EDNS handling.
+- EDNS handling and NOTIMP for unsupported classes, including reserved QCLASS zero over UDP and TCP.
 - Chaos delay, drop, truncation, RCODE, TTL, alternate answer, and TCP close/reset.
 
 ### REST tests
