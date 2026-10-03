@@ -45,6 +45,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Keep the displaced snapshot pointer monotonic under concurrent emergency and normal publications.
 - Snapshot publication keeps generation monotonic when emergency controls advance it during compilation; apply/reset results report the actual published generation.
 - Forwarding runtime health and round-robin counters discard removed topology IDs instead of retaining every historical deployment. Late old-snapshot exchanges cannot restore retired state; retargeting an upstream endpoint or transport clears its previous health. Caller cancellation and simulated upstream failures do not mark real upstreams unhealthy; expiring the total query deadline while waiting on an upstream still counts against it.
+- Forwarder comments and DNS semantics documentation now state that an expired query deadline during an upstream exchange answers SERVFAIL; only cancellation (shutdown, TCP peer close) or a deadline that expired before handling sends no answer.
 
 ## v1.3.2 — 2026-09-21
 

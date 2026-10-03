@@ -2,6 +2,7 @@
 
 Status: Implementation-confirmed for local resolution (RES-001) and forwarding/cache/orchestrator (FWD-001)
 Owners: DNS
+Last reviewed: 2026-10-03 (deadline expiry during forwarding answers SERVFAIL)
 Last reviewed: 2026-10-03 (upstream identity health and caller cancellation)
 Last reviewed: 2026-10-03 (management active-chaos modeling and current cached caller context)
 Last reviewed: 2026-08-18 (overlay CNAME kept when forward refused)
@@ -215,7 +216,7 @@ Implemented in `internal/dnsserver` using `internal/dnswire`. Malformed input ne
 | EDNS UDP size < 512 | Treated as 512 (RFC 6891) |
 | EDNS UDP size > `MaxEDNSUDPSize` (default 4096) | Clamped |
 
-Handler failures, panics (including hook panics), and a nil `Response` with `HintSend` are fail-closed to SERVFAIL. Context cancel (shutdown, query timeout, TCP max-age, TCP peer close) produces no answer.
+Handler failures, panics (including hook panics), and a nil `Response` with `HintSend` are fail-closed to SERVFAIL. Cancellation (shutdown, TCP peer close) produces no answer, as does a query whose deadline has already expired before handling starts. When the query deadline (query timeout, or TCP max-age if sooner) expires while an upstream exchange is in flight, the query is answered SERVFAIL.
 
 ## Explainability
 
