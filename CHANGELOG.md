@@ -50,6 +50,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Shell revision uses the shared status query and refreshes after mutations, promptly discarding stale plans. Changes permits forwarder and chaos mutation scopes and built-in editor/operator roles while REST still authorizes each operation.
 - Chaos activation retries reuse idempotency keys only for the same request; edits to reason, expiry, policy, or revision get a new key.
 - Web development dependency `undici` updates from 7.29.0 to 7.29.1; required web CI now audits the complete dependency lockfile for high and critical vulnerabilities.
+- Forwarder comments and DNS semantics documentation now state that an expired query deadline during an upstream exchange answers SERVFAIL; only cancellation (shutdown, TCP peer close) or a deadline that expired before handling sends no answer.
 
 ## v1.3.2 — 2026-09-21
 

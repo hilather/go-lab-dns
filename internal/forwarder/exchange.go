@@ -205,8 +205,8 @@ func (rt *Runtime) ExchangeOpts(ctx context.Context, snap *snapshot.Snapshot, q 
 			res, ferr, _ = rt.attempt(ctx, q, tcp, attemptTO, false)
 		}
 		if ferr != nil {
-			// Parent total deadline expired: surface the error so dnsquery
-			// can HintDrop instead of synthesizing SERVFAIL.
+			// Parent context ended: return its error. dnsquery drops the query
+			// on cancellation and answers SERVFAIL when the total deadline expired.
 			if err := ctx.Err(); err != nil {
 				// Caller cancellation says nothing about the upstream; running
 				// out of the total budget while waiting on it does.
