@@ -11,19 +11,6 @@ import (
 	"github.com/hilather/go-lab-dns/internal/model"
 )
 
-func applyOperations(st *model.State, ops []model.Operation) error {
-	if st == nil {
-		return domainerr.ValidationFailed("nil state",
-			domainerr.FieldViolation{Path: "", Code: "required", Message: "state is nil"})
-	}
-	for i, op := range ops {
-		if err := applyOne(st, op, i); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func applyOne(st *model.State, op model.Operation, i int) error {
 	path := "operations[" + strconv.Itoa(i) + "]"
 	switch op.Op {

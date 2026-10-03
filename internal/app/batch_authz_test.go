@@ -33,7 +33,7 @@ func TestBatchHighImpactActivationRequiresEmergencyScope(t *testing.T) {
 			case "validate":
 				_, err = svc.Validate(context.Background(), limited, ValidateIn{Operations: ops})
 			}
-			requireCode(t, err, domainerr.CodeForbidden)
+			_ = requireCode(t, err, domainerr.CodeForbidden)
 			if svc.Store().Load() != boot {
 				t.Fatal("denied batch changed active snapshot")
 			}
@@ -63,7 +63,7 @@ func TestBatchProtectedRelativeOwnerInAddedZone(t *testing.T) {
 			case "validate":
 				_, err = svc.Validate(context.Background(), editor, ValidateIn{Operations: ops})
 			}
-			requireCode(t, err, domainerr.CodeProtectedObject)
+			_ = requireCode(t, err, domainerr.CodeProtectedObject)
 			if svc.Store().Load() != boot {
 				t.Fatal("denied batch changed active snapshot")
 			}

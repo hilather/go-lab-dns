@@ -25,5 +25,5 @@ func TestDocsOutsideSourceTree(t *testing.T) {
 		}
 	}
 	_, err := svc.Docs(t.Context(), actor(), "../../go.mod")
-	requireCode(t, err, domainerr.CodeNotFound)
+	_ = requireCode(t, err, domainerr.CodeNotFound)
 }

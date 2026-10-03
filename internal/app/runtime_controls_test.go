@@ -38,7 +38,7 @@ func TestResetCancelsDelaysOnlyAfterSuccessfulCompile(t *testing.T) {
 func TestCacheFlushAuthorizationAndAudit(t *testing.T) {
 	svc, _ := mustBoot(t, copyFixture(t))
 	viewer := Actor{ID: "viewer", Class: auth.ClassToken, Role: auth.RoleViewer}
-	requireCode(t, svc.CacheFlush(t.Context(), viewer, FlushIn{}), domainerr.CodeForbidden)
+	_ = requireCode(t, svc.CacheFlush(t.Context(), viewer, FlushIn{}), domainerr.CodeForbidden)
 	events := svc.Audit().List(1)
 	if len(events) != 1 || events[0].Result != audit.ResultDenied || events[0].Capability != "dns_cache_flush" {
 		t.Fatalf("missing denied audit: %+v", events)
