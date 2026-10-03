@@ -2,7 +2,7 @@
 
 Status: Implemented
 Owners: Control Plane, REST, Security, UI
-Last reviewed: 2026-10-03 (session isolation, mutation workflows, dependency audit)
+Last reviewed: 2026-10-03 (cookie mutation ordering, session isolation, mutation workflows, dependency audit)
 Last reviewed: 2026-09-01 (resolve useCache does not store Fallthrough)
 Last reviewed: 2026-08-29 (unknown /zones/:zoneId shows one not_found)
 Last reviewed: 2026-08-29 (charcoal/amber chrome on login and remaining operator pages)
@@ -237,6 +237,8 @@ First increment (required):
 Follow-on (not required to close UI-001–UI-004): `GET /v1/events/stream` SSE as `PARITY_DIFFERENT_BINDING` with an ADR. Do not add it in the first UI slices.
 
 ## Session and CSRF
+
+Browser session POST and DELETE operations are serialized within each page. A superseded successful login is revoked using only its response CSRF token before another cookie mutation can run. Session recovery waits for this queue. Failed revocation or logout retains its CSRF token and blocks recovery until cleanup succeeds; an explicit bearer login can replace the session and clear that pending state. A successful cookie response with an unreadable or invalid session body also blocks recovery until explicit bearer sign-in or confirmed logout. This ordering is page-local and does not coordinate other tabs.
 
 Session transitions cancel and clear every cached query before sign-in or sign-out, including actor scopes and audit/state data. Late session responses cannot restore a prior actor or CSRF secret.
 

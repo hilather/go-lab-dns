@@ -7,6 +7,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 ### Fixed
 
 - Operator console cancels and clears cached session, audit, and state data on identity transitions; late session responses cannot replace a newer CSRF secret or restore an old actor after logout.
+- Serialize browser session cookie mutations and revoke superseded logins before recovery; failed logout cleanup stays fail closed while explicit bearer sign-in can recover.
 - Shell revision uses the shared status query and refreshes after mutations, promptly discarding stale plans. Changes permits forwarder and chaos mutation scopes and built-in editor/operator roles while REST still authorizes each operation.
 - Chaos activation retries reuse idempotency keys only for the same request; edits to reason, expiry, policy, or revision get a new key.
 - Web development dependency `undici` updates from 7.29.0 to 7.29.1; required web CI now audits the complete dependency lockfile for high and critical vulnerabilities.

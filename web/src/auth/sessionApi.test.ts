@@ -202,20 +202,22 @@ describe('session response races', () => {
     setCsrf('old')
     const logout = deleteSession()
     expect(getCsrf()).toBe('')
-    await createSession()
+    const login = createSession()
     finish(new Response(null, { status: 204 }))
     await logout
+    await login
     expect(getCsrf()).toBe('new')
   })
 
   it('a stale login cannot restore authority after logout', async () => {
     let finish!: (value: Response) => void
-    vi.stubGlobal('fetch', vi.fn().mockImplementationOnce(() => new Promise((r) => { finish = r })).mockResolvedValueOnce(new Response(null, { status: 204 })))
+    vi.stubGlobal('fetch', vi.fn().mockImplementationOnce(() => new Promise((r) => { finish = r })).mockResolvedValue(new Response(null, { status: 204 })))
     const login = createSession()
     const rejected = expect(login).rejects.toMatchObject({ name: 'AbortError' })
-    await deleteSession()
+    const logout = deleteSession()
     finish(jsonResponse(200, { csrf: 'stale', actor: { id: 'stale' } }))
     await rejected
+    await logout
     expect(getCsrf()).toBe('')
   })
 })

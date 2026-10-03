@@ -2,8 +2,7 @@
 
 Status: Implemented (SEC-001)
 Owners: Security, DNS, Control Plane
-Last reviewed: 2026-10-03 (browser session response races and query isolation)
-Last reviewed: 2026-08-31 (protected-name wildcard synthesis)
+Last reviewed: 2026-10-03 (browser cookie mutation races and fail-closed recovery)
 Related ADRs: 0003, 0004, 0005, 0007
 
 ## Goals
@@ -60,6 +59,8 @@ First-GA DNS listener numeric defaults (DNS-001; YAML overrides land with CFG/ST
 `bearer` tokens are loaded from `spec.management.auth.secretRef` (a file: one token, or JSON `{"tokens":[{"token","id","role","scopes"}]}`). Unknown tokens fail closed. `X-Forwarded-For` is not trusted.
 
 ### Browser session and CSRF
+
+Browser session POST and DELETE operations are serialized within each page. A superseded successful login is revoked using only its response CSRF token before another cookie mutation can run. Session recovery waits for this queue. Failed revocation or logout retains its CSRF token and blocks recovery until cleanup succeeds; an explicit bearer login can replace the session and clear that pending state. A successful cookie response with an unreadable or invalid session body also blocks recovery until explicit bearer sign-in or confirmed logout. This ordering is page-local and does not coordinate other tabs.
 
 The operator console authenticates with an in-process session table (max 256, 12h sliding TTL) and cookie `labdns_session` (`HttpOnly`, `SameSite=Lax`, `Path=/`, host-only, `Secure` iff `r.TLS != nil`). CSRF secret is returned in JSON and required as `X-LabDNS-CSRF` on cookie-authenticated non-GET requests (`subtle.ConstantTimeCompare`). CSRF is omitted on `POST /v1/session` **only when no session cookie is sent**. A live-cookie POST without Bearer **rotates** ID/CSRF for the existing Actor (`class=ui-session`) and must not call loopback Identify (that would escalate a viewer to administrator). A present but unknown/expired cookie without Bearer is 401 (SPA clears it after GET `/v1/session` 401); first login omits the cookie. Identity switch requires `Authorization: Bearer`. `Authorization: Bearer` wins over cookie and CSRF for that request.
 
