@@ -286,3 +286,26 @@ func TestComposedDelaysReserveEachPolicy(t *testing.T) {
 		t.Fatal("composed delay reservation leaked")
 	}
 }
+
+func TestComposedDelayPolicyCapsAndRelease(t *testing.T) {
+	clk := &instantDelayClock{}
+	snap := delaySnap(4, 4)
+	snap.Chaos.ByID["p"].Policy.Budget.MaxDelay = time.Second
+	snap.Chaos.ByID["q"] = &snapshot.CompiledChaos{Policy: model.ChaosPolicy{ID: "q", Budget: &model.ChaosBudget{MaxConcurrency: 1}}}
+	budgets := chaos.NewBudgets()
+	sess := NewSession(clk, budgets, snap, nil)
+	plan := chaos.ActionPlan{Actions: []chaos.PlannedAction{{Type: model.ActionDelay, PolicyID: "p", Delay: 700 * time.Millisecond}, {Type: model.ActionDelay, PolicyID: "p", Delay: 700 * time.Millisecond}, {Type: model.ActionDelay, PolicyID: "q", Delay: time.Millisecond}}}
+	if err := sess.Sleep(context.Background(), plan, ""); err != nil {
+		t.Fatal(err)
+	}
+	if clk.total != time.Second+time.Millisecond {
+		t.Fatalf("cumulative policy delay=%s", clk.total)
+	}
+	if budgets.InFlight() != 1 || budgets.PolicyInFlight("p") != 1 || budgets.PolicyInFlight("q") != 1 {
+		t.Fatal("expected one global slot and both policy reservations")
+	}
+	sess.Release()
+	if budgets.InFlight() != 0 || budgets.PolicyInFlight("p") != 0 || budgets.PolicyInFlight("q") != 0 {
+		t.Fatal("composed policy reservations leaked")
+	}
+}

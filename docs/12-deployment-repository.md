@@ -93,6 +93,8 @@ labdns verify --config dns.yaml --probes probes.yaml \
 
 The `AllowedAlternateAddresses` gate checks both desired-state `allowedAddressCIDRs` and every IPv4/IPv6 value in every alternate action, including disabled policies. Removing or emptying the desired-state allowlist cannot bypass the deployment gate. An empty deployment address allowlist denies all alternate IP addresses; non-address targets are outside this address gate.
 
+Deployment chaos checks account for runtime zero semantics: configured delays require finite desired-state delay and concurrency bounds, actual drop-policy probabilities must obey the deployment ceiling, and enabled high-impact policy counts are checked directly. Zero or omitted desired-state caps cannot broaden configured faults past deployment policy.
+
 ## Runtime-to-Git workflow
 
 1. Agent plans an ephemeral runtime change.

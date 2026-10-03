@@ -447,6 +447,40 @@ func checkChaos(st *model.State, pol *Set) []string {
 	if s.MaxActiveHighImpactPolicies > pol.MaxActiveHighImpact {
 		errs = append(errs, fmt.Sprintf("maxActiveHighImpactPolicies %d exceeds policy cap %d", s.MaxActiveHighImpactPolicies, pol.MaxActiveHighImpact))
 	}
+	// Runtime zero means unlimited, rather than a zero ceiling. Check
+	// configured fault behavior so removing a numeric field cannot broaden it.
+	haveDelay := false
+	high := 0
+	for _, policy := range st.Spec.Chaos.Policies {
+		if policy.Enabled && policy.SafetyClass == model.SafetyClassHigh {
+			high++
+		}
+		for _, outcome := range policy.Outcomes {
+			for _, action := range outcome.Actions {
+				if (action.Type == model.ActionDelay || (action.Type == model.ActionUpstream && strings.EqualFold(strings.TrimSpace(action.Value), "delay"))) && (action.Duration > 0 || action.TTL > 0 || action.Max > 0) {
+					haveDelay = true
+				}
+				if action.Type == model.ActionDrop {
+					prob := policy.Selector.Probability
+					if s.MaxDropProbability > 0 && prob > s.MaxDropProbability {
+						prob = s.MaxDropProbability
+					}
+					if prob > pol.MaxDropProbability+1e-9 {
+						errs = append(errs, fmt.Sprintf("chaos policy %s drop probability %g exceeds policy maxDropProbability %g", policy.ID, prob, pol.MaxDropProbability))
+					}
+				}
+			}
+		}
+	}
+	if haveDelay && s.MaxDelay == 0 {
+		errs = append(errs, "maxDelay is unlimited for configured delays; deployment requires a finite bound")
+	}
+	if haveDelay && s.MaxConcurrentDelayed == 0 {
+		errs = append(errs, "maxConcurrentDelayed is unlimited for configured delays; deployment requires a finite bound")
+	}
+	if high > pol.MaxActiveHighImpact {
+		errs = append(errs, fmt.Sprintf("%d enabled high-impact policies exceed deployment maxActiveHighImpactPolicies %d", high, pol.MaxActiveHighImpact))
+	}
 	return errs
 }
 
