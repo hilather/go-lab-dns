@@ -177,3 +177,29 @@ func readTCP(t *testing.T, c net.Conn) []byte {
 	}
 	return body
 }
+
+func TestReservedZeroClassIsNotIN(t *testing.T) {
+	s := startServer(t, Config{})
+	query := packA(t, "class.lab.", 42, nil)
+	query[len(query)-1] = 0
+	for _, transport := range []string{"udp", "tcp"} {
+		t.Run(transport, func(t *testing.T) {
+			var out []byte
+			if transport == "udp" {
+				out = mustExchangeUDP(t, s.UDPAddr(), query)
+			} else {
+				var err error
+				out, err = exchangeTCP(t, s.TCPAddr(), query, time.Second)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			if out[3]&15 != 4 {
+				t.Fatalf("reserved QCLASS returned RCODE %d, want NOTIMP", out[3]&15)
+			}
+			if out[len(out)-1] != 0 {
+				t.Fatal("reserved question class was not echoed")
+			}
+		})
+	}
+}
