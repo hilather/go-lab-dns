@@ -11,6 +11,10 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Release CI verification rejects missing commit SHAs and pending reruns instead of reusing an older successful check. GitHub check-run IDs identify the current attempt.
 - Changelog enforcement covers operator web application changes and Go/frontend dependency manifests and locks while excluding test-only files and build output.
 - Architecture documentation now describes the implemented operator console and the current DNS wire adapter dependency.
+- DNS admission preserves reserved QCLASS zero and returns NOTIMP over UDP and TCP instead of treating it as IN.
+- Forwarding rejects upstream packets whose QR, opcode, question count, name, type, or class does not match the request. Invalid and incomplete truncated replies follow transport-error failover and otherwise return SERVFAIL; disabling TCP retry no longer turns a partial reply into a complete cacheable answer.
+- Canceling an in-flight upstream exchange now closes its socket immediately instead of waiting for the attempt deadline.
+- Negative caching requires an SOA and respects SOA MINIMUM (including zero) and detects CNAME chains ending in NXDOMAIN or SOA-backed NODATA, including management resolve cache writes.
 
 ## v1.3.2 — 2026-09-21
 
