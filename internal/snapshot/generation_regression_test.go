@@ -23,3 +23,14 @@ func TestSwapAdvancesGenerationPastEmergencyChanges(t *testing.T) {
 		t.Fatal("shared compiled candidate mutated")
 	}
 }
+
+func TestPreviousRejectsDelayedOlderPublication(t *testing.T) {
+	store := NewStore()
+	newer := &Snapshot{Generation: 20}
+	older := &Snapshot{Generation: 19}
+	store.publishPrevious(newer)
+	store.publishPrevious(older)
+	if store.Previous() != newer {
+		t.Fatal("delayed publisher replaced the latest displaced snapshot")
+	}
+}
