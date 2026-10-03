@@ -2,6 +2,7 @@
 
 Status: Implemented (SEC-001)
 Owners: Security, DNS, Control Plane
+Last reviewed: 2026-10-03 (sequential authorization of atomic change sets)
 Last reviewed: 2026-08-31 (protected-name wildcard synthesis)
 Related ADRs: 0003, 0004, 0005, 0007
 
@@ -196,3 +197,5 @@ Weakening a default or broadening access is a security-significant breaking chan
 
 - Default remote authentication profile for reference deployments.
 - Whether durable audit acknowledgment is required for high-impact chaos activation.
+
+Atomic change sets authorize each operation against the private candidate produced by preceding operations, in addition to checking the starting state. A policy created or upgraded earlier in a batch retains its actual safety class for activation checks; relative owners in newly added zones use that zone origin. Denied batches leave the active snapshot unchanged. Required permission metadata includes the scopes required at each intermediate step.

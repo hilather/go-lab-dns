@@ -4,6 +4,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+- Atomic plan/apply/validate batches now authorize each operation against preceding candidate changes. This prevents low-privilege actors from activating a newly added high-impact chaos policy or adding a relative protected owner through a newly added zone. REST and MCP share the fix and report complete required permissions.
+
 ## v1.3.2 — 2026-09-21
 
 Curated notes: [docs/releases/v1.3.2.md](https://github.com/hilather/go-lab-dns/blob/v1.3.2/docs/releases/v1.3.2.md).
