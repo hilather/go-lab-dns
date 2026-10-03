@@ -181,8 +181,9 @@ export async function deleteSession(): Promise<void> {
   clear()
   return enqueueMutation(async () => {
     if (pendingRevocation) await revokePendingSession()
-    // Read late so a queued sign-in has finished learning an orphan cookie's CSRF.
-    const csrf = memoryCsrf || orphanCsrf
+    // Read late so a queued sign-in has finished learning an orphan cookie's CSRF;
+    // it wins over the call-time snapshot because it belongs to the newest cookie.
+    const csrf = orphanCsrf || memoryCsrf
     pendingRevocation = csrf
     recoveryBlocked = true
     await deleteWithCsrf(csrf)
