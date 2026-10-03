@@ -3,6 +3,8 @@
 Status: Proposed normative quality gate
 Owners: All teams
 Last reviewed: 2026-10-03 (successful snapshot preservation after Kubernetes deployment failure)
+Last reviewed: 2026-10-03 (Docker documentation embed context and runtime smoke checks)
+Last reviewed: 2026-10-03 (aggregate drop-cap and numeric boundary regressions)
 Last reviewed: 2026-09-04 (refuse-forward overlay CNAME must not poison AllowForward cache)
 Last reviewed: 2026-09-01 (resolve useCache fallthrough must not poison DNS cache)
 Last reviewed: 2026-08-29 (app tsc excludes Vitest files; web-test runs tsc --noEmit)
@@ -145,6 +147,8 @@ Soak assertions: every wire answer is a complete old or new RRset (never mixed/p
 
 ### Container and deployment tests
 
+`TestDockerContextIncludesEmbeddedDocumentation` derives the docs package's Go sources and embed inputs with `go list` and checks the exact final Docker ignore exceptions. `make test-container` also requests both embedded documentation endpoints from inside the running image using its authenticated loopback principal.
+
 Fake-kubectl regressions deploy A then B, fail C during apply/restart/status, verify `.last/` remains B and `.previous/` remains A, and prove rollback restores A including both image pins.
 
 - Non-root execution.
@@ -214,6 +218,8 @@ A failing CI run is not dismissed as merely transient without evidence. Fix the 
 Never use broad retries to conceal a race or flaky assertion.
 
 ## Chaos-specific acceptance tests
+
+Chaos drop-cap regressions cover a snapshot-wide union bound across policies and execution groups, deterministic time-bucket boundary witnesses, unchanged canonical export, live/simulation parity, weighted and pressure drop outcomes, inactive policies, sticky random draw counts, single-phase compatibility, and zero/one cap semantics. Packet tests cover composed selector allocation over UDP and TCP. Numeric regressions lock probability-one behavior at maximum draws, half-open uniform delays near duration limits, and proportional weighted selection when finite weight sums overflow.
 
 - Per-record fixed delay falls within timing tolerance.
 - Uniform delay stays within bounds and distribution checks pass.

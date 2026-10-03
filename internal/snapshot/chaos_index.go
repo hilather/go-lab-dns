@@ -39,6 +39,8 @@ type ChaosIndex struct {
 type CompiledChaos struct {
 	Policy     model.ChaosPolicy
 	Precedence int
+	// RequestedProbability preserves the pre-allocation threshold for clamp evidence.
+	RequestedProbability float64
 }
 
 // Compiled reports whether chaos.Compile produced this index.

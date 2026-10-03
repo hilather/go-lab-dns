@@ -14,3 +14,9 @@ web/node_modules
 web/dist
 web/playwright-report
 web/test-results
+# Only the canonical operator documentation package is a production embed input.
+!docs/
+docs/*
+!docs/02-dns-semantics.md
+!docs/03-chaos-engine.md
+!docs/embed.go

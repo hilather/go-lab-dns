@@ -2,6 +2,7 @@
 
 Status: Normative (GIT-001)
 Owners: Deployment, Platform
+Last reviewed: 2026-10-03 (alternate action address checks)
 Last reviewed: 2026-08-19 (operator console :8080, ui.enabled, allowedOrigins)
 
 Last reviewed: 2026-10-03 (explicit Kubernetes restart and matching rollback image pins)
@@ -91,6 +92,10 @@ labdns verify --config dns.yaml --probes probes.yaml \
 ```
 
 `labdns verify` compiles the document, checks digest pin and allowlists, then executes probes through the DNS orchestrator (`internal/dnsquery`) so refuse-forward and RA match the data plane. Probes with `live: true` run only when `--server` is set.
+
+The `AllowedAlternateAddresses` gate checks both desired-state `allowedAddressCIDRs` and every IPv4/IPv6 value in every alternate action, including disabled policies. Removing or emptying the desired-state allowlist cannot bypass the deployment gate. An empty deployment address allowlist denies all alternate IP addresses; non-address targets are outside this address gate.
+
+Deployment chaos checks account for runtime zero semantics: configured delays require finite desired-state delay and concurrency bounds, actual drop-policy probabilities must obey the deployment ceiling, and enabled high-impact policy counts are checked directly. Zero or omitted desired-state caps cannot broaden configured faults past deployment policy.
 
 ## Runtime-to-Git workflow
 

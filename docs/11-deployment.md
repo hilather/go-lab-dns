@@ -3,6 +3,7 @@
 Status: Proposed
 Owners: Deployment, Operations, Security
 Last reviewed: 2026-10-03 (failed deployments preserve successful rollback snapshots)
+Last reviewed: 2026-10-03 (canonical documentation embed inputs in Docker context)
 Last reviewed: 2026-08-19 (operator console on :8080, ui.enabled, allowedOrigins)
 Last reviewed: 2026-08-19 (Dockerfile Node 22.14.0 stage for operator console)
 Last reviewed: 2026-08-15 (PERF-001 capacity notes)
@@ -27,6 +28,8 @@ Image: **`ghcr.io/hilather/labdns`** (pin by digest in GitOps). The root `Docker
 - `LICENSE` (Apache-2.0) and OCI labels (`org.opencontainers.image.licenses=Apache-2.0`).
 - Embedded operator-console assets from the Node stage (`web/dist` copied over `internal/web/dist` after `COPY . .`). The image build fails if `index.html` or hashed `assets/` are missing.
 - No shell. `HEALTHCHECK` uses exec form `/labdns healthcheck`.
+
+The Docker context includes `docs/embed.go`, `docs/02-dns-semantics.md`, and `docs/03-chaos-engine.md` so the static binary contains its operator documentation. Other documentation stays excluded. Container smoke checks request both documentation endpoints through the container's loopback principal; no source checkout or document volume is required at runtime.
 
 The image user is numeric **`65532:65532`**. Listen on 5353 in the container and map host port 53. Required runtime flags: `read_only: true`, `cap_drop: [ALL]`, `security_opt: [no-new-privileges:true]`, tmpfs `/tmp`.
 
