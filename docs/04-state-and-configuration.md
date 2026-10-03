@@ -2,6 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Configuration, Application
+Last reviewed: 2026-10-03 (high-impact policy count and nonnegative safety limits)
 Last reviewed: 2026-08-18 (plan idempotency rechecks expectedRevision; emergency cancel)
 Last reviewed: 2026-08-19 (spec.ui.enabled, TargetUI, management.allowedOrigins)
 Last reviewed: 2026-08-23 (over-length desired-state names; ADR 0009)
@@ -354,6 +355,18 @@ Expose generation, revisions, drift, validation failures by stable error code, m
 ## Testing strategy
 
 Use schema tests, unknown-field tests, normalization goldens, canonical round trips, revision stability tests, cross-reference tests, mutation conflict tests, reset failure tests, and fuzzing of YAML/JSON decoders.
+
+### Chaos safety admission
+
+`maxConcurrentDelayed`, `maxActiveHighImpactPolicies`, and `defaultMaxLifetime` must be nonnegative, as must policy `budget.maxDelay`, `maxConcurrency`, `maxRate`, and `maxFrequency`.
+
+A positive `maxActiveHighImpactPolicies` caps the number of enabled `high` policies in a complete candidate; disabled policies do not count. Scheduled or expired enabled policies count conservatively until disabled. Zero leaves the count uncapped. Bootstrap loading, CLI validation, and runtime validation, planning, and apply use the same check; the chaos compiler retains a defensive count check.
+
+`budget.maxFrequency` is not implemented and must be omitted or zero; positive values are rejected rather than silently ignored.
+
+The binary embeds the published configuration schema directly from `api/jsonschema/labdns.dev.v1alpha1.json`. REST and MCP schema inspection works from any working directory, including the scratch container, without a source checkout. Schema callers receive independent byte copies.
+
+Duration parsing and export follow the model field types, so arbitrary metadata and policy labels named `ttl`, `duration`, or `maxDelay` remain strings. JSON input must contain exactly one complete value followed by whitespace; trailing delimiters and other bytes are rejected. Canonical duration formatting supports the entire signed 64-bit duration range without overflow.
 
 ## Compatibility implications
 

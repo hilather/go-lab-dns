@@ -202,3 +202,64 @@ func repoRoot(t *testing.T) string {
 		dir = parent
 	}
 }
+
+func TestCheckAlternateValuesCannotBypassDeploymentAllowlist(t *testing.T) {
+	dir := t.TempDir()
+	writePolicyTree(t, dir)
+	pol, err := LoadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range []string{"203.0.113.77", "2001:db8::77"} {
+		t.Run(value, func(t *testing.T) {
+			st := sampleState(t)
+			st.Spec.Chaos.Safety.AllowedAddressCIDRs = nil
+			st.Spec.Chaos.Policies[0].Outcomes[0].Actions = []model.ChaosAction{{Type: model.ActionAlternate, Values: []string{value}}}
+			if err := config.Validate(st); err != nil {
+				t.Fatalf("desired state should be valid: %v", err)
+			}
+			if err := Check(st, pol); err == nil || !strings.Contains(err.Error(), "allowed-alternate-addresses") {
+				t.Fatalf("alternate escaped deployment policy: %v", err)
+			}
+		})
+	}
+	st := sampleState(t)
+	st.Spec.Chaos.Safety.AllowedAddressCIDRs = nil
+	st.Spec.Chaos.Policies[0].Outcomes[0].Actions = []model.ChaosAction{{Type: model.ActionAlternate, Values: []string{"10.42.0.9"}}}
+	if err := Check(st, pol); err != nil {
+		t.Fatal(err)
+	}
+	pol.AlternateAddresses = nil
+	if err := Check(st, pol); err == nil {
+		t.Fatal("empty deployment allowlist accepted alternate address")
+	}
+}
+
+func TestCheckRejectsUnlimitedRuntimeCapsForConfiguredFaults(t *testing.T) {
+	dir := t.TempDir()
+	writePolicyTree(t, dir)
+	pol, err := LoadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		set  func(*model.State)
+	}{
+		{"maxDelay", func(st *model.State) { st.Spec.Chaos.Safety.MaxDelay = 0 }},
+		{"maxConcurrentDelayed", func(st *model.State) { st.Spec.Chaos.Safety.MaxConcurrentDelayed = 0 }},
+		{"maxDropProbability", func(st *model.State) {
+			st.Spec.Chaos.Safety.MaxDropProbability = 0
+			st.Spec.Chaos.Policies[0].Selector.Probability = 1
+			st.Spec.Chaos.Policies[0].Outcomes[0].Actions = []model.ChaosAction{{Type: model.ActionDrop}}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := sampleState(t)
+			tc.set(st)
+			if err := Check(st, pol); err == nil || !strings.Contains(err.Error(), tc.name) {
+				t.Fatalf("unlimited runtime %s passed deployment ceiling: %v", tc.name, err)
+			}
+		})
+	}
+}

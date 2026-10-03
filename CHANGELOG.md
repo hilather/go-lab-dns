@@ -6,6 +6,23 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Fixed
 
+- Correct numerical edge handling without changing hash-v1 inputs or draws: probability one always triggers, uniform delays remain inside their half-open range even at maximum 64-bit draws, and finite weighted outcomes remain correctly proportional when their sum overflows. Interior finite mappings are unchanged.
+
+- Enforce aggregate drop probability across composed policies and both execution groups by allocating an immutable snapshot-wide selector budget. Pressure drops and inactive policies reserve shares too; mixed outcomes, disjoint policies, and policies dropping in both phases may trigger less often under a positive cap. Canonical export, hash-v1 encoding, and random draw counts are unchanged; action-plan clamp evidence reports effective thresholds. Zero remains unlimited and cap one leaves selectors unchanged.
+
+- Deployment chaos verification now rejects unlimited zero delay/concurrency caps when delays are configured, checks actual drop-policy probabilities, and counts enabled high-impact policies directly against deployment ceilings.
+
+- Chaos delay and pressure bookkeeping now discards released or expired idle policy entries. Unlimited-rate pressure policies no longer retain unnecessary request timestamps.
+
+- Configuration JSON now rejects trailing closing delimiters, label keys named after duration fields round-trip unchanged, and duration formatting handles the minimum signed 64-bit duration without recursive overflow.
+
+- Configuration schema inspection now works in standalone binaries and the scratch container; the published schema is embedded directly in the executable.
+
+- Deployment verification now checks actual alternate IPv4/IPv6 action values against `AllowedAlternateAddresses`, including disabled policies. Emptying the desired-state address allowlist no longer bypasses deployment address policy.
+
+- Composed chaos delays now obey cumulative global and per-policy delay caps and every contributing policy's concurrency cap. Reservations still use one global slot per delayed query and release all policy slots on completion or cancellation.
+- Lower-precedence chaos outcomes can no longer replace a selected conflicting transport action within or across resolution phases. Within one decision phase, live evaluation and simulation report skipped conflicting outcomes as `transport_conflict`.
+- Configuration validation now enforces positive `maxActiveHighImpactPolicies` against enabled high-impact policies and rejects negative delayed-concurrency, high-impact-count, and default-lifetime safety limits and negative policy budget limits. Positive `budget.maxFrequency` is rejected because the runtime does not implement that cap; omit it or set it to zero.
 - DNS admission preserves reserved QCLASS zero and returns NOTIMP over UDP and TCP instead of treating it as IN.
 - Forwarding rejects upstream packets whose QR, opcode, question count, name, type, or class does not match the request. Invalid and incomplete truncated replies follow transport-error failover and otherwise return SERVFAIL; disabling TCP retry no longer turns a partial reply into a complete cacheable answer.
 - Canceling an in-flight upstream exchange now closes its socket immediately instead of waiting for the attempt deadline.
