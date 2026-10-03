@@ -3,6 +3,7 @@
 Status: Proposed normative behavior
 Owners: Application, REST, MCP, UI
 Last reviewed: 2026-10-03 (shared active-chaos resolution output)
+Last reviewed: 2026-10-03 (sequential authorization of atomic change sets)
 Last reviewed: 2026-08-31 (protected-name wildcard synthesis)
 Related ADRs: 0004, 0006
 
@@ -218,3 +219,9 @@ Capability names and schema versions are stable public surfaces. Renaming an MCP
 ## Open questions
 
 - Read tools and resources: first GA ships both (implementation design / ADR 0004). Resources mirror REST GET representations; every list/get also has a read tool so clients without resource support stay unblocked.
+
+Atomic change sets authorize each operation against the private candidate produced by preceding operations, in addition to checking the starting state. A policy created or upgraded earlier in a batch retains its actual safety class for activation checks; relative owners in newly added zones use that zone origin. Denied batches leave the active snapshot unchanged. Required permission metadata includes the scopes required at each intermediate step.
+
+The DNS semantics and chaos safety representations embed their canonical Markdown sources in the binary. REST, MCP, and the operator console can read them without a source checkout or a particular process working directory, including in the scratch container.
+
+Cache flush uses shared administrator authorization and emits audit records for success and denied authorization. First GA flushes the entire process cache whether `all` is omitted, false, or true. REST optional mutation bodies accept no body or one JSON value; trailing values or delimiters fail validation before the mutation runs.

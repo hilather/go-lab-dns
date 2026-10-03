@@ -4,6 +4,8 @@ Status: Proposed normative behavior
 Owners: Configuration, Application
 Last reviewed: 2026-10-03 (live cache policies, management mounts, and monotonic previous snapshots)
 Last reviewed: 2026-10-03 (snapshot publication advances past concurrent emergency generations)
+Last reviewed: 2026-10-03 (reset cancels delays; operation label preservation)
+Last reviewed: 2026-10-03 (high-impact policy count and nonnegative safety limits)
 Last reviewed: 2026-08-18 (plan idempotency rechecks expectedRevision; emergency cancel)
 Last reviewed: 2026-08-19 (spec.ui.enabled, TargetUI, management.allowedOrigins)
 Last reviewed: 2026-08-23 (over-length desired-state names; ADR 0009)
@@ -94,7 +96,7 @@ Requirements:
 
 ## Reset
 
-Reset rereads the mounted bootstrap file, validates and compiles it, and swaps only after success. A missing or invalid replacement file leaves the current runtime state active and does not clear the idempotency cache. Reset clears runtime idempotency entries after a successful swap. Runtime-only emergency inhibit (`Store` process bit + `Snapshot.EmergencyChaosOff`) is cleared on reset (YAML `emergencyDisabled` still compiles on). The service never writes the bootstrap file. When no mount path is configured, reset recompiles the last `Store.Bootstrap()` canonical state.
+Reset rereads the mounted bootstrap file, validates and compiles it, and swaps only after success. A missing or invalid replacement file leaves the current runtime state active and does not clear the idempotency cache. Reset clears runtime idempotency entries and cancels outstanding chaos delay reservations after a successful swap. A failed reset cancels no reservations. Runtime-only emergency inhibit (`Store` process bit + `Snapshot.EmergencyChaosOff`) is cleared on reset (YAML `emergencyDisabled` still compiles on). The service never writes the bootstrap file. When no mount path is configured, reset recompiles the last `Store.Bootstrap()` canonical state.
 
 `EmergencyDisableChaos` sets the store-level inhibit bit, CAS-stamps the current snapshot, and cancels outstanding delay reservations. `Store.Swap` copies that bit onto every installed snapshot, so apply cannot clear it and emergency cannot roll back a concurrent apply's Canonical. SIGUSR1 uses the same combined path.
 
@@ -365,6 +367,18 @@ Expose generation, revisions, drift, validation failures by stable error code, m
 
 Use schema tests, unknown-field tests, normalization goldens, canonical round trips, revision stability tests, cross-reference tests, mutation conflict tests, reset failure tests, and fuzzing of YAML/JSON decoders.
 
+### Chaos safety admission
+
+`maxConcurrentDelayed`, `maxActiveHighImpactPolicies`, and `defaultMaxLifetime` must be nonnegative, as must policy `budget.maxDelay`, `maxConcurrency`, `maxRate`, and `maxFrequency`.
+
+A positive `maxActiveHighImpactPolicies` caps the number of enabled `high` policies in a complete candidate; disabled policies do not count. Scheduled or expired enabled policies count conservatively until disabled. Zero leaves the count uncapped. Bootstrap loading, CLI validation, and runtime validation, planning, and apply use the same check; the chaos compiler retains a defensive count check.
+
+`budget.maxFrequency` is not implemented and must be omitted or zero; positive values are rejected rather than silently ignored.
+
+The binary embeds the published configuration schema directly from `api/jsonschema/labdns.dev.v1alpha1.json`. REST and MCP schema inspection works from any working directory, including the scratch container, without a source checkout. Schema callers receive independent byte copies.
+
+Duration parsing and export follow the model field types, so arbitrary metadata and policy labels named `ttl`, `duration`, or `maxDelay` remain strings. JSON input must contain exactly one complete value followed by whitespace; trailing delimiters and other bytes are rejected. Canonical duration formatting supports the entire signed 64-bit duration range without overflow.
+
 ## Compatibility implications
 
 Config API versions are explicit. Removing or reinterpreting a field requires a new version or a documented migration. New optional fields must have safe defaults.
@@ -375,3 +389,5 @@ Resolved for first GA:
 
 - Stable IDs are user-supplied only.
 - Canonical export does not preserve comments (no sidecar).
+
+Mutation operation decoding preserves arbitrary `labels` keys as strings, even when a key is also a duration field name such as `ttl` or `duration`.

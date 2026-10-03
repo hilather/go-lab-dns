@@ -55,6 +55,11 @@ func (s *Server) decodeJSONOptional(w http.ResponseWriter, r *http.Request, inst
 		s.writeProblem(w, r, instance, decodeError(err))
 		return false
 	}
+	if err := dec.Decode(&struct{}{}); err != io.EOF {
+		s.writeProblem(w, r, instance, domainerr.ValidationFailed("request body must contain a single JSON value",
+			domainerr.FieldViolation{Path: "", Code: "invalid_value", Message: "trailing JSON is not allowed"}))
+		return false
+	}
 	return true
 }
 

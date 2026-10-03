@@ -96,14 +96,14 @@ Probes with `live: true` run only when `--server` is set (`live-probe.sh`).
 2. Verify with `resolve` / `explain` / probes.
 3. `GET /v1/state:export` (canonical YAML + bootstrap-to-runtime ops).
 4. Open a PR here with the export and updated probes.
-5. Merge; `deploy.sh` recreates or operators `POST /v1/state:reset`.
+5. Merge; `deploy.sh` recreates or operators `POST /v1/state:reset`. Kubernetes mode explicitly restarts `deployment/labdns` after applying manifests, including unchanged desired state, then waits for rollout success before recording the deployment snapshot.
 6. Drift returns to false. Recreation always discards unsaved runtime state.
 
 ## Rollback
 
 Preferred: revert the Git commit and `deploy.sh`.  
 Fast path: `scripts/rollback.sh <env>` restores the previous successful
-deploy snapshot (`.previous/`) and redeploys.
+deploy snapshot (`.previous/`) and redeploys. Snapshots include `dns.yaml`, `image.env`, and the Kubernetes `kustomization.yaml` when present, so rollback restores both image pins together. Failed deployment attempts leave `.last/` and `.previous/` unchanged; snapshots rotate only after successful recreation or rollout.
 
 ## Agent rules
 

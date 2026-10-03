@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/hilather/go-lab-dns/internal/chaos"
 	"github.com/hilather/go-lab-dns/internal/dnsserver"
@@ -20,12 +21,14 @@ type Session struct {
 	snap    *snapshot.Snapshot
 	metrics *chaos.Metrics
 
-	mu       sync.Mutex
-	tok      *chaos.Token
-	skipped  bool // budget exhausted
-	stopped  bool // emergency: skip remaining delays
-	cancelCh chan struct{}
-	unreg    func()
+	mu            sync.Mutex
+	tok           *chaos.Token
+	delayed       time.Duration
+	policyDelayed map[model.PolicyID]time.Duration
+	skipped       bool // budget exhausted
+	stopped       bool // emergency: skip remaining delays
+	cancelCh      chan struct{}
+	unreg         func()
 }
 
 // NewSession starts a cancellable delay session. Release must be called.
@@ -92,25 +95,45 @@ func (s *Session) sleepOne(ctx context.Context, a chaos.PlannedAction) error {
 		s.mu.Unlock()
 		return nil
 	}
-	if s.tok == nil && s.budgets != nil && s.snap != nil {
-		maxG := s.snap.Safety.MaxConcurrentDelayed
+	if s.snap != nil {
 		maxP := 0
-		if s.snap.Chaos.ByID != nil {
-			if cp, ok := s.snap.Chaos.ByID[a.PolicyID]; ok && cp != nil && cp.Policy.Budget != nil {
-				maxP = cp.Policy.Budget.MaxConcurrency
-			}
+		policyMax := time.Duration(0)
+		if cp := s.snap.Chaos.ByID[a.PolicyID]; cp != nil && cp.Policy.Budget != nil {
+			maxP = cp.Policy.Budget.MaxConcurrency
+			policyMax = cp.Policy.Budget.MaxDelay
 		}
-		tok, err := s.budgets.ReserveDelay(a.PolicyID, maxG, maxP)
-		if err != nil {
-			s.skipped = true
+		if s.snap.Safety.MaxDelay > 0 && a.Delay > s.snap.Safety.MaxDelay-s.delayed {
+			a.Delay = s.snap.Safety.MaxDelay - s.delayed
+		}
+		if policyMax > 0 && a.Delay > policyMax-s.policyDelayed[a.PolicyID] {
+			a.Delay = policyMax - s.policyDelayed[a.PolicyID]
+		}
+		if a.Delay <= 0 {
 			s.mu.Unlock()
-			if s.metrics != nil {
-				s.metrics.BudgetSkipped.Add(1)
-			}
 			return nil
 		}
-		s.tok = tok
+		if s.budgets != nil {
+			var err error
+			if s.tok == nil {
+				s.tok, err = s.budgets.ReserveDelay(a.PolicyID, s.snap.Safety.MaxConcurrentDelayed, maxP)
+			} else {
+				err = s.tok.ReservePolicy(a.PolicyID, maxP)
+			}
+			if err != nil {
+				s.skipped = true
+				s.mu.Unlock()
+				if s.metrics != nil {
+					s.metrics.BudgetSkipped.Add(1)
+				}
+				return nil
+			}
+		}
 	}
+	s.delayed += a.Delay
+	if s.policyDelayed == nil {
+		s.policyDelayed = make(map[model.PolicyID]time.Duration)
+	}
+	s.policyDelayed[a.PolicyID] += a.Delay
 	s.mu.Unlock()
 
 	timer := s.clk.NewTimer(a.Delay)

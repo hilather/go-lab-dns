@@ -20,5 +20,9 @@ fi
 
 cp -f "${PREV}/dns.yaml" "${DIR}/dns.yaml"
 cp -f "${PREV}/image.env" "${DIR}/image.env"
+if [ -f "${PREV}/kustomization.yaml" ]; then
+	mkdir -p "${DIR}/k8s"
+	cp -f "${PREV}/kustomization.yaml" "${DIR}/k8s/kustomization.yaml"
+fi
 echo "restored ${ENV_NAME} from ${PREV}" >&2
 "${ROOT}/scripts/deploy.sh" "${ENV_NAME}" "${MODE}"

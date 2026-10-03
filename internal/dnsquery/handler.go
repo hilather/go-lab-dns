@@ -202,10 +202,7 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (resp *dnsserv
 		return dnsserver.NewResponse(base), dnsserver.HintSend, nil
 	}
 
-	hintPlan := post
-	if hintPlan.TransportHint == "" {
-		hintPlan = pre
-	}
+	hintPlan := effects.SelectTransportPlan(snap, pre, post)
 	hint = effects.Hint(hintPlan, q.Transport, h.metrics())
 	resp = dnsserver.NewResponse(res)
 	hold := hintPlan.Hold

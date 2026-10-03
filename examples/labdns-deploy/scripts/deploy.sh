@@ -12,7 +12,6 @@ ROOT="$(deploy_root)"
 
 "${ROOT}/scripts/validate.sh" "${ENV_NAME}"
 load_image_env "${DIR}/image.env"
-rotate_deploy_snapshot "${DIR}"
 
 case "${MODE}" in
 compose)
@@ -31,7 +30,9 @@ k8s|kubernetes)
 		exit 1
 	fi
 	kubectl apply -k "${DIR}/k8s"
-	# Recreate semantics: a new ReplicaSet discards process-local drift.
+	# A ConfigMap apply alone does not restart an unchanged Deployment.
+	# Explicitly recreate pods so bootstrap reloads and runtime drift disappears.
+	kubectl rollout restart "deployment/labdns" -n "labdns-${ENV_NAME}"
 	kubectl rollout status "deployment/labdns" -n "labdns-${ENV_NAME}" --timeout=120s
 	;;
 *)
@@ -40,5 +41,6 @@ k8s|kubernetes)
 	;;
 esac
 
+rotate_deploy_snapshot "${DIR}"
 record_deploy_snapshot "${DIR}"
 echo "deploy ${ENV_NAME} ${MODE} ok (container recreation resets runtime drift)" >&2
