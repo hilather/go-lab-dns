@@ -273,6 +273,12 @@ func (rt *Runtime) attempt(ctx context.Context, q model.Query, up snapshot.Compi
 		return model.Result{}, err, false
 	}
 	defer func() { _ = conn.Close() }()
+	// Socket deadlines alone do not observe a parent cancellation. Closing
+	// the connection interrupts an in-flight read or write immediately.
+	// Attempt expiry is handled by the socket deadline so it stays a timeout
+	// rather than racing Close and becoming a transport error.
+	stopCancel := context.AfterFunc(ctx, func() { _ = conn.Close() })
+	defer stopCancel()
 
 	if dl, ok := actx.Deadline(); ok {
 		_ = conn.SetDeadline(dl)
@@ -319,8 +325,18 @@ func (rt *Runtime) attempt(ctx context.Context, q model.Query, up snapshot.Compi
 	if upmsg.ID != id {
 		return model.Result{}, errors.New("forwarder: response id mismatch"), false
 	}
+	if !upmsg.QR || upmsg.Opcode != 0 || len(upmsg.Questions) != 1 {
+		return model.Result{}, errors.New("forwarder: invalid response header or question count"), false
+	}
+	question := upmsg.Questions[0]
+	if question.Name != q.Name || question.Type != q.Type || question.Class != q.Class {
+		return model.Result{}, errors.New("forwarder: response question mismatch"), false
+	}
 	if upmsg.TC && allowTCPRetry && up.Transport == model.TransportUDP {
 		return model.Result{}, nil, true
+	}
+	if upmsg.TC {
+		return model.Result{}, errors.New("forwarder: incomplete truncated response"), false
 	}
 	res := model.Result{
 		RCode:      upmsg.RCode,

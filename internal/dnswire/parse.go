@@ -102,7 +102,7 @@ func modelType(t uint16) model.RRType {
 }
 
 func modelClass(c uint16) model.RRClass {
-	if c == dns.ClassINET || c == 0 {
+	if c == dns.ClassINET {
 		return model.ClassIN
 	}
 	s := dns.Class(c).String()
