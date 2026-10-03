@@ -108,6 +108,7 @@ func (s *App) applyLocked(ctx context.Context, actor Actor, in ChangeIn) (*Apply
 	// Swap stamps Store.EmergencyChaosOff onto next; apply cannot clear it.
 	prev := s.store.Swap(cand.next)
 	cand.next = s.store.Load()
+	s.observeCachePolicy(cand.next)
 	res := &ApplyResult{
 		Plan:       *s.planFrom(cand),
 		Applied:    true,

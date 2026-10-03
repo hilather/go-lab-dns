@@ -56,8 +56,16 @@ type Entry struct {
 	Stale    bool
 }
 
+// RequestPolicy binds cache behavior to the immutable snapshot used by a query.
+// Older queries may read their namespace but cannot repopulate the active cache.
+type RequestPolicy struct {
+	Generation model.Generation
+	Policy     Policy
+}
+
 // GetOpts are chaos/request-path hooks. Zero value is a normal lookup.
 type GetOpts struct {
+	Snapshot     *RequestPolicy
 	Bypass       bool // skip the cache entirely
 	ForceMiss    bool // pretend miss; leave the entry
 	ServeStale   bool // return an expired copy when StaleServing is on
@@ -66,20 +74,23 @@ type GetOpts struct {
 
 // PutOpts are chaos/request-path hooks. Zero value stores normally.
 type PutOpts struct {
-	Skip bool
+	Snapshot *RequestPolicy
+	Skip     bool
 }
 
 // Cache is a process-scoped bounded LRU. It is not part of Snapshot.
 type Cache struct {
-	mu      sync.Mutex
-	policy  Policy
-	clk     testutil.Clock
-	entries map[Key]*node
-	head    *node // MRU
-	tail    *node // LRU
-	hits    int
-	misses  int
-	evicts  int
+	mu         sync.Mutex
+	policy     Policy
+	generation model.Generation
+	observed   bool
+	clk        testutil.Clock
+	entries    map[Key]*node
+	head       *node // MRU
+	tail       *node // LRU
+	hits       int
+	misses     int
+	evicts     int
 }
 
 type node struct {
@@ -107,21 +118,31 @@ func (c *Cache) Policy() Policy {
 	if c == nil {
 		return Policy{}
 	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	return c.policy
 }
 
 // Enabled reports whether the cache will store entries.
 func (c *Cache) Enabled() bool {
-	return c != nil && c.policy.Enabled && c.policy.MaxEntries > 0
+	p := c.Policy()
+	return p.Enabled && p.MaxEntries > 0
 }
 
 // Get returns a copy of a live (or stale, if requested) entry.
 func (c *Cache) Get(key Key, opts GetOpts) (Entry, bool) {
-	if c == nil || !c.Enabled() || opts.Bypass {
+	if c == nil || opts.Bypass {
 		return Entry{}, false
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	policy := c.policy
+	if opts.Snapshot != nil {
+		policy = opts.Snapshot.Policy
+	}
+	if !policy.Enabled || policy.MaxEntries <= 0 {
+		return Entry{}, false
+	}
 	n, ok := c.entries[key]
 	if !ok {
 		c.misses++
@@ -133,7 +154,7 @@ func (c *Cache) Get(key Key, opts GetOpts) (Entry, bool) {
 		// Expire-this-request: miss (or stale copy) without deleting
 		// the shared entry or changing ExpireAt.
 		c.misses++
-		serveStale := opts.ServeStale || c.policy.StaleServing
+		serveStale := opts.ServeStale || policy.StaleServing
 		if !serveStale || opts.ForceMiss {
 			return Entry{}, false
 		}
@@ -145,7 +166,7 @@ func (c *Cache) Get(key Key, opts GetOpts) (Entry, bool) {
 		return out, true
 	}
 	if naturallyExpired {
-		serveStale := opts.ServeStale || c.policy.StaleServing
+		serveStale := opts.ServeStale || policy.StaleServing
 		if !serveStale {
 			c.removeLocked(n)
 			c.misses++
@@ -179,10 +200,22 @@ func (c *Cache) Get(key Key, opts GetOpts) (Entry, bool) {
 
 // Put stores a copy of ent under key, clamping TTLs and evicting LRU.
 func (c *Cache) Put(key Key, ent Entry, opts PutOpts) {
-	if c == nil || !c.Enabled() || opts.Skip {
+	if c == nil || opts.Skip {
 		return
 	}
-	ttl := clampTTL(ent, c.policy)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	policy := c.policy
+	if opts.Snapshot != nil {
+		if c.observed && opts.Snapshot.Generation < c.generation {
+			return
+		}
+		policy = opts.Snapshot.Policy
+	}
+	if !policy.Enabled || policy.MaxEntries <= 0 || !c.policy.Enabled || c.policy.MaxEntries <= 0 {
+		return
+	}
+	ttl := clampTTL(ent, policy)
 	if ttl <= 0 {
 		return
 	}
@@ -190,8 +223,6 @@ func (c *Cache) Put(key Key, ent Entry, opts PutOpts) {
 	ent.StoredAt = now
 	ent.ExpireAt = now.Add(ttl)
 	ent.Result = copyResult(ent.Result)
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	if n, ok := c.entries[key]; ok {
 		n.ent = ent
 		c.moveFrontLocked(n)
@@ -407,6 +438,8 @@ func copyResult(r model.Result) model.Result {
 	}
 	if r.Explanation != nil {
 		ex := *r.Explanation
+		ex.BaseAnswers = append([]model.RR(nil), ex.BaseAnswers...)
+		ex.ChaosDecisions = append([]model.ChaosDecision(nil), ex.ChaosDecisions...)
 		if ex.WildcardSource != nil {
 			v := *ex.WildcardSource
 			ex.WildcardSource = &v
@@ -428,4 +461,29 @@ func copyResult(r model.Result) model.Result {
 		r.EDE = &e
 	}
 	return r
+}
+
+// ObservePolicy updates process capacity monotonically. Calls by old in-flight
+// queries cannot restore older settings after Apply, Reset, or a newer query.
+func (c *Cache) ObservePolicy(request RequestPolicy) {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.observed && request.Generation <= c.generation {
+		return
+	}
+	c.observed = true
+	c.generation = request.Generation
+	c.policy = request.Policy
+	if !c.policy.Enabled || c.policy.MaxEntries <= 0 {
+		c.entries = map[Key]*node{}
+		c.head, c.tail = nil, nil
+		return
+	}
+	for len(c.entries) > c.policy.MaxEntries && c.tail != nil {
+		c.removeLocked(c.tail)
+		c.evicts++
+	}
 }

@@ -166,7 +166,7 @@ func (s *App) Explain(ctx context.Context, actor Actor, in ResolveIn) (*ExplainO
 	_ = actor
 	// Explain is a live walk; cache would hide the compiled path.
 	in.UseCache = false
-	in.ApplyChaos = false
+	in.ApplyChaos = true
 	snap, err := s.active()
 	if err != nil {
 		return nil, err
@@ -178,37 +178,22 @@ func (s *App) Explain(ctx context.Context, actor Actor, in ResolveIn) (*ExplainO
 	return &ExplainOut{Result: res, Explanation: res.Explanation}, nil
 }
 
-func (s *App) resolveAgainst(ctx context.Context, snap *snapshot.Snapshot, in ResolveIn) (model.Result, error) {
-	q := model.Query{
-		Name:      canonicalQueryName(in.Name),
-		Type:      in.Type,
-		Class:     in.Class,
-		Client:    in.Client,
-		Transport: in.Transport,
-		RD:        in.RD,
-		CD:        in.CD,
-	}
-	if q.Type == "" {
-		q.Type = model.TypeA
-	}
-	if q.Class == "" {
-		q.Class = model.ClassIN
-	}
-	if q.Transport == "" {
-		q.Transport = model.TransportUDP
-	}
+func (s *App) resolveBaseAgainst(ctx context.Context, snap *snapshot.Snapshot, in ResolveIn) (model.Result, error) {
+	q := managementQuery(in)
 	zoneID, _ := snap.Zones.Select(q.Name)
 	if in.UseCache && s.cache != nil {
+		cachePolicy := s.observeCachePolicy(snap)
 		key := cache.Key{
 			Revision: snap.Revision,
 			Name:     q.Name,
 			Type:     q.Type,
 			Class:    q.Class,
-			CD:       q.CD,
 			Local:    true,
 		}
-		if ent, ok := s.cache.Get(key, cache.GetOpts{}); ok && cache.Cacheable(ent.Result) {
-			return ent.Result, nil
+		if ent, ok := s.cache.Get(key, cache.GetOpts{Snapshot: cachePolicy}); ok && cache.Cacheable(ent.Result) {
+			res := ent.Result
+			s.annotateExplanation(&res, snap, in)
+			return res, nil
 		}
 		res, err := resolver.Resolve(ctx, snap, q, zoneID)
 		if err != nil {
@@ -219,7 +204,7 @@ func (s *App) resolveAgainst(ctx context.Context, snap *snapshot.Snapshot, in Re
 		// non-cacheable RCODEs) must not occupy the shared local key
 		// or live DNS will skip Exchange.
 		if cache.Cacheable(res) {
-			s.cache.Put(key, cache.Entry{Result: res}, cache.PutOpts{})
+			s.cache.Put(key, cache.Entry{Result: res}, cache.PutOpts{Snapshot: cachePolicy})
 		}
 		return res, nil
 	}
@@ -236,6 +221,8 @@ func (s *App) annotateExplanation(res *model.Result, snap *snapshot.Snapshot, in
 		return
 	}
 	res.Explanation.Revision = snap.Revision
+	res.Explanation.Query = managementQuery(in)
+	res.Explanation.ClientGroupID = ""
 	if in.ClientGroup != "" {
 		res.Explanation.ClientGroupID = in.ClientGroup
 		return
@@ -319,6 +306,9 @@ func (s *App) CacheStatus(ctx context.Context, actor Actor) (*CacheSummary, erro
 	_ = actor
 	if s.cache == nil {
 		return &CacheSummary{}, nil
+	}
+	if snap := s.store.Load(); snap != nil {
+		s.observeCachePolicy(snap)
 	}
 	pol := s.cache.Policy()
 	st := s.cache.Stats()

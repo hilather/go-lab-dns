@@ -110,13 +110,15 @@ func (e *Engine) Simulate(ctx context.Context, snap *snapshot.Snapshot, in Simul
 		}
 	}
 	plan, err := e.decide(snap, DecisionIn{
-		Query:           in.Query,
-		ClientGroupID:   in.ClientGroupID,
-		ZoneID:          in.ZoneID,
-		ForwardingID:    in.ForwardingID,
-		Base:            in.Base,
-		Phase:           in.Phase,
-		SimulationNonce: in.Nonce,
+		Query:             in.Query,
+		ClientGroupID:     in.ClientGroupID,
+		ZoneID:            in.ZoneID,
+		ForwardingID:      in.ForwardingID,
+		Base:              in.Base,
+		Phase:             in.Phase,
+		SimulationNonce:   in.Nonce,
+		RespectActivation: in.RespectActivation,
+		Exclusive:         in.Exclusive,
 	}, in.PolicyIDs, true)
 	if err != nil {
 		return SimulateOut{}, err
@@ -220,7 +222,7 @@ func (e *Engine) decide(snap *snapshot.Snapshot, in DecisionIn, filter []model.P
 		if reason := gateSkip(p, now, safety, snap.CompiledAt); reason != "" {
 			// Simulation answers "what would this policy do if activated".
 			// Live Decide still skips disabled policies.
-			if !simulate || reason != "disabled" {
+			if !simulate || in.RespectActivation || reason != "disabled" {
 				plan.Decisions = append(plan.Decisions, PolicyDecision{
 					PolicyID: p.ID, Precedence: cp.Precedence, SkipReason: reason,
 				})
