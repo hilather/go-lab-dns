@@ -814,3 +814,52 @@ func containsBytes(haystack, needle []byte) bool {
 	}
 	return false
 }
+
+type composedDropGateRand struct{}
+
+func (composedDropGateRand) Uint64() uint64 { return uint64(3) << 61 }
+
+func TestPacketAggregateDropCapAcrossUDPAndTCP(t *testing.T) {
+	st := chaosState(t)
+	st.Spec.Chaos.Safety.MaxDropProbability = .5
+	pre := transportPolicy("aggregate-pre", model.ActionDrop, nil)
+	post := transportPolicy("aggregate-post", model.ActionDrop, nil)
+	pre.Scope = model.ChaosScope{}
+	post.Scope = model.ChaosScope{}
+	pre.Selector.Mode = model.SelectorRandom
+	post.Selector.Mode = model.SelectorRandom
+	pre.Outcomes[0].Actions[0].Phase = model.PhaseBeforeResolution
+	post.Outcomes[0].Actions[0].Phase = model.PhaseBeforeResponse
+	st.Spec.Chaos.Policies = []model.ChaosPolicy{pre, post}
+	h := handlerFromState(t, st, nil)
+	// .375 would select both policies under the former per-policy .5 clamp,
+	// but is outside each .25 share under the aggregate cap.
+	h.eng = chaos.NewEngine(nil, composedDropGateRand{})
+	srv, err := dnsserver.New(dnsserver.Config{UDPAddr: "127.0.0.1:0", TCPAddr: "127.0.0.1:0", Handler: h})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := srv.Start(); err != nil {
+		t.Fatal(err)
+	}
+	testutil.Cleanup(t, func() { _ = srv.Shutdown(t.Context()) })
+	query := packQuery(t, "ns.lab.example.", model.TypeA, false)
+	for _, transport := range []model.Transport{model.TransportUDP, model.TransportTCP} {
+		var packet []byte
+		if transport == model.TransportUDP {
+			packet = exchangeUDP(t, srv.UDPAddr(), query)
+		} else {
+			packet, err = exchangeTCPMaybe(t, srv.TCPAddr(), query, time.Second)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		result, err := dnswire.UnpackUpstream(packet)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.RCode != model.RCodeNoError || len(result.Answers) != 1 {
+			t.Fatalf("%s result=%+v", transport, result)
+		}
+	}
+}
