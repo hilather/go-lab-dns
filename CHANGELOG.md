@@ -4,6 +4,16 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+- Configuration JSON now rejects trailing closing delimiters, label keys named after duration fields round-trip unchanged, and duration formatting handles the minimum signed 64-bit duration without recursive overflow.
+
+- Configuration schema inspection now works in standalone binaries and the scratch container; the published schema is embedded directly in the executable.
+
+- Deployment verification now checks actual alternate IPv4/IPv6 action values against `AllowedAlternateAddresses`, including disabled policies. Emptying the desired-state address allowlist no longer bypasses deployment address policy.
+
+- Composed chaos delays now obey cumulative global and per-policy delay caps and every contributing policy's concurrency cap. Reservations still use one global slot per delayed query and release all policy slots on completion or cancellation.
+- Lower-precedence chaos outcomes can no longer replace a selected conflicting transport action within or across resolution phases. Within one decision phase, live evaluation and simulation report skipped conflicting outcomes as `transport_conflict`.
+- Configuration validation now enforces positive `maxActiveHighImpactPolicies` against enabled high-impact policies and rejects negative delayed-concurrency, high-impact-count, and default-lifetime safety limits and negative policy budget limits. Positive `budget.maxFrequency` is rejected because the runtime does not implement that cap; omit it or set it to zero.
+
 ## v1.3.2 — 2026-09-21
 
 Curated notes: [docs/releases/v1.3.2.md](https://github.com/hilather/go-lab-dns/blob/v1.3.2/docs/releases/v1.3.2.md).

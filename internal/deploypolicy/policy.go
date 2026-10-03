@@ -386,6 +386,33 @@ func checkAlternates(st *model.State, pol *Set) []string {
 			errs = append(errs, fmt.Sprintf("allowedAddressCIDRs %s is outside allowed-alternate-addresses", c))
 		}
 	}
+	// Check actual actions as well as the configured range. The core validator
+	// permits an empty desired-state allowlist; deployment policy does not.
+	for _, policy := range st.Spec.Chaos.Policies {
+		for _, outcome := range policy.Outcomes {
+			for _, action := range outcome.Actions {
+				if action.Type != model.ActionAlternate {
+					continue
+				}
+				for _, value := range action.Values {
+					addr, err := netip.ParseAddr(value)
+					if err != nil {
+						continue // CNAME and other non-address replacements.
+					}
+					allowed := false
+					for _, prefix := range pol.AlternateAddresses {
+						if prefix.Contains(addr) {
+							allowed = true
+							break
+						}
+					}
+					if !allowed {
+						errs = append(errs, fmt.Sprintf("chaos policy %s alternate address %s is outside allowed-alternate-addresses", policy.ID, value))
+					}
+				}
+			}
+		}
+	}
 	return errs
 }
 
