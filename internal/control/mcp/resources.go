@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/hilather/go-lab-dns/internal/app"
 	"github.com/hilather/go-lab-dns/internal/auth"
@@ -79,6 +80,12 @@ func (s *Server) readResource(ctx context.Context, req *sdk.ReadResourceRequest)
 	if req != nil && req.Params != nil {
 		uri = req.Params.URI
 	}
+	started, failed := time.Now(), true
+	defer func() {
+		if cap, ok := resourceCapability(uri); ok {
+			s.observeCapability(string(cap.ID), started, failed)
+		}
+	}()
 	if err := s.authorizeResource(actor, uri); err != nil {
 		return nil, rpcError(err)
 	}
@@ -86,6 +93,7 @@ func (s *Server) readResource(ctx context.Context, req *sdk.ReadResourceRequest)
 	if err != nil {
 		return nil, rpcError(err)
 	}
+	failed = false
 	return &sdk.ReadResourceResult{
 		Contents: []*sdk.ResourceContents{{
 			URI:      uri,

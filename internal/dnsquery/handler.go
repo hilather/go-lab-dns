@@ -111,6 +111,9 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (resp *dnsserv
 	if snap == nil {
 		return dnsserver.NewResponse(model.Result{RCode: model.RCodeServFail}), dnsserver.HintSend, nil
 	}
+	if h.cache != nil {
+		h.cache.ObservePolicy(cache.RequestPolicy{Generation: snap.Generation, Policy: cache.Policy(snap.CachePolicy)})
+	}
 	if req == nil {
 		return dnsserver.NewResponse(model.Result{RCode: model.RCodeFormErr}), dnsserver.HintSend, nil
 	}
@@ -199,10 +202,7 @@ func (h *Handler) ServeDNS(ctx context.Context, req *model.Query) (resp *dnsserv
 		return dnsserver.NewResponse(base), dnsserver.HintSend, nil
 	}
 
-	hintPlan := post
-	if hintPlan.TransportHint == "" {
-		hintPlan = pre
-	}
+	hintPlan := effects.SelectTransportPlan(snap, pre, post)
 	hint = effects.Hint(hintPlan, q.Transport, h.metrics())
 	resp = dnsserver.NewResponse(res)
 	hold := hintPlan.Hold
@@ -372,6 +372,7 @@ func (h *Handler) lookupCache(snap *snapshot.Snapshot, q model.Query, cl class, 
 		return cache.Entry{}, false
 	}
 	opts := effects.CacheGet(plan, h.metrics())
+	opts.Snapshot = &cache.RequestPolicy{Generation: snap.Generation, Policy: cache.Policy(snap.CachePolicy)}
 	localKey := cache.Key{
 		Revision: snap.Revision,
 		Name:     q.Name,
@@ -426,13 +427,15 @@ func (h *Handler) storeCache(snap *snapshot.Snapshot, q model.Query, cl class, r
 		key.CD = q.CD
 		key.ForwardingID = cl.ForwardingID
 	}
+	opts := effects.CachePut(plan)
+	opts.Snapshot = &cache.RequestPolicy{Generation: snap.Generation, Policy: cache.Policy(snap.CachePolicy)}
 	h.cache.Put(key, cache.Entry{
 		Result:   res,
 		Negative: res.RCode == model.RCodeNXDomain || (res.RCode == model.RCodeNoError && len(res.Answers) == 0),
 		Original: res.Source,
 		Upstream: res.UpstreamID,
 		Policy:   res.ForwardingID,
-	}, effects.CachePut(plan))
+	}, opts)
 }
 
 func (h *Handler) liveEngine() *chaos.Engine {

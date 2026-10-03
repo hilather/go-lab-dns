@@ -33,8 +33,173 @@
         "description": "Application type ChangeIn (internal/app).",
         "type": "object"
       },
+      "ChaosDecision": {
+        "properties": {
+          "delay": {
+            "type": "string"
+          },
+          "digestHex": {
+            "type": "string"
+          },
+          "outcomeId": {
+            "type": "string"
+          },
+          "policyId": {
+            "type": "string"
+          },
+          "skipReason": {
+            "type": "string"
+          },
+          "triggered": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "policyId",
+          "triggered"
+        ],
+        "type": "object"
+      },
       "ChaosRuntimeStatus": {
         "description": "Application type ChaosRuntimeStatus (internal/app).",
+        "type": "object"
+      },
+      "DNSQuery": {
+        "properties": {
+          "cd": {
+            "type": "boolean"
+          },
+          "class": {
+            "type": "string"
+          },
+          "client": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rd": {
+            "type": "boolean"
+          },
+          "transport": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "class",
+          "client",
+          "transport",
+          "rd",
+          "cd"
+        ],
+        "type": "object"
+      },
+      "DNSRecord": {
+        "properties": {
+          "class": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ttl": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "class",
+          "ttl",
+          "data"
+        ],
+        "type": "object"
+      },
+      "DNSResult": {
+        "properties": {
+          "aa": {
+            "type": "boolean"
+          },
+          "ad": {
+            "type": "boolean"
+          },
+          "additional": {
+            "items": {
+              "$ref": "#/components/schemas/DNSRecord"
+            },
+            "type": "array"
+          },
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/DNSRecord"
+            },
+            "type": "array"
+          },
+          "authority": {
+            "items": {
+              "$ref": "#/components/schemas/DNSRecord"
+            },
+            "type": "array"
+          },
+          "cd": {
+            "type": "boolean"
+          },
+          "closestEncloser": {
+            "type": "string"
+          },
+          "ede": {
+            "$ref": "#/components/schemas/ExtendedDNSError"
+          },
+          "explanation": {
+            "$ref": "#/components/schemas/ResolutionExplanation"
+          },
+          "fallthrough": {
+            "type": "boolean"
+          },
+          "forwardingId": {
+            "type": "string"
+          },
+          "ra": {
+            "type": "boolean"
+          },
+          "rcode": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "upstreamId": {
+            "type": "string"
+          },
+          "wildcardSource": {
+            "type": "string"
+          },
+          "zoneId": {
+            "type": "string"
+          },
+          "zoneMode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rcode",
+          "aa",
+          "ra",
+          "ad",
+          "cd",
+          "fallthrough"
+        ],
         "type": "object"
       },
       "EmergencyIn": {
@@ -46,11 +211,36 @@
         "type": "object"
       },
       "ExplainOut": {
-        "description": "Application type ExplainOut (internal/app).",
+        "properties": {
+          "explanation": {
+            "$ref": "#/components/schemas/ResolutionExplanation"
+          },
+          "result": {
+            "$ref": "#/components/schemas/DNSResult"
+          }
+        },
+        "required": [
+          "result",
+          "explanation"
+        ],
         "type": "object"
       },
       "Export": {
         "description": "Application type Export (internal/app).",
+        "type": "object"
+      },
+      "ExtendedDNSError": {
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
         "type": "object"
       },
       "FieldViolation": {
@@ -138,12 +328,93 @@
         "description": "Application type ResetIn (internal/app).",
         "type": "object"
       },
+      "ResolutionExplanation": {
+        "properties": {
+          "baseAnswers": {
+            "items": {
+              "$ref": "#/components/schemas/DNSRecord"
+            },
+            "type": "array"
+          },
+          "baseRcode": {
+            "type": "string"
+          },
+          "chaosActions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "chaosDecisions": {
+            "items": {
+              "$ref": "#/components/schemas/ChaosDecision"
+            },
+            "type": "array"
+          },
+          "chaosDisabled": {
+            "type": "boolean"
+          },
+          "chaosPolicyIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "chaosReason": {
+            "type": "string"
+          },
+          "clientGroupId": {
+            "type": "string"
+          },
+          "closestEncloser": {
+            "type": "string"
+          },
+          "forwardingId": {
+            "type": "string"
+          },
+          "poolId": {
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/DNSQuery"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "upstreamId": {
+            "type": "string"
+          },
+          "wildcardSource": {
+            "type": "string"
+          },
+          "zoneId": {
+            "type": "string"
+          },
+          "zoneMode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
       "ResolveIn": {
         "description": "Application type ResolveIn (internal/app).",
         "type": "object"
       },
       "ResolveOut": {
-        "description": "Application type ResolveOut (internal/app).",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/DNSResult"
+          }
+        },
+        "required": [
+          "result"
+        ],
         "type": "object"
       },
       "Session": {

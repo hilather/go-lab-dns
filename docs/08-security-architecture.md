@@ -3,6 +3,10 @@
 Status: Implemented (SEC-001)
 Owners: Security, DNS, Control Plane
 Last reviewed: 2026-10-03 (browser cookie mutation races, fail-closed recovery, upstream reply correlation and cancellation)
+Last reviewed: 2026-10-03 (safe management mounts and current caller protections on cached resolve)
+Last reviewed: 2026-10-03 (sequential authorization of atomic change sets)
+Last reviewed: 2026-08-31 (protected-name wildcard synthesis)
+Last reviewed: 2026-10-03 (upstream reply correlation and cancellation)
 Related ADRs: 0003, 0004, 0005, 0007
 
 ## Goals
@@ -171,6 +175,8 @@ Audit delivery failure cannot block DNS. First GA does **not** fail-close manage
 - Unsafe malformed-wire actions are absent.
 - Emergency disable is tested in every release.
 
+Management mounts reject REST and operator-console route collisions and ServeMux pattern syntax. Cached management results reconstruct the current query context before chaos modeling, so protected clients and exempt groups cannot inherit another caller’s selectors or explanation context.
+
 ## Failure modes
 
 - Auth provider unavailable: fail closed for writes; read behavior follows documented policy.
@@ -201,3 +207,7 @@ Weakening a default or broadening access is a security-significant breaking chan
 
 - Default remote authentication profile for reference deployments.
 - Whether durable audit acknowledgment is required for high-impact chaos activation.
+
+Atomic change sets authorize each operation against the private candidate produced by preceding operations, in addition to checking the starting state. A policy created or upgraded earlier in a batch retains its actual safety class for activation checks; relative owners in newly added zones use that zone origin. Denied batches leave the active snapshot unchanged. Required permission metadata includes the scopes required at each intermediate step.
+
+Authorization decodes only fields relevant to the security decision (policy activation and safety class, zone names, record IDs and owners). Duration strings are validated by the shared mutation decoder; valid `ttl: "30s"`, selector time buckets, and delay durations do not become authorization failures. Unknown fields and malformed duration values still fail candidate validation.

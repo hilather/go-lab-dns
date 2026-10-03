@@ -4,6 +4,7 @@ import (
 	"github.com/hilather/go-lab-dns/internal/chaos"
 	"github.com/hilather/go-lab-dns/internal/dnsserver"
 	"github.com/hilather/go-lab-dns/internal/model"
+	"github.com/hilather/go-lab-dns/internal/snapshot"
 )
 
 // Hint maps a planned transport action onto the listener hint.
@@ -89,4 +90,54 @@ func stringsEqualFold(a, b string) bool {
 		}
 	}
 	return true
+}
+
+// SelectTransportPlan preserves policy precedence across pre-resolution and
+// response phases, including configuration order within the same scope class.
+func SelectTransportPlan(snap *snapshot.Snapshot, plans ...chaos.ActionPlan) chaos.ActionPlan {
+	var only chaos.ActionPlan
+	count := 0
+	for _, plan := range plans {
+		if plan.TransportHint != "" {
+			only = plan
+			count++
+		}
+	}
+	if count <= 1 {
+		return only
+	}
+
+	order := map[model.PolicyID]int{}
+	if snap != nil && snap.Canonical != nil {
+		for i, p := range snap.Canonical.Spec.Chaos.Policies {
+			order[p.ID] = i
+		}
+	}
+	var chosen chaos.ActionPlan
+	bestPrecedence, bestOrder := int(^uint(0)>>1), int(^uint(0)>>1)
+	for _, plan := range plans {
+		if plan.TransportHint == "" {
+			continue
+		}
+		for _, d := range plan.Decisions {
+			if !d.Triggered {
+				continue
+			}
+			for _, a := range d.Actions {
+				switch a.Type {
+				case model.ActionDrop, model.ActionTruncate, model.ActionTCPClose, model.ActionTCPReset:
+				default:
+					continue
+				}
+				idx, ok := order[d.PolicyID]
+				if !ok {
+					idx = int(^uint(0) >> 1)
+				}
+				if d.Precedence < bestPrecedence || (d.Precedence == bestPrecedence && idx < bestOrder) {
+					chosen, bestPrecedence, bestOrder = plan, d.Precedence, idx
+				}
+			}
+		}
+	}
+	return chosen
 }

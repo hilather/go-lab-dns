@@ -2,9 +2,12 @@
 
 Status: Proposed
 Owners: Architecture, DNS, Control Plane
+Last reviewed: 2026-10-03 (forwarding topology state lifetime and health identity)
+Last reviewed: 2026-10-03 (shared runtime health/metrics and signal lifecycle)
 Last reviewed: 2026-08-19 (web/ nested module fence and internal/web embed stub)
 Last reviewed: 2026-08-18 (emergency disable cancels delays; plan idempotency rechecks revision)
-Related ADRs: 0001, 0002, 0003, 0004, 0005
+Last reviewed: 2026-10-03 (operator UI and current DNS adapter dependency)
+Related ADRs: 0001, 0002, 0003, 0004, 0005, 0008
 
 ## Problem statement
 
@@ -14,7 +17,7 @@ Laboratory devices need a predictable DNS service that can override exact names,
 
 - Correct authoritative, overlay, wildcard, forwarding, and cache behavior.
 - Per-entry and broader chaos behavior with deterministic testing and strict safety limits.
-- One shared application model exposed through REST and MCP.
+- One shared application model exposed through REST and MCP, with an embedded operator UI as a REST client (ADR 0008).
 - Immutable, atomic runtime state.
 - Ephemeral operation with GitOps-oriented desired state.
 - Container-first deployment and strong observability.
@@ -28,7 +31,6 @@ Laboratory devices need a predictable DNS service that can override exact names,
 - AXFR, IXFR, and secondary-server operation.
 - DNSSEC signing of local zones in the initial release.
 - Multi-replica runtime-state consensus.
-- A web administration UI.
 - DHCP integration.
 - Arbitrary malformed DNS packet generation in the main service.
 
@@ -56,7 +58,7 @@ Laboratory devices need a predictable DNS service that can override exact names,
                               |
                     +---------------------+
 Lab clients ------> |      LabDNS         | ------> Upstream DNS pools
- UDP/TCP DNS        |                     |          UDP/TCP/DoT
+ UDP/TCP DNS        |                     |          UDP/TCP
                     |  immutable snapshot |
                     |  resolver + cache   |
                     |  bounded chaos      |
@@ -147,6 +149,8 @@ A compiled snapshot contains only immutable or internally concurrency-safe struc
 
 The active snapshot is held by an atomic pointer. A DNS request loads the pointer once and retains that snapshot for the whole request.
 
+Forwarding health and round-robin state retain only IDs from the newest snapshot observed by an exchange. Removed IDs are pruned when that generation is observed; old in-flight queries still use their original configured pools, but their completions cannot restore retired state. Retained upstream IDs preserve health only while endpoint and transport remain unchanged. Caller cancellation and simulated faults are not reachability failures; running out of the total query deadline while waiting on an upstream counts as a timeout failure. This bounds historical runtime memory during configuration churn without background probes or persistent state.
+
 ## Control-plane mutation flow
 
 ```text
@@ -186,7 +190,7 @@ The chaos engine receives a structured resolution context and cannot access mana
 
 ## DNS wire adapter and listeners
 
-`internal/dnswire` is the only package that may import `github.com/miekg/dns` (pinned at **v1.1.72**). It converts wire bytes to `model.Query` plus a package-local `Request` (ID, opcode, EDNS) and encodes `model.Result` back to octets. Library types never appear in `dnsserver` or later packages.
+`internal/dnswire` is the only package that may import `github.com/miekg/dns` (pinned at **v1.1.73**). It converts wire bytes to `model.Query` plus a package-local `Request` (ID, opcode, EDNS) and encodes `model.Result` back to octets. Library types never appear in `dnsserver` or later packages.
 
 `internal/dnsserver` binds UDP and TCP, applies admission, calls `Handler.ServeDNS`, and applies the returned `TransportHint`. It does not import snapshot, resolver, forwarder, or chaos.
 
@@ -218,6 +222,8 @@ Parse/admission RCODEs: empty or short datagram → drop; malformed with a 12-by
 Transport hints: TCP-only actions on UDP are **drop** (no successful answer). `HintTruncate` on TCP is **send** of the full response (TC is a UDP signal). Unknown hints are **drop**. After `ServeDNS` returns the server owns the `Response`; later `SetHint` fails.
 
 Metrics hooks take only bounded labels (transport, RCODE, action, reason). QNAME and client IP are not recorded.
+
+Production DNS and management services share one upstream health tracker and one in-process metrics registry. Runtime signal handling owns a cancellation context and joins its worker on shutdown and failed startup, even when the parent context remains live.
 
 ## Reverse-proxy relationship
 

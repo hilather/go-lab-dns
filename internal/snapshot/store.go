@@ -37,12 +37,25 @@ func (s *Store) Load() *Snapshot {
 // If the process emergency bit is set, Swap copies next (when needed) and
 // forces EmergencyChaosOff. Apply cannot clear the inhibit this way.
 func (s *Store) Swap(next *Snapshot) *Snapshot {
-	next = s.stampEmergency(next)
-	prev := s.active.Swap(next)
-	if prev != nil {
-		s.previous.Store(prev)
+	for {
+		previous := s.active.Load()
+		published := s.stampEmergency(next)
+		if published != nil && previous != nil && published.Generation <= previous.Generation {
+			copy := *published
+			copy.Generation = previous.Generation + 1
+			published = &copy
+		}
+		if !s.active.CompareAndSwap(previous, published) {
+			continue
+		}
+		if previous != nil {
+			s.publishPrevious(previous)
+		}
+		// An emergency bit can change after it was read above even when the
+		// previous snapshot already had that bit. Reconcile the committed pointer.
+		s.StampEmergency()
+		return previous
 	}
-	return prev
 }
 
 // SetEmergencyChaosOff sets the runtime inhibit bit. It does not publish a
@@ -95,7 +108,7 @@ func (s *Store) StampEmergency() *Snapshot {
 		}
 		next.Generation = live.Generation + 1
 		if s.active.CompareAndSwap(live, next) {
-			s.previous.Store(live)
+			s.publishPrevious(live)
 			return next
 		}
 	}
@@ -142,4 +155,21 @@ func (s *Store) InstallBootstrap(next *Snapshot) *Snapshot {
 	}
 	s.SetBootstrap(next)
 	return s.Swap(next)
+}
+
+// publishPrevious cannot let a delayed publisher overwrite a newer displaced
+// generation after another concurrent Swap or emergency stamp completed.
+func (s *Store) publishPrevious(previous *Snapshot) {
+	if previous == nil {
+		return
+	}
+	for {
+		current := s.previous.Load()
+		if current != nil && current.Generation >= previous.Generation {
+			return
+		}
+		if s.previous.CompareAndSwap(current, previous) {
+			return
+		}
+	}
 }

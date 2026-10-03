@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Operations
+Last reviewed: 2026-10-03 (signal cleanup, live cache updates, management mounts, and real upstream status)
 Last reviewed: 2026-08-19 (operator console :8080, token paste, ui.enabled, allowedOrigins)
 Last reviewed: 2026-08-19 (operator console GET / and Vite proxy)
 Last reviewed: 2026-08-15 (OBS-001 diagnostic queries)
@@ -171,6 +172,8 @@ For operator-console work against a live process:
 3. Open the Vite dev URL (default `http://127.0.0.1:5173/`) and log in as above.
 
 Do not put bearer tokens or CSRF secrets in the URL, Web Storage, IndexedDB, or browser logs.
+
+Shutdown and failed startup cancel and join the runtime signal worker even when the parent context remains live. Cache policy apply/reset changes take effect immediately; listener and mount changes require restart. REST remains mounted at `/v1`; MCP paths must avoid REST and operator-console namespaces. Management status reports real upstream failures and excludes injected chaos transport faults.
 
 ## Testing strategy
 

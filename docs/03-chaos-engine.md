@@ -2,6 +2,8 @@
 
 Status: Proposed normative behavior
 Owners: Chaos, DNS, Security
+Last reviewed: 2026-10-03 (management resolution models active policies without live effects)
+Last reviewed: 2026-10-03 (aggregate drop selector allocation and numeric mapping boundaries)
 Last reviewed: 2026-08-18 (exclusive-group spans Decide phases)
 Related ADRs: 0005, 0007
 
@@ -88,7 +90,7 @@ Precedence controls evaluation order, not automatic cancellation. A policy can d
 - `terminal`: stop after this policy selects an outcome.
 - `exclusive-group`: only the highest-priority selected policy in the named group runs. Winners are per query, shared across the pre-resolution and response `Decide` calls (not reset between phases).
 
-Conflicting terminal transport actions are rejected during candidate-state validation.
+Conflicting terminal transport actions within one outcome are rejected during candidate-state validation. Within one decision phase, a lower-precedence outcome with a conflicting transport action is skipped with `transport_conflict`. Across resolution phases, the listener uses the higher-precedence selected transport action, with configuration order breaking ties within one scope class. Cross-phase transport selection does not undo already selected outcomes or applied actions.
 
 ## Decision modes
 
@@ -137,9 +139,9 @@ Digest use:
 - `d = SHA-256(encoding)`
 - `u0 = uint64(d[0:8])` big-endian; `u1 = uint64(d[8:16])` big-endian
 - Uniform `[0,1)`: `p = float64(u0) / 2^64`, `w = float64(u1) / 2^64` (never integer `u/2^64`)
-- Probability gate: trigger iff `p < probability` (1.0 always triggers)
-- Weighted outcome: ignore weight ≤ 0. `total = sum(weights)` as `float64`. `t = w * total`. Walk outcomes in configured order; select the first whose cumulative weight is `> t`. `total == 0` skips the policy
-- Uniform delay in `[min,max)`: use `u1` of a second `hash-v1` encoding identical except field 10 is the UTF-8 string `delay` concatenated with the original nonce. Map `float64(u1)/2^64` into `[min,max)` as `min + unit*(max-min)`
+- Probability gate: trigger iff `p < probability` (1.0 always triggers, including when floating-point conversion rounds an upper-edge draw to 1.0; zero never triggers)
+- Weighted outcome: ignore weight ≤ 0. `total = sum(weights)` as `float64`. `t = w * total`. Walk outcomes in configured order; select the first whose cumulative weight is `> t`. `total == 0` skips the policy. If summing finite weights overflows, divide weights by their maximum before mapping; ordinary finite sums retain their existing mapping
+- Uniform delay in `[min,max)`: use `u1` of a second `hash-v1` encoding identical except field 10 is the UTF-8 string `delay` concatenated with the original nonce. Map `float64(u1)/2^64` into `[min,max)` as `min + unit*(max-min)`. At the floating-point upper edge, clamp the mapped integer offset to `max-min-1` so rounding or conversion overflow cannot return `max` or a negative duration
 
 Not inputs: raw client IP (except the optional `client-bucket` hex), goroutine id, query id, wall time except the documented bucket.
 
@@ -181,6 +183,14 @@ Fields:
 
 Per-entry delay is normally applied in `before response` after the RRset is selected. Delay must use context-aware timers and release concurrency budget on cancellation.
 
+The global `maxDelay` bounds the sum of requested sleeps across all actions and phases in one query, and a policy `budget.maxDelay` bounds that policy's cumulative sleeps.
+
+Simulation reports individually clamped action delays and their longest delay; it does not reserve slots or account sleeps from a previous live phase. The execution session enforces the cumulative limits across phases.
+
+Released delay reservations remove idle policy counters. Pressure tracking records timestamps only for rate-limited policies and prunes expired idle policy histories during admission, so deleted policies do not accumulate process-lifetime bookkeeping.
+
+One query consumes one global delayed slot and one slot for every policy contributing a delay; composing policies cannot bypass a policy concurrency cap.
+
 Execution (CHA-002) lives in `internal/chaos/effects`. `Decide` still does not sleep. `effects.Session.Sleep` reserves one delayed-request token for the whole query, waits with `Clock.NewTimer`, and releases on return, shutdown/peer cancel, or `CancelAll` (emergency disable). Query-timeout (`DeadlineExceeded`) does **not** abort a planned delay — the timer still runs so a documented 2s/10s delay becomes a delayed **answer**, not a silent drop. Emergency cancel skips remaining delay and returns success so the handler can send the base result (`HintSend`); it must not become SERVFAIL. `dnsquery` re-checks `Store.EmergencyChaosOff` before each later `Decide` / `ApplyResponse` / transport hint. Live `Decide` leaves hash-v1 field 10 empty (only `Simulate` sets a nonce). Random-mode pre/post agreement uses a per-query `StickyRand` draw table, not field 10. After a query deadline, remaining delay still watches the listener shutdown context. Budget exhaustion skips the delay and does not block. Uniform delay (including `type: upstream` / `value: delay`) uses the frozen `hash-v1` second encoding (`field 10` = `delay` + simulation nonce, or `delay` alone on the live path). First-GA distributions are `fixed` and `uniform` only.
 
 ### 2. RCODE and NODATA injection
@@ -200,7 +210,9 @@ An optional Extended DNS Error can explain an injected failure. EDE never change
 - UDP: intentionally send no response.
 - TCP: hold only until the configured bounded chaos timeout, then close gracefully or reset according to the selected action.
 - Never retain an operation beyond the global request lifetime.
-- Drop probability is capped globally.
+- A global `maxDropProbability` between zero and one bounds aggregate drop probability across policies and execution phases. Compilation reserves a conservative snapshot-wide selector budget: sum each drop-capable policy’s requested probability once for each distinct execution group capable of dropping (pre-resolution and response). When this sum exceeds the cap, scale all those compiled selector probabilities proportionally so the sum stays within the cap. The same effective threshold is used in both phases. This union bound requires no independence between decisions and covers time-bucket transitions and callers without random sticky draws.
+- A positive-weight outcome containing silent drop or pressure-on-exceed drop reserves a share; outcome weights do not relax that share. Disabled, scheduled, expired, disjoint-scope, and exclusive policies also reserve shares, preserving the same bounded thresholds for simulation and activation. This conservative allocation can reduce fault frequency even when scopes cannot overlap, and mixed non-drop outcomes in a drop-capable policy become less frequent too. A policy that can drop in both execution groups reserves twice; a single policy dropping in one group retains its previous `min(probability, cap)` threshold. Zero retains unlimited selector semantics; one requires no clamping because aggregate probability cannot exceed one.
+- Allocation changes only immutable compiled policy copies. Canonical configuration and exports retain requested probabilities; action plans and simulation plans include `max_drop_probability` selector clamp evidence with requested and effective thresholds. The frozen hash encoding, weighted-outcome mapping, and random draw sequence remain unchanged. Existing experiments with composed or multi-phase drop policies can trigger fewer faults under a positive cap.
 
 ### 4. TCP close or reset
 
@@ -411,6 +423,8 @@ Simulation takes a state revision, query context, optional policy set, and optio
 - Final modeled answer or transport behavior.
 
 Simulation does not sleep, send packets, change cache state, consume budgets, or activate policies.
+
+Management `resolve` with `applyChaos: true` and `resolve:explain` use this engine to model currently enabled policies. Explain always models active chaos; the separate chaos simulation capability may evaluate a disabled policy hypothetically. Request-scoped exclusive-group winners carry across modeled pre-resolution and response phases. The model returns response changes and policy decisions, including skips, without timers, delay reservations, upstream exchanges, live random draws, or live effect counters. Explanations retain `baseAnswers` and `baseRcode` beside the final result. Resolve may cache its base answer when requested; modeled effects are never cached, and explain bypasses the cache.
 
 ## Emergency disable
 

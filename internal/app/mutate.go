@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"sort"
 
 	"github.com/hilather/go-lab-dns/internal/audit"
 	"github.com/hilather/go-lab-dns/internal/auth"
@@ -18,6 +19,7 @@ type candidate struct {
 	diff      []DiffEntry
 	impact    Impact
 	humanDiff string
+	scopes    []string
 }
 
 // Plan dry-runs the mutation pipeline. expectedRevision is required and must
@@ -58,7 +60,7 @@ func (s *App) planLocked(ctx context.Context, actor Actor, in ChangeIn) (*Plan, 
 		}
 		// Foreign mutation moved the base; recompute against current.
 	}
-	cand, err := s.buildCandidate(ctx, in, true)
+	cand, err := s.buildCandidate(ctx, actor, in, true, "dns_change_plan")
 	if err != nil {
 		s.forgetIdempOnConflict(in.IdempotencyKey, err)
 		return nil, err
@@ -97,7 +99,7 @@ func (s *App) applyLocked(ctx context.Context, actor Actor, in ChangeIn) (*Apply
 		}
 		return cloneApply(hit.apply), nil
 	}
-	cand, err := s.buildCandidate(ctx, in, true)
+	cand, err := s.buildCandidate(ctx, actor, in, true, "dns_change_apply")
 	if err != nil {
 		s.forgetIdempOnConflict(in.IdempotencyKey, err)
 		return nil, err
@@ -107,6 +109,8 @@ func (s *App) applyLocked(ctx context.Context, actor Actor, in ChangeIn) (*Apply
 	}
 	// Swap stamps Store.EmergencyChaosOff onto next; apply cannot clear it.
 	prev := s.store.Swap(cand.next)
+	cand.next = s.store.Load()
+	s.observeCachePolicy(cand.next)
 	res := &ApplyResult{
 		Plan:       *s.planFrom(cand),
 		Applied:    true,
@@ -167,7 +171,8 @@ func (s *App) Validate(ctx context.Context, actor Actor, in ValidateIn) (*Plan, 
 		}
 		base = copied
 	}
-	if err := applyOperations(base, in.Operations); err != nil {
+	scopes, err := s.applyAuthorized(ctx, actor, base, in.Operations, "dns_state_validate")
+	if err != nil {
 		return nil, err
 	}
 	off := false
@@ -194,6 +199,7 @@ func (s *App) Validate(ctx context.Context, actor Actor, in ValidateIn) (*Plan, 
 		diff:      diff,
 		impact:    impactOf(before, next.Canonical, diff),
 		humanDiff: human,
+		scopes:    scopes,
 	}
 	return clonePlan(s.planFrom(cand)), nil
 }
@@ -212,7 +218,7 @@ func baseForDiff(prev *snapshot.Snapshot, submitted *model.State) *model.State {
 	return &model.State{}
 }
 
-func (s *App) buildCandidate(ctx context.Context, in ChangeIn, requireRev bool) (*candidate, error) {
+func (s *App) buildCandidate(ctx context.Context, actor Actor, in ChangeIn, requireRev bool, capability string) (*candidate, error) {
 	prev, err := s.active()
 	if err != nil {
 		return nil, err
@@ -226,7 +232,8 @@ func (s *App) buildCandidate(ctx context.Context, in ChangeIn, requireRev bool) 
 	if err != nil {
 		return nil, err
 	}
-	if err := applyOperations(copied, in.Operations); err != nil {
+	scopes, err := s.applyAuthorized(ctx, actor, copied, in.Operations, capability)
+	if err != nil {
 		return nil, err
 	}
 	off := prev.EmergencyChaosOff
@@ -249,6 +256,7 @@ func (s *App) buildCandidate(ctx context.Context, in ChangeIn, requireRev bool) 
 		diff:      diff,
 		impact:    impactOf(prev.Canonical, next.Canonical, diff),
 		humanDiff: human,
+		scopes:    scopes,
 	}, nil
 }
 
@@ -263,7 +271,10 @@ func (s *App) planFrom(c *candidate) *Plan {
 	} else if c.prev != nil {
 		boot = c.prev.BootstrapRevision
 	}
-	scopes := auth.RequiredPermissions(c.ops, c.base)
+	scopes := c.scopes
+	if scopes == nil {
+		scopes = auth.RequiredPermissions(c.ops, c.base)
+	}
 	p := &Plan{
 		PreviousRevision:  prevRev,
 		CandidateRevision: c.next.Revision,
@@ -336,4 +347,33 @@ func revisionOf(s *snapshot.Snapshot) model.Revision {
 		return ""
 	}
 	return s.Revision
+}
+
+// applyAuthorized evaluates each operation against the private candidate after
+// preceding operations. Checking only the live base misses resources created
+// or retargeted earlier in the same atomic change set.
+func (s *App) applyAuthorized(ctx context.Context, actor Actor, state *model.State, ops []model.Operation, capability string) ([]string, error) {
+	permissions := make(map[string]bool)
+	for i, op := range ops {
+		single := []model.Operation{op}
+		if err := auth.AuthorizeChange(actor, single, state); err != nil {
+			s.recordDenied(ctx, actor, capability, err)
+			return nil, err
+		}
+		for _, scope := range auth.RequiredPermissions(single, state) {
+			permissions[scope] = true
+		}
+		if err := applyOne(state, op, i); err != nil {
+			return nil, err
+		}
+	}
+	if len(ops) == 0 {
+		return auth.RequiredPermissions(ops, state), nil
+	}
+	scopes := make([]string, 0, len(permissions))
+	for scope := range permissions {
+		scopes = append(scopes, scope)
+	}
+	sort.Strings(scopes)
+	return scopes, nil
 }

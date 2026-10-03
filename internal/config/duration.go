@@ -2,64 +2,63 @@ package config
 
 import (
 	"encoding/json"
+	"math"
+	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hilather/go-lab-dns/internal/domainerr"
+	"github.com/hilather/go-lab-dns/internal/model"
 )
 
-// durationFields are JSON/YAML keys whose values use Go time.ParseDuration
-// syntax. Numeric JSON values are nanoseconds (encoding/json for time.Duration).
-var durationFields = map[string]bool{
-	"ttl":                true,
-	"negativeTTL":        true,
-	"refresh":            true,
-	"retry":              true,
-	"expire":             true,
-	"minimum":            true,
-	"timeout":            true,
-	"minimumTTL":         true,
-	"maximumTTL":         true,
-	"maximumNegativeTTL": true,
-	"maxDelay":           true,
-	"defaultMaxLifetime": true,
-	"timeBucket":         true,
-	"period":             true,
-	"unhealthy":          true,
-	"phaseOffset":        true,
-	"duration":           true,
-	"min":                true,
-	"max":                true,
-	"hold":               true,
-}
-
-// convertDurations rewrites ParseDuration strings to nanoseconds for
-// encoding/json → time.Duration. Non-string numbers (except literal 0) are
-// rejected: YAML `ttl: 30` must not silently become 30ns.
-func convertDurations(v any, path string) []domainerr.FieldViolation {
-	switch x := v.(type) {
-	case map[string]any:
-		var vs []domainerr.FieldViolation
-		for k, child := range x {
-			p := joinPath(path, k)
-			if durationFields[k] {
-				if viol, ok := coerceDurationField(x, k, child, p); !ok {
-					vs = append(vs, viol)
-				}
+// walkDurationFields follows model JSON fields, leaving arbitrary maps such
+// as labels untouched. Input and export must use the same type-aware traversal.
+func walkDurationFields(v any, typ reflect.Type, path string, visit func(map[string]any, string, any, string)) {
+	for typ.Kind() == reflect.Pointer {
+		typ = typ.Elem()
+	}
+	switch typ.Kind() {
+	case reflect.Struct:
+		obj, ok := v.(map[string]any)
+		if !ok {
+			return
+		}
+		for i := 0; i < typ.NumField(); i++ {
+			field := typ.Field(i)
+			key, _, _ := strings.Cut(field.Tag.Get("json"), ",")
+			child, exists := obj[key]
+			if !exists || key == "" || key == "-" {
 				continue
 			}
-			vs = append(vs, convertDurations(child, p)...)
+			p := joinPath(path, key)
+			if field.Type == reflect.TypeFor[time.Duration]() {
+				visit(obj, key, child, p)
+			} else {
+				walkDurationFields(child, field.Type, p, visit)
+			}
 		}
-		return vs
-	case []any:
-		var vs []domainerr.FieldViolation
-		for i, child := range x {
-			vs = append(vs, convertDurations(child, indexPath(path, i))...)
+	case reflect.Slice, reflect.Array:
+		children, ok := v.([]any)
+		if !ok {
+			return
 		}
-		return vs
-	default:
-		return nil
+		for i, child := range children {
+			walkDurationFields(child, typ.Elem(), indexPath(path, i), visit)
+		}
 	}
+}
+
+// convertDurations rewrites actual duration strings to nanoseconds for
+// encoding/json. Non-string numbers except literal zero are rejected.
+func convertDurations(v any, path string) []domainerr.FieldViolation {
+	var vs []domainerr.FieldViolation
+	walkDurationFields(v, reflect.TypeFor[model.State](), path, func(obj map[string]any, key string, child any, p string) {
+		if violation, ok := coerceDurationField(obj, key, child, p); !ok {
+			vs = append(vs, violation)
+		}
+	})
+	return vs
 }
 
 func coerceDurationField(obj map[string]any, key string, child any, path string) (domainerr.FieldViolation, bool) {
@@ -94,21 +93,11 @@ func coerceDurationField(obj map[string]any, key string, child any, path string)
 }
 
 func convertDurationNumbersToStrings(v any) {
-	switch x := v.(type) {
-	case map[string]any:
-		for k, child := range x {
-			if durationFields[k] {
-				if d, ok := jsonNumberDuration(child); ok {
-					x[k] = FormatDuration(d)
-				}
-			}
-			convertDurationNumbersToStrings(child)
+	walkDurationFields(v, reflect.TypeFor[model.State](), "", func(obj map[string]any, key string, child any, _ string) {
+		if d, ok := jsonNumberDuration(child); ok {
+			obj[key] = FormatDuration(d)
 		}
-	case []any:
-		for _, child := range x {
-			convertDurationNumbersToStrings(child)
-		}
-	}
+	})
 }
 
 func jsonNumberDuration(v any) (time.Duration, bool) {
@@ -135,6 +124,9 @@ func jsonNumberDuration(v any) (time.Duration, bool) {
 func FormatDuration(d time.Duration) string {
 	if d == 0 {
 		return "0s"
+	}
+	if d == time.Duration(math.MinInt64) {
+		return strconv.FormatInt(int64(d), 10) + "ns"
 	}
 	if d < 0 {
 		return "-" + FormatDuration(-d)

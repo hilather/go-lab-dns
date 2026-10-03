@@ -19,6 +19,13 @@ func ObservableRel(rel string) bool {
 	if strings.HasSuffix(rel, "_test.go") {
 		return false
 	}
+	if strings.HasPrefix(rel, "web/") {
+		base := path.Base(rel)
+		if strings.HasPrefix(rel, "web/e2e/") || strings.HasPrefix(rel, "web/test/") || strings.HasPrefix(rel, "web/tests/") || strings.HasPrefix(rel, "web/dist/") || strings.HasPrefix(rel, "web/node_modules/") || strings.Contains(base, ".test.") || strings.Contains(base, ".spec.") || base == "playwright.config.ts" || base == "vitest.config.ts" {
+			return false
+		}
+		return true
+	}
 	prefixes := []string{
 		"api/",
 		"cmd/",
@@ -33,7 +40,7 @@ func ObservableRel(rel string) bool {
 		}
 	}
 	switch rel {
-	case "Dockerfile", "Makefile", "README.md", "SECURITY.md", "AGENTS.md":
+	case "go.mod", "go.sum", "Dockerfile", "Makefile", "README.md", "SECURITY.md", "AGENTS.md":
 		return true
 	}
 	switch {

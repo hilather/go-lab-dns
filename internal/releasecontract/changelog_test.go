@@ -37,3 +37,16 @@ func TestObservableRel(t *testing.T) {
 		}
 	}
 }
+
+func TestChangelogIncludesApplicationAndDependencyChanges(t *testing.T) {
+	for _, rel := range []string{"web/src/App.tsx", "web/src/style.css", "web/package.json", "web/package-lock.json", "web/vite.config.ts", "web/public/logo.svg", "go.mod", "go.sum"} {
+		if err := CheckChangelog([]string{rel}); err == nil {
+			t.Errorf("%s escaped changelog gate", rel)
+		}
+	}
+	for _, rel := range []string{"web/src/App.test.tsx", "web/src/api.test.ts", "web/e2e/auth.spec.ts", "web/playwright.config.ts", "web/vitest.config.ts", "web/test/setup.ts", "web/dist/assets/index.js"} {
+		if err := CheckChangelog([]string{rel}); err != nil {
+			t.Errorf("test/build-only %s requires notes: %v", rel, err)
+		}
+	}
+}

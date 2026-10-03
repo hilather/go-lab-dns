@@ -2,6 +2,8 @@
 
 Status: Proposed
 Owners: Observability, Operations
+Last reviewed: 2026-10-03 (forwarding topology state lifetime and health identity)
+Last reviewed: 2026-10-03 (shared live control metrics and real upstream health)
 Last reviewed: 2026-08-19 (event ui.session)
 
 ## Goals
@@ -109,6 +111,8 @@ Allowed bounded labels include configured zone ID, chaos policy ID, upstream ID,
 
 Automated checks: catalog rows cannot declare forbidden labels; `Registry.Inc` drops samples that include them and increments `labdns_telemetry_dropped_total{reason="forbidden_label"}`.
 
+Production DNS, REST, MCP, and application operations share one in-process metrics registry. REST/MCP capability calls, including MCP resource reads, record bounded capability, transport, and result labels. This registry has no public scrape endpoint. The shared upstream tracker supplies upstream status and `Status.Degraded` from real exchange outcomes; injected timeouts and transport errors do not mark an upstream unhealthy. Upstream failure does not make local DNS unready.
+
 ## Tracing
 
 Tracing is optional and sampled (`observability.Tracer`). Spans may include DNS receive, local resolve, cache lookup, upstream exchange, chaos phase, state compile, and capability invocation. Sensitive names are hashed (`sha256:` + 8 bytes) or omitted.
@@ -121,6 +125,8 @@ Request/trace correlation uses `X-Request-ID` and `X-Trace-ID` on REST and conte
 - Readiness: valid active snapshot and required listeners bound (`GET /v1/health/ready`). Driven by `app.Status.Ready`.
 - Upstream failure does not make the service unready when local zones still work; `Status.Degraded` is set instead.
 - Chaos does not affect health endpoints or `Ready`/`Degraded`. Emergency-disable is an informational Status warning only.
+
+Forwarding health and round-robin state retain only IDs from the newest snapshot observed by an exchange. Removed IDs are pruned when that generation is observed; old in-flight queries still use their original configured pools, but their completions cannot restore retired state. Retained upstream IDs preserve health only while endpoint and transport remain unchanged. Caller cancellation and simulated faults are not reachability failures; running out of the total query deadline while waiting on an upstream counts as a timeout failure. This bounds historical runtime memory during configuration churn without background probes or persistent state.
 
 ## Agent-readable status
 

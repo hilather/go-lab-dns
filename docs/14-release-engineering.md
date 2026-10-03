@@ -6,6 +6,8 @@ Last reviewed: 2026-08-19 (1.1.0 candidate notes; hashed web/dist omitted from r
 Last reviewed: 2026-08-19 (required CI job `web`; Node 22.14.0)
 Last reviewed: 2026-08-16 (GA-001 1.0.0-rc.1 candidate; Actions SHA pins)
 
+Last reviewed: 2026-10-03 (exact-SHA/current-run CI gate and web/dependency changelog coverage)
+
 ## Goals
 
 - Reproducible, reviewable releases.
@@ -69,7 +71,7 @@ The Release workflow [`.github/workflows/release.yml`](https://github.com/hilath
 - Known limitations are explicit.
 - Upgrade and rollback were tested for supported paths.
 
-No administrative bypass is permitted for a required failed check. A skipped or cancelled required job fails the gate.
+No administrative bypass is permitted for a required failed check. A skipped, cancelled, queued, or in-progress current required job fails the gate. A missing `head_sha` cannot satisfy an exact-commit check. The newest check-run ID wins when IDs are present; fixture data without IDs fails closed if an unfinished run makes ordering ambiguous.
 
 ### Operator checklist
 
@@ -171,7 +173,7 @@ Any unaccounted functional difference blocks tagging.
 
 ## Changelog
 
-Maintain an unreleased section during development. Pull requests with externally observable changes add a concise entry. CI job `changelog` runs `make test-changelog` (`scripts/checkchangelog`) against `origin/<base>` (or `GITHUB_EVENT_BEFORE` on push). Observable paths include `api/`, `cmd/`, `internal/` (except `*_test.go`), `scripts/`, `.github/workflows/`, `Dockerfile`, `Makefile`, `README.md`, `SECURITY.md`, `AGENTS.md`, and the operator-facing `docs/06`, `07`, `09`, `11`, `13`, `14`, `16`, `17` files.
+Maintain an unreleased section during development. Pull requests with externally observable changes add a concise entry. CI job `changelog` runs `make test-changelog` (`scripts/checkchangelog`) against `origin/<base>` (or `GITHUB_EVENT_BEFORE` on push). Observable paths include `api/`, `cmd/`, `internal/` (except `*_test.go`), `web/` application source/assets/build configuration and dependency manifests/locks (excluding tests, test configuration, generated build output, and node_modules), `go.mod`, `go.sum`, `scripts/`, `.github/workflows/`, `Dockerfile`, `Makefile`, `README.md`, `SECURITY.md`, `AGENTS.md`, and the operator-facing `docs/06`, `07`, `09`, `11`, `13`, `14`, `16`, `17` files.
 
 At release, curate the complete delta, link migration guidance, and freeze it under the version and date.
 

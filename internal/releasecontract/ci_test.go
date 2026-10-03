@@ -1,6 +1,7 @@
 package releasecontract
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -101,5 +102,41 @@ func TestRequiredCIJobsHaveNoDuplicates(t *testing.T) {
 			t.Fatalf("duplicate job %q", j)
 		}
 		seen[j] = true
+	}
+}
+
+func TestEvaluateChecksRejectsMissingSHA(t *testing.T) {
+	if err := EvaluateChecks([]string{"unit"}, []CheckRun{{Name: "unit", Status: "completed", Conclusion: "success"}}, "abc"); err == nil {
+		t.Fatal("missing SHA satisfied exact-commit gate")
+	}
+}
+
+func TestEvaluateChecksPendingRerunCannotReuseOldSuccess(t *testing.T) {
+	for _, status := range []string{"queued", "in_progress"} {
+		for _, withIDs := range []bool{false, true} {
+			t.Run(status+fmt.Sprint(withIDs), func(t *testing.T) {
+				old := CheckRun{Name: "unit", Status: "completed", Conclusion: "success", HeadSHA: "abc", CompletedAt: time.Now()}
+				pending := CheckRun{Name: "unit", Status: status, HeadSHA: "abc"}
+				if withIDs {
+					old.ID = 1
+					pending.ID = 2
+				}
+				for _, runs := range [][]CheckRun{{old, pending}, {pending, old}} {
+					if err := EvaluateChecks([]string{"unit"}, runs, "abc"); err == nil {
+						t.Fatal("pending rerun reused old success")
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestEvaluateChecksLatestRunIdentityWins(t *testing.T) {
+	runs := []CheckRun{
+		{ID: 2, Name: "unit", Status: "completed", Conclusion: "success", HeadSHA: "abc"},
+		{ID: 1, Name: "unit", Status: "in_progress", HeadSHA: "abc"},
+	}
+	if err := EvaluateChecks([]string{"unit"}, runs, "abc"); err != nil {
+		t.Fatal(err)
 	}
 }
