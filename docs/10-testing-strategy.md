@@ -2,6 +2,7 @@
 
 Status: Proposed normative quality gate
 Owners: All teams
+Last reviewed: 2026-10-03 (runtime wiring, active-chaos parity, and snapshot-aware cache regressions)
 Last reviewed: 2026-09-04 (refuse-forward overlay CNAME must not poison AllowForward cache)
 Last reviewed: 2026-09-01 (resolve useCache fallthrough must not poison DNS cache)
 Last reviewed: 2026-08-29 (app tsc excludes Vitest files; web-test runs tsc --noEmit)
@@ -220,6 +221,8 @@ Never use broad retries to conceal a race or flaky assertion.
 - Forced truncation causes client TCP retry.
 - TCP reset does not crash or leak.
 - Base and final answers are visible in explanation.
+
+Runtime regressions cover shared upstream health and control metrics, signal-worker cleanup on shutdown and startup failure, safe management mounts, and live cache mutation/reset over UDP and TCP. Generation-aware cache tests reject old completions after policy changes and ensure previous snapshot publication cannot regress. Management chaos tests verify REST/MCP parity, base/final answers, current caller protections on cache hits, and absence of live delay, chaos-counter, or modeled-cache effects. Resolve may still read or store a base result when `useCache` is requested; explain must leave cache statistics and entries unchanged.
 
 ## Release test evidence
 

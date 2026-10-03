@@ -2,6 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Configuration, Application
+Last reviewed: 2026-10-03 (live cache policies, management mounts, and monotonic previous snapshots)
 Last reviewed: 2026-10-03 (snapshot publication advances past concurrent emergency generations)
 Last reviewed: 2026-08-18 (plan idempotency rechecks expectedRevision; emergency cancel)
 Last reviewed: 2026-08-19 (spec.ui.enabled, TargetUI, management.allowedOrigins)
@@ -336,6 +337,14 @@ Published JSON Schema: [api/jsonschema/labdns.dev.v1alpha1.json](https://github.
 | `spec.cache.*` | omitted / Go zero | **not materialized** by CFG; an enabled cache with `maxEntries<=0` is rejected. Zero TTL bounds mean no clamp on that side |
 
 Revision = `sha256:` + lowercase hex of SHA-256 of compact canonical JSON (materialized defaults, duration strings, no comments). Formatting-only YAML changes do not change the revision.
+
+### Runtime cache and management mounts
+
+Cache policy mutations and reset take effect without restart. Each query retains its snapshot policy; the newest generation controls global capacity and enabled status. Results from older generations cannot repopulate or reactivate the cache. Disabling the cache clears its entries; reducing `maxEntries` evicts excess entries immediately. Reset restores the bootstrap policy.
+
+Management `restPath` must be `/v1`. `mcpPath` must be a clean literal non-root path outside REST and operator-console namespaces, including login, assets, zones, state, changes, resolve, forwarding, cache, chaos, audit, schema, docs, capabilities, and reset. Distinct prefixes such as `/api/mcp` are supported. These paths must not contain ServeMux pattern syntax, query strings, fragments, or encoded delimiters. Listener and mount changes require restart.
+
+The previous snapshot pointer never regresses to an older displaced generation when concurrent emergency and normal publishers finish out of order. Active generation also advances beyond the displaced snapshot; apply/reset results report the published generation rather than a candidate's provisional generation.
 
 ## Failure modes
 

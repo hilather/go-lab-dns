@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: MCP, Application
+Last reviewed: 2026-10-03 (active-chaos resolve/explain output and duration strings)
 Last reviewed: 2026-09-01 (dns_resolve useCache does not store Fallthrough)
 Last reviewed: 2026-08-23 (allowLegacyClients overlay knob)
 Target protocol baseline: 2026-07-28
@@ -98,6 +99,8 @@ dns_audit_get
 These names are frozen in `internal/capabilities`. Health live/ready have no tools. `dns_docs_get` is parameterized (`id=dns-semantics` or `id=chaos-safety`). `dns_resolve` `useCache` shares the process DNS cache and does not store overlay `Fallthrough` (same rule as REST).
 
 Tools use explicit nouns and verbs, stable schemas, and descriptions that state whether the operation is read-only, state-changing, reversible, or high-impact.
+
+The `dns_resolve` `applyChaos` option and `dns_explain_resolution` model active chaos without executing delays, forwarding, or live chaos mutations. Explain always bypasses the cache; resolve may cache the base result when `useCache` is requested. Their shared explanation exposes `baseAnswers`, `baseRcode`, and `chaosDecisions` (`policyId`, `outcomeId`, `triggered`, `skipReason`, `digestHex`, and duration-string `delay`) with the same optional-field and output semantics as REST. These are additive explanation fields; existing tool names and input defaults remain unchanged.
 
 ## Resources
 

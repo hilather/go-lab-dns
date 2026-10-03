@@ -2,6 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Chaos, DNS, Security
+Last reviewed: 2026-10-03 (management resolution models active policies without live effects)
 Last reviewed: 2026-08-18 (exclusive-group spans Decide phases)
 Related ADRs: 0005, 0007
 
@@ -411,6 +412,8 @@ Simulation takes a state revision, query context, optional policy set, and optio
 - Final modeled answer or transport behavior.
 
 Simulation does not sleep, send packets, change cache state, consume budgets, or activate policies.
+
+Management `resolve` with `applyChaos: true` and `resolve:explain` use this engine to model currently enabled policies. Explain always models active chaos; the separate chaos simulation capability may evaluate a disabled policy hypothetically. Request-scoped exclusive-group winners carry across modeled pre-resolution and response phases. The model returns response changes and policy decisions, including skips, without timers, delay reservations, upstream exchanges, live random draws, or live effect counters. Explanations retain `baseAnswers` and `baseRcode` beside the final result. Resolve may cache its base answer when requested; modeled effects are never cached, and explain bypasses the cache.
 
 ## Emergency disable
 
