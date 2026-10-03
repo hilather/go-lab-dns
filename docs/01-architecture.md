@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Architecture, DNS, Control Plane
+Last reviewed: 2026-10-03 (forwarding topology state lifetime and health identity)
 Last reviewed: 2026-10-03 (shared runtime health/metrics and signal lifecycle)
 Last reviewed: 2026-08-19 (web/ nested module fence and internal/web embed stub)
 Last reviewed: 2026-08-18 (emergency disable cancels delays; plan idempotency rechecks revision)
@@ -147,6 +148,8 @@ A compiled snapshot contains only immutable or internally concurrency-safe struc
 - State revision and generation metadata.
 
 The active snapshot is held by an atomic pointer. A DNS request loads the pointer once and retains that snapshot for the whole request.
+
+Forwarding health and round-robin state retain only IDs from the newest snapshot observed by an exchange. Removed IDs are pruned when that generation is observed; old in-flight queries still use their original configured pools, but their completions cannot restore retired state. Retained upstream IDs preserve health only while endpoint and transport remain unchanged. Caller cancellation and simulated faults are not reachability failures; running out of the total query deadline while waiting on an upstream counts as a timeout failure. This bounds historical runtime memory during configuration churn without background probes or persistent state.
 
 ## Control-plane mutation flow
 

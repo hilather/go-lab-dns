@@ -2,6 +2,7 @@
 
 Status: Implementation-confirmed for local resolution (RES-001) and forwarding/cache/orchestrator (FWD-001)
 Owners: DNS
+Last reviewed: 2026-10-03 (upstream identity health and caller cancellation)
 Last reviewed: 2026-10-03 (management active-chaos modeling and current cached caller context)
 Last reviewed: 2026-08-18 (overlay CNAME kept when forward refused)
 Last reviewed: 2026-08-23 (over-length desired-state names; ADR 0009)
@@ -145,7 +146,7 @@ Implemented in `internal/forwarder` + `internal/dnsquery`. `forwarder.Exchange` 
 | `random` | injected RNG (tests use a seed) | remaining from that start |
 | `health-aware` | first currently healthy (or cooldown-expired) member in configured order | remaining healthy first, then last-resort unhealthy |
 
-Health is **query-driven**: no extra probe packets. An upstream is marked down after **2** consecutive timeout or transport failures and becomes probe-eligible after a **30s** cooldown. SERVFAIL/REFUSED RCODEs do not change health.
+Health is **query-driven**: no extra probe packets. An upstream is marked down after **2** consecutive timeout or transport failures and becomes probe-eligible after a **30s** cooldown. SERVFAIL/REFUSED RCODEs do not change health. Removed upstream/pool state is pruned for each newer observed snapshot; old-snapshot completions cannot restore it. Retargeting an upstream endpoint or transport clears previous health, while unchanged endpoints keep it. Caller cancellation and simulated upstream faults do not record reachability failures; running out of the total query deadline while waiting on an upstream counts as a timeout failure.
 
 ### Refuse-forward (unknown / local-only clients)
 
