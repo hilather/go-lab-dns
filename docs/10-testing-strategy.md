@@ -2,6 +2,7 @@
 
 Status: Proposed normative quality gate
 Owners: All teams
+Last reviewed: 2026-10-03 (successful snapshot preservation after Kubernetes deployment failure)
 Last reviewed: 2026-09-04 (refuse-forward overlay CNAME must not poison AllowForward cache)
 Last reviewed: 2026-09-01 (resolve useCache fallthrough must not poison DNS cache)
 Last reviewed: 2026-08-29 (app tsc excludes Vitest files; web-test runs tsc --noEmit)
@@ -142,6 +143,8 @@ Long soak (pre-GA): `go test ./internal/perf -soak=30m` or `LABDNS_SOAK_DURATION
 Soak assertions: every wire answer is a complete old or new RRset (never mixed/partial), delay reservations return to zero, cache stays ≤ `maxEntries`, goroutine count does not grow without bound.
 
 ### Container and deployment tests
+
+Fake-kubectl regressions deploy A then B, fail C during apply/restart/status, verify `.last/` remains B and `.previous/` remains A, and prove rollback restores A including both image pins.
 
 - Non-root execution.
 - Read-only filesystem.

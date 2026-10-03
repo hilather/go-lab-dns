@@ -25,7 +25,7 @@ git revert <sha>
 ```
 
 Rollback restores prior **desired** behavior (records, pins, chaos caps).
-Kubernetes snapshots restore both `image.env` and the matching Kustomize image pin. It does not replay discarded runtime experiments.
+Kubernetes snapshots restore both `image.env` and the matching Kustomize image pin. It does not replay discarded runtime experiments. A failed deployment leaves both successful snapshots intact: after successful A then B followed by failed C, `.last/` remains B and `.previous/` remains A, so rollback restores A.
 
 ## Recreate
 

@@ -12,7 +12,6 @@ ROOT="$(deploy_root)"
 
 "${ROOT}/scripts/validate.sh" "${ENV_NAME}"
 load_image_env "${DIR}/image.env"
-rotate_deploy_snapshot "${DIR}"
 
 case "${MODE}" in
 compose)
@@ -42,5 +41,6 @@ k8s|kubernetes)
 	;;
 esac
 
+rotate_deploy_snapshot "${DIR}"
 record_deploy_snapshot "${DIR}"
 echo "deploy ${ENV_NAME} ${MODE} ok (container recreation resets runtime drift)" >&2

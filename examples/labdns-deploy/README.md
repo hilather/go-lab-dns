@@ -103,7 +103,7 @@ Probes with `live: true` run only when `--server` is set (`live-probe.sh`).
 
 Preferred: revert the Git commit and `deploy.sh`.  
 Fast path: `scripts/rollback.sh <env>` restores the previous successful
-deploy snapshot (`.previous/`) and redeploys. Snapshots include `dns.yaml`, `image.env`, and the Kubernetes `kustomization.yaml` when present, so rollback restores both image pins together.
+deploy snapshot (`.previous/`) and redeploys. Snapshots include `dns.yaml`, `image.env`, and the Kubernetes `kustomization.yaml` when present, so rollback restores both image pins together. Failed deployment attempts leave `.last/` and `.previous/` unchanged; snapshots rotate only after successful recreation or rollout.
 
 ## Agent rules
 

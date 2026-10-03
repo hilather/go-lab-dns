@@ -546,3 +546,93 @@ kustomization=$(cat "$root/environments/main-lab/k8s/kustomization.yaml")
 		t.Fatalf("kustomization pin=%s want=%s", got, oldPin)
 	}
 }
+
+func TestFailedKubernetesDeploymentPreservesSuccessfulSnapshots(t *testing.T) {
+	for _, failAction := range []string{"apply", "rollout restart", "rollout status"} {
+		t.Run(failAction, func(t *testing.T) {
+			root := repoRoot(t)
+			tmp := t.TempDir()
+			scripts := filepath.Join(tmp, "scripts")
+			envDir := filepath.Join(tmp, "environments", "main-lab")
+			bin := filepath.Join(tmp, "bin")
+			for _, dir := range []string{scripts, filepath.Join(envDir, "k8s"), bin} {
+				if err := os.MkdirAll(dir, 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			write := func(path, body string) {
+				t.Helper()
+				if err := os.WriteFile(path, []byte(body), 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for _, name := range []string{"deploy.sh", "lib.sh", "rollback.sh"} {
+				write(filepath.Join(scripts, name), read(t, filepath.Join(root, "examples", "labdns-deploy", "scripts", name)))
+			}
+			write(filepath.Join(scripts, "validate.sh"), "#!/bin/sh\nexit 0\n")
+			write(filepath.Join(bin, "kubectl"), `#!/bin/sh
+if [ -n "$FAIL_ACTION" ]; then
+    case "$*" in "$FAIL_ACTION"*) exit 1 ;; esac
+fi
+exit 0
+`)
+			run := func(script, failure string) ([]byte, error) {
+				cmd := exec.Command(filepath.Join(scripts, script), "main-lab", "k8s")
+				cmd.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"), "FAIL_ACTION="+failure)
+				return cmd.CombinedOutput()
+			}
+			contents := func(name string) map[string]string {
+				return map[string]string{
+					"dns.yaml":           "desired " + name + "\n",
+					"image.env":          "LABDNS_IMAGE=ghcr.io/hilather/labdns@sha256:" + name + "\n",
+					"kustomization.yaml": "image " + name + "\n",
+				}
+			}
+			candidate := func(name string) {
+				for file, body := range contents(name) {
+					dir := envDir
+					if file == "kustomization.yaml" {
+						dir = filepath.Join(dir, "k8s")
+					}
+					write(filepath.Join(dir, file), body)
+				}
+			}
+			assertSnapshot := func(dir, name string) {
+				t.Helper()
+				for file, want := range contents(name) {
+					if got := read(t, filepath.Join(envDir, dir, file)); got != want {
+						t.Fatalf("%s/%s=%q want %q", dir, file, got, want)
+					}
+				}
+			}
+			for _, name := range []string{"A", "B"} {
+				candidate(name)
+				if out, err := run("deploy.sh", ""); err != nil {
+					t.Fatalf("deploy %s: %v %s", name, err, out)
+				}
+			}
+			assertSnapshot(".last", "B")
+			assertSnapshot(".previous", "A")
+			candidate("C")
+			if out, err := run("deploy.sh", failAction); err == nil {
+				t.Fatalf("failed deployment reported success: %s", out)
+			}
+			assertSnapshot(".last", "B")
+			assertSnapshot(".previous", "A")
+			if out, err := run("rollback.sh", ""); err != nil {
+				t.Fatalf("rollback: %v %s", err, out)
+			}
+			assertSnapshot(".last", "A")
+			assertSnapshot(".previous", "B")
+			for file, want := range contents("A") {
+				dir := envDir
+				if file == "kustomization.yaml" {
+					dir = filepath.Join(dir, "k8s")
+				}
+				if got := read(t, filepath.Join(dir, file)); got != want {
+					t.Fatalf("rollback %s=%q want %q", file, got, want)
+				}
+			}
+		})
+	}
+}

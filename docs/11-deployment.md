@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Deployment, Operations, Security
+Last reviewed: 2026-10-03 (failed deployments preserve successful rollback snapshots)
 Last reviewed: 2026-08-19 (operator console on :8080, ui.enabled, allowedOrigins)
 Last reviewed: 2026-08-19 (Dockerfile Node 22.14.0 stage for operator console)
 Last reviewed: 2026-08-15 (PERF-001 capacity notes)
@@ -177,6 +178,8 @@ The initial release supports one mutable runtime replica. Multiple replicas may 
 Deployments should set an environment-level maximum policy and provide an operational way to restart with chaos forcibly disabled. The startup override cannot be relaxed by YAML or ordinary API calls.
 
 ## Failure modes
+
+Deployment scripts rotate `.last/` into `.previous/` only after successful recreation or rollout. Failed apply, restart, or rollout attempts preserve both successful snapshots for rollback.
 
 - Invalid ConfigMap update: explicit reset fails and active state remains.
 - Container recreation: runtime drift disappears and bootstrap state returns.
