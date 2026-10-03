@@ -2,6 +2,7 @@
 
 Status: Proposed normative quality gate
 Owners: All teams
+Last reviewed: 2026-10-03 (successful snapshot preservation after Kubernetes deployment failure)
 Last reviewed: 2026-10-03 (Docker documentation embed context and runtime smoke checks)
 Last reviewed: 2026-10-03 (aggregate drop-cap and numeric boundary regressions)
 Last reviewed: 2026-09-04 (refuse-forward overlay CNAME must not poison AllowForward cache)
@@ -16,6 +17,7 @@ Last reviewed: 2026-08-15 (REL-001 release-diff and required CI)
 Last reviewed: 2026-08-15 (PERF-001 benches, soak, interop)
 Last reviewed: 2026-08-15 (GIT-001 deployment template probes)
 
+Last reviewed: 2026-10-03 (fake Kubernetes redeploy and exact-commit release-gate regressions)
 Last reviewed: 2026-10-03 (upstream reply correlation, cancellation, and SOA MINIMUM regressions)
 
 ## Policy
@@ -147,6 +149,8 @@ Soak assertions: every wire answer is a complete old or new RRset (never mixed/p
 
 `TestDockerContextIncludesEmbeddedDocumentation` derives the docs package's Go sources and embed inputs with `go list` and checks the exact final Docker ignore exceptions. `make test-container` also requests both embedded documentation endpoints from inside the running image using its authenticated loopback principal.
 
+Fake-kubectl regressions deploy A then B, fail C during apply/restart/status, verify `.last/` remains B and `.previous/` remains A, and prove rollback restores A including both image pins.
+
 - Non-root execution.
 - Read-only filesystem.
 - Port mapping.
@@ -158,7 +162,7 @@ Soak assertions: every wire answer is a complete old or new RRset (never mixed/p
 - GitOps template (`examples/labdns-deploy`): digest pin, policy rejection
   (broad CIDRs, unapproved upstreams, unsafe chaos), probe suite (exact,
   wildcard, authoritative miss, overlay, unknown-client RA=0 / REFUSED,
-  chaos simulation), rollback, and script fail-closed checks.
+  chaos simulation), rollback, and script fail-closed checks. Fake-kubectl regressions verify apply/restart/status ordering for unchanged desired state and failure before successful snapshot recording, plus restoration of matching Kubernetes/image.env pins on rollback.
 
 ### Documentation tests
 

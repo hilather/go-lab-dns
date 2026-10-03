@@ -8,6 +8,7 @@ import (
 
 // CheckRun is one GitHub check-run or workflow job result.
 type CheckRun struct {
+	ID          int64     `json:"id,omitempty"`
 	Name        string    `json:"name"`
 	Status      string    `json:"status"`
 	Conclusion  string    `json:"conclusion"`
@@ -30,7 +31,7 @@ func EvaluateChecks(required []string, runs []CheckRun, wantSHA string) error {
 			}
 			continue
 		}
-		best := latestCompleted(hits)
+		best := latestRun(hits)
 		if best == nil {
 			problems = append(problems, name+": not completed (status="+hits[len(hits)-1].Status+")")
 			continue
@@ -50,13 +51,37 @@ func matchingRuns(runs []CheckRun, name, wantSHA string) (hits []CheckRun, wrong
 		if !checkNameMatches(r.Name, name) {
 			continue
 		}
-		if wantSHA != "" && r.HeadSHA != "" && r.HeadSHA != wantSHA {
+		if wantSHA != "" && r.HeadSHA != wantSHA {
 			wrongSHA++
 			continue
 		}
 		hits = append(hits, r)
 	}
 	return hits, wrongSHA
+}
+
+// GitHub check-run IDs increase as new attempts are created. When fixture
+// data lacks IDs, an unfinished run has ambiguous ordering and fails closed.
+func latestRun(runs []CheckRun) *CheckRun {
+	allIDs := true
+	for _, r := range runs {
+		allIDs = allIDs && r.ID > 0
+	}
+	if allIDs {
+		var best *CheckRun
+		for i := range runs {
+			if best == nil || runs[i].ID > best.ID {
+				best = &runs[i]
+			}
+		}
+		return best
+	}
+	for i := range runs {
+		if !strings.EqualFold(runs[i].Status, "completed") {
+			return &runs[i]
+		}
+	}
+	return latestCompleted(runs)
 }
 
 func latestCompleted(runs []CheckRun) *CheckRun {

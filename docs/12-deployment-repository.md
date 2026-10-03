@@ -5,6 +5,8 @@ Owners: Deployment, Platform
 Last reviewed: 2026-10-03 (alternate action address checks)
 Last reviewed: 2026-08-19 (operator console :8080, ui.enabled, allowedOrigins)
 
+Last reviewed: 2026-10-03 (explicit Kubernetes restart and matching rollback image pins)
+
 ## Purpose
 
 The deployment repository is the durable source of truth for each environment. LabDNS runtime changes are ephemeral experiments until represented by a reviewed deployment-repository change.
@@ -108,7 +110,7 @@ Deployment chaos checks account for runtime zero semantics: configured delays re
 9. Deployment recreates or resets LabDNS from Git state.
 10. Drift returns to false.
 
-Container recreation always discards unsaved runtime mutations (ADR 0003).
+Container recreation always discards unsaved runtime mutations (ADR 0003). Kubernetes `deploy.sh` applies manifests, explicitly restarts the Deployment even when unchanged, and waits for rollout success before recording the successful snapshot.
 
 ## Probe format example
 
@@ -177,7 +179,7 @@ Unknown-client probes: a local name still succeeds with **RA=0**; a name that wo
 
 ## Rollback
 
-Rollback means reverting desired state or image pin in Git and redeploying. `scripts/rollback.sh` restores the previous successful `deploy.sh` snapshot (one generation) and redeploys. Runtime emergency rollback may deactivate a chaos policy or reset to bootstrap, but the deployment repository remains authoritative.
+Rollback means reverting desired state or image pin in Git and redeploying. `scripts/rollback.sh` restores the previous successful `deploy.sh` snapshot (one generation) and redeploys. The snapshot includes `dns.yaml`, `image.env`, and `k8s/kustomization.yaml` when present; restoring both image pins together preserves digest validation. Runtime emergency rollback may deactivate a chaos policy or reset to bootstrap, but the deployment repository remains authoritative.
 
 ## Agent instructions for deployment changes
 

@@ -33,6 +33,11 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - REST/MCP plans and mutations accept documented duration strings for DNS editor records and chaos designer policies; authorization no longer mistakes valid TTL/delay strings for protected-object or invalid-policy errors.
 - DNS semantics and chaos safety documentation are embedded in the binary so REST/MCP documentation endpoints and the operator console work in production containers without a source checkout. Docker build context includes only the documentation Go package and its two canonical embed inputs; automated packaging and in-container endpoint checks guard against missing embed sources.
 - Atomic plan/apply/validate batches now authorize each operation against preceding candidate changes. This prevents low-privilege actors from activating a newly added high-impact chaos policy or adding a relative protected owner through a newly added zone. REST and MCP share the fix and report complete required permissions.
+- Kubernetes rollback restores the snapshotted Kustomize image digest alongside bootstrap YAML and image.env, so image-pin rollback validates and deploys the previous image.
+- Kubernetes deployment scripts explicitly restart pods after applying manifests so unchanged desired state reloads bootstrap and discards runtime drift; failed deployments preserve both successful snapshots, so rollback still restores the previous successful deployment after apply, restart, or rollout failure.
+- Release CI verification rejects missing commit SHAs and pending reruns instead of reusing an older successful check. GitHub check-run IDs identify the current attempt.
+- Changelog enforcement covers operator web application changes and Go/frontend dependency manifests and locks while excluding test-only files and build output.
+- Architecture documentation now describes the implemented operator console and the current DNS wire adapter dependency.
 
 ## v1.3.2 — 2026-09-21
 

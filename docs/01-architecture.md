@@ -4,7 +4,8 @@ Status: Proposed
 Owners: Architecture, DNS, Control Plane
 Last reviewed: 2026-08-19 (web/ nested module fence and internal/web embed stub)
 Last reviewed: 2026-08-18 (emergency disable cancels delays; plan idempotency rechecks revision)
-Related ADRs: 0001, 0002, 0003, 0004, 0005
+Last reviewed: 2026-10-03 (operator UI and current DNS adapter dependency)
+Related ADRs: 0001, 0002, 0003, 0004, 0005, 0008
 
 ## Problem statement
 
@@ -14,7 +15,7 @@ Laboratory devices need a predictable DNS service that can override exact names,
 
 - Correct authoritative, overlay, wildcard, forwarding, and cache behavior.
 - Per-entry and broader chaos behavior with deterministic testing and strict safety limits.
-- One shared application model exposed through REST and MCP.
+- One shared application model exposed through REST and MCP, with an embedded operator UI as a REST client (ADR 0008).
 - Immutable, atomic runtime state.
 - Ephemeral operation with GitOps-oriented desired state.
 - Container-first deployment and strong observability.
@@ -28,7 +29,6 @@ Laboratory devices need a predictable DNS service that can override exact names,
 - AXFR, IXFR, and secondary-server operation.
 - DNSSEC signing of local zones in the initial release.
 - Multi-replica runtime-state consensus.
-- A web administration UI.
 - DHCP integration.
 - Arbitrary malformed DNS packet generation in the main service.
 
@@ -56,7 +56,7 @@ Laboratory devices need a predictable DNS service that can override exact names,
                               |
                     +---------------------+
 Lab clients ------> |      LabDNS         | ------> Upstream DNS pools
- UDP/TCP DNS        |                     |          UDP/TCP/DoT
+ UDP/TCP DNS        |                     |          UDP/TCP
                     |  immutable snapshot |
                     |  resolver + cache   |
                     |  bounded chaos      |
@@ -186,7 +186,7 @@ The chaos engine receives a structured resolution context and cannot access mana
 
 ## DNS wire adapter and listeners
 
-`internal/dnswire` is the only package that may import `github.com/miekg/dns` (pinned at **v1.1.72**). It converts wire bytes to `model.Query` plus a package-local `Request` (ID, opcode, EDNS) and encodes `model.Result` back to octets. Library types never appear in `dnsserver` or later packages.
+`internal/dnswire` is the only package that may import `github.com/miekg/dns` (pinned at **v1.1.73**). It converts wire bytes to `model.Query` plus a package-local `Request` (ID, opcode, EDNS) and encodes `model.Result` back to octets. Library types never appear in `dnsserver` or later packages.
 
 `internal/dnsserver` binds UDP and TCP, applies admission, calls `Handler.ServeDNS`, and applies the returned `TransportHint`. It does not import snapshot, resolver, forwarder, or chaos.
 
