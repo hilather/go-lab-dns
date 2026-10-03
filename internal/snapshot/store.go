@@ -37,12 +37,25 @@ func (s *Store) Load() *Snapshot {
 // If the process emergency bit is set, Swap copies next (when needed) and
 // forces EmergencyChaosOff. Apply cannot clear the inhibit this way.
 func (s *Store) Swap(next *Snapshot) *Snapshot {
-	next = s.stampEmergency(next)
-	prev := s.active.Swap(next)
-	if prev != nil {
-		s.previous.Store(prev)
+	for {
+		previous := s.active.Load()
+		published := s.stampEmergency(next)
+		if published != nil && previous != nil && published.Generation <= previous.Generation {
+			copy := *published
+			copy.Generation = previous.Generation + 1
+			published = &copy
+		}
+		if !s.active.CompareAndSwap(previous, published) {
+			continue
+		}
+		if previous != nil {
+			s.previous.Store(previous)
+		}
+		// An emergency bit can change after it was read above even when the
+		// previous snapshot already had that bit. Reconcile the committed pointer.
+		s.StampEmergency()
+		return previous
 	}
-	return prev
 }
 
 // SetEmergencyChaosOff sets the runtime inhibit bit. It does not publish a
