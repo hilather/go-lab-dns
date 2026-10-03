@@ -2,6 +2,7 @@
 
 Status: Implemented (SEC-001)
 Owners: Security, DNS, Control Plane
+Last reviewed: 2026-10-03 (browser cookie mutation races, fail-closed recovery, upstream reply correlation and cancellation)
 Last reviewed: 2026-10-03 (safe management mounts and current caller protections on cached resolve)
 Last reviewed: 2026-10-03 (sequential authorization of atomic change sets)
 Last reviewed: 2026-08-31 (protected-name wildcard synthesis)
@@ -64,11 +65,15 @@ First-GA DNS listener numeric defaults (DNS-001; YAML overrides land with CFG/ST
 
 ### Browser session and CSRF
 
+Browser session POST and DELETE operations are serialized within each page. A superseded successful login is revoked using only its response CSRF token before another cookie mutation can run. Session recovery waits for this queue. Failed revocation or logout retains its CSRF token and blocks recovery until cleanup succeeds; an explicit bearer login can replace the session and clear that pending state. A successful cookie response with an unreadable or invalid session body also blocks recovery until explicit bearer sign-in or confirmed logout. This ordering is page-local and does not coordinate other tabs.
+
 The operator console authenticates with an in-process session table (max 256, 12h sliding TTL) and cookie `labdns_session` (`HttpOnly`, `SameSite=Lax`, `Path=/`, host-only, `Secure` iff `r.TLS != nil`). CSRF secret is returned in JSON and required as `X-LabDNS-CSRF` on cookie-authenticated non-GET requests (`subtle.ConstantTimeCompare`). CSRF is omitted on `POST /v1/session` **only when no session cookie is sent**. A live-cookie POST without Bearer **rotates** ID/CSRF for the existing Actor (`class=ui-session`) and must not call loopback Identify (that would escalate a viewer to administrator). A present but unknown/expired cookie without Bearer is 401 (SPA clears it after GET `/v1/session` 401); first login omits the cookie. Identity switch requires `Authorization: Bearer`. `Authorization: Bearer` wins over cookie and CSRF for that request.
 
 Session create copies Identify `id`/`role`/`scopes`/`groups`. `ClassUISession` plus `administrator` role still yields all scopes via role expansion. MCP ignores cookies (off-loopback cookie-only MCP is 401). Cookie value, CSRF, and bearer are never logged. Cap reject uses existing `rate_limited` (429, detail `session table full`); do not evict.
 
 GET/HEAD outside `/v1` and `/mcp` is a pre-auth SPA branch and must not 401. Management JSON still gets nosniff / frame-deny / referrer-policy; CSP is applied on HTML/SPA.
+
+Browser identity transitions cancel and clear cached queries, including previous actors' scopes, audit entries, and state. Generation checks prevent late session responses or delayed body parsing from restoring a previous actor or replacing a newer CSRF secret. Sign-out clears the in-memory CSRF immediately, including when the revoke request fails.
 
 ### Scope catalog
 

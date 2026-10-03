@@ -1,6 +1,9 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router'
-import { APIError, deleteSession, getJSON, getSession } from '../auth/sessionApi'
+import { APIError, deleteSession, getSession } from '../auth/sessionApi'
+import { clearSessionQueries } from '../query/client'
+import { useStatusQuery } from '../query/status'
 import { NAV_GROUPS } from '../nav'
 import { readyKind, readyLabel, shortRevision, type StatusView } from '../status'
 import { EmergencyControl } from '../pages/chaos/EmergencyControl'
@@ -20,7 +23,9 @@ function asStatus(v: unknown): StatusView {
 export function Shell() {
   const navigate = useNavigate()
   const [sessionOK, setSessionOK] = useState<boolean | null>(null)
-  const [status, setStatus] = useState<StatusView | null>(null)
+  const queryClient = useQueryClient()
+  const statusQuery = useStatusQuery(sessionOK === true)
+  const status = statusQuery.data ? asStatus(statusQuery.data) : null
 
   useEffect(() => {
     const ac = new AbortController()
@@ -48,47 +53,16 @@ export function Shell() {
   }, [navigate])
 
   useEffect(() => {
-    if (!sessionOK) {
-      return
+    if (statusQuery.error instanceof APIError && statusQuery.error.status === 401) {
+      setSessionOK(false)
+      void clearSessionQueries(queryClient)
+      navigate('/login', { replace: true })
     }
-    let cancelled = false
-    const load = () => {
-      if (document.visibilityState !== 'visible') {
-        return
-      }
-      void getJSON('/v1/status')
-        .then((body) => {
-          if (cancelled) {
-            return
-          }
-          setStatus(asStatus(body))
-        })
-        .catch((err: unknown) => {
-          if (cancelled) {
-            return
-          }
-          if (err instanceof APIError && err.status === 401) {
-            setSessionOK(false)
-            navigate('/login', { replace: true })
-          }
-        })
-    }
-    load()
-    const id = window.setInterval(load, 2000)
-    const onVis = () => {
-      if (document.visibilityState === 'visible') {
-        load()
-      }
-    }
-    document.addEventListener('visibilitychange', onVis)
-    return () => {
-      cancelled = true
-      window.clearInterval(id)
-      document.removeEventListener('visibilitychange', onVis)
-    }
-  }, [navigate, sessionOK])
+  }, [navigate, queryClient, statusQuery.error])
 
   async function onSignOut() {
+    setSessionOK(false)
+    await clearSessionQueries(queryClient)
     try {
       await deleteSession()
     } finally {

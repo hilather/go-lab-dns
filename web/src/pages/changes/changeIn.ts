@@ -364,11 +364,7 @@ export function hasWriteScope(actor: { role?: string; scopes?: string[]; class?:
     return false
   }
   const scopes = actor.scopes ?? []
-  if (scopes.includes('dns.write') || scopes.includes('dns.admin')) {
-    return true
-  }
-  if (actor.role === 'administrator') {
-    return true
-  }
-  return false
+  const writeScopes = ['dns.write', 'dns.admin', 'dns.forwarders.write', 'dns.chaos.write', 'dns.chaos.activate']
+  const writeRoles = ['administrator', 'dns-editor', 'forwarder-operator', 'chaos-designer', 'chaos-operator', 'chaos-admin']
+  return writeScopes.some((scope) => scopes.includes(scope)) || writeRoles.includes(actor.role ?? '')
 }

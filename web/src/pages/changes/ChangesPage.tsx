@@ -9,7 +9,7 @@ import { ProblemAlert } from '../../components/ProblemAlert'
 import { ScopeGate } from '../../components/ScopeGate'
 import type { ShellContext } from '../../components/Shell'
 import { YamlJsonEditor } from '../../components/YamlJsonEditor'
-import { invalidateSnapshotQueries } from '../../query/keys'
+import { invalidateSnapshotQueries, queryKeys } from '../../query/keys'
 import { shortRevision } from '../../status'
 import {
   asChangeInSchema,
@@ -248,6 +248,7 @@ export function ChangesPage() {
       discardPlan()
       setConfirmOpen(false)
       idempotencyRef.current = ''
+      await queryClient.invalidateQueries({ queryKey: queryKeys.status() })
       await invalidateSnapshotQueries(queryClient)
     } catch (err) {
       setProblem(parseProblem(err, 0))
@@ -328,17 +329,17 @@ export function ChangesPage() {
           <input type="text" value={ticket} onChange={(ev) => setTicket(ev.target.value)} autoComplete="off" />
         </label>
         <div className="changes-actions">
-          <ScopeGate allowed={canWrite} missingScope="dns.write">
+          <ScopeGate allowed={canWrite} missingScope="dns.write / dns.forwarders.write / dns.chaos.write / dns.chaos.activate">
             <button type="button" disabled={!canValidate} onClick={() => void runValidate()}>
               Validate
             </button>
           </ScopeGate>
-          <ScopeGate allowed={canWrite} missingScope="dns.write">
+          <ScopeGate allowed={canWrite} missingScope="dns.write / dns.forwarders.write / dns.chaos.write / dns.chaos.activate">
             <button type="button" disabled={!canPlan} onClick={() => void runPlan()}>
               Plan
             </button>
           </ScopeGate>
-          <ScopeGate allowed={canWrite} missingScope="dns.write">
+          <ScopeGate allowed={canWrite} missingScope="dns.write / dns.forwarders.write / dns.chaos.write / dns.chaos.activate">
             <button type="button" className="btn-accent" disabled={!canApply} onClick={openConfirm}>
               Apply
             </button>

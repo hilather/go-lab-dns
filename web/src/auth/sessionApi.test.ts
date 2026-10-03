@@ -162,3 +162,62 @@ describe('sessionApi storage', () => {
     expect(getCsrf()).toBe('keep-me')
   })
 })
+
+describe('session response races', () => {
+  afterEach(() => { clear(); vi.unstubAllGlobals() })
+
+  it.each(['create', 'delete', 'abort'])('discards a stale successful GET after %s', async (transition) => {
+    let resolve!: (response: Response) => void
+    const pending = new Promise<Response>((r) => { resolve = r })
+    vi.stubGlobal('fetch', vi.fn((_url, init) => init.method === 'GET' ? pending : Promise.resolve(
+      init.method === 'DELETE' ? new Response(null, { status: 204 }) : jsonResponse(200, { csrf: 'new', actor: { id: 'new' } }),
+    )))
+    setCsrf('old')
+    const ac = new AbortController()
+    const read = getSession({ signal: ac.signal })
+    if (transition === 'create') await createSession()
+    if (transition === 'delete') await deleteSession()
+    if (transition === 'abort') ac.abort()
+    resolve(jsonResponse(200, { csrf: 'stale', actor: { id: 'stale-admin' } }))
+    expect(await read).toBeNull()
+    expect(getCsrf()).toBe(transition === 'create' ? 'new' : transition === 'delete' ? '' : 'old')
+  })
+
+  it('guards delayed JSON parsing as well as response headers', async () => {
+    let finish!: (value: unknown) => void
+    const response = jsonResponse(200, {})
+    vi.spyOn(response, 'json').mockImplementation(() => new Promise((r) => { finish = r }))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response).mockResolvedValueOnce(jsonResponse(200, { csrf: 'new', actor: { id: 'new' } })))
+    const read = getSession()
+    await vi.waitFor(() => expect(finish).toBeDefined())
+    await createSession()
+    finish({ csrf: 'stale', actor: { id: 'stale' } })
+    expect(await read).toBeNull()
+    expect(getCsrf()).toBe('new')
+  })
+
+  it('a late DELETE cannot clear a later login', async () => {
+    let finish!: (value: Response) => void
+    vi.stubGlobal('fetch', vi.fn().mockImplementationOnce(() => new Promise((r) => { finish = r })).mockResolvedValueOnce(jsonResponse(200, { csrf: 'new', actor: { id: 'new' } })))
+    setCsrf('old')
+    const logout = deleteSession()
+    expect(getCsrf()).toBe('')
+    const login = createSession()
+    finish(new Response(null, { status: 204 }))
+    await logout
+    await login
+    expect(getCsrf()).toBe('new')
+  })
+
+  it('a stale login cannot restore authority after logout', async () => {
+    let finish!: (value: Response) => void
+    vi.stubGlobal('fetch', vi.fn().mockImplementationOnce(() => new Promise((r) => { finish = r })).mockResolvedValue(new Response(null, { status: 204 })))
+    const login = createSession()
+    const rejected = expect(login).rejects.toMatchObject({ name: 'AbortError' })
+    const logout = deleteSession()
+    finish(jsonResponse(200, { csrf: 'stale', actor: { id: 'stale' } }))
+    await rejected
+    await logout
+    expect(getCsrf()).toBe('')
+  })
+})

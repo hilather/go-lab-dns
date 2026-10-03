@@ -2,8 +2,48 @@ import { clear, getCsrf, setCsrf } from './sessionMemory'
 
 export const CSRF_HEADER = 'X-LabDNS-CSRF'
 
-// Bumped on createSession so a stale GET 401 cannot clear() a newer CSRF.
+// Identity transitions invalidate every earlier response, including body parsing.
 let sessionGen = 0
+let mutationTail: Promise<void> | null = null
+// Retain the known token for failed logout or superseded login cleanup.
+let pendingRevocation = ''
+let recoveryBlocked = false
+// CSRF of a cookie whose sign-in body was unreadable; used only so logout can revoke it.
+let orphanCsrf = ''
+
+function enqueueMutation<T>(run: () => Promise<T>): Promise<T> {
+  const result = mutationTail ? mutationTail.then(run) : run()
+  const tail = result.then(() => undefined, () => undefined)
+  mutationTail = tail
+  void tail.then(() => { if (mutationTail === tail) mutationTail = null })
+  return result
+}
+
+async function deleteWithCsrf(csrf: string): Promise<void> {
+  const headers = new Headers()
+  if (csrf) headers.set(CSRF_HEADER, csrf)
+  const res = await fetch('/v1/session', { method: 'DELETE', credentials: 'include', headers })
+  if (res.status === 204 || res.status === 401) return
+  if (!res.ok) throw await readProblem(res)
+}
+
+async function cookieCsrf(): Promise<string> {
+  try {
+    const res = await fetch('/v1/session', { method: 'GET', credentials: 'include' })
+    if (!res.ok) return ''
+    const body = (await res.json()) as { csrf?: unknown }
+    return typeof body.csrf === 'string' ? body.csrf : ''
+  } catch {
+    return ''
+  }
+}
+
+async function revokePendingSession(): Promise<void> {
+  if (!pendingRevocation) return
+  await deleteWithCsrf(pendingRevocation)
+  pendingRevocation = ''
+  recoveryBlocked = false
+}
 
 function isAbortError(err: unknown): boolean {
   return err instanceof DOMException
@@ -60,7 +100,6 @@ async function parseSession(res: Response): Promise<SessionResponse> {
   if (typeof body.csrf !== 'string' || body.csrf === '') {
     throw new APIError(res.status, 'invalid_value', 'session response missing csrf')
   }
-  setCsrf(body.csrf)
   return body
 }
 
@@ -71,6 +110,9 @@ export type GetSessionOpts = {
 export async function getSession(opts?: GetSessionOpts): Promise<SessionResponse | null> {
   const gen = sessionGen
   const signal = opts?.signal
+  if (mutationTail) await mutationTail
+  if (pendingRevocation) await enqueueMutation(revokePendingSession)
+  if (signal?.aborted || gen !== sessionGen || recoveryBlocked) return null
   let res: Response
   try {
     res = await fetch('/v1/session', { method: 'GET', credentials: 'include', signal })
@@ -89,53 +131,72 @@ export async function getSession(opts?: GetSessionOpts): Promise<SessionResponse
   if (!res.ok) {
     throw await readProblem(res)
   }
-  return parseSession(res)
+  const body = await parseSession(res)
+  if (signal?.aborted || gen !== sessionGen) {
+    return null
+  }
+  setCsrf(body.csrf)
+  return body
 }
 
 export async function createSession(bearer?: string): Promise<SessionResponse> {
-  sessionGen += 1
-  const headers = new Headers()
-  if (bearer) {
-    headers.set('Authorization', `Bearer ${bearer}`)
-  }
-  const csrf = getCsrf()
-  if (csrf !== '') {
-    headers.set(CSRF_HEADER, csrf)
-  }
-  const res = await fetch('/v1/session', {
-    method: 'POST',
-    credentials: 'include',
-    headers,
+  const gen = ++sessionGen
+  return enqueueMutation(async () => {
+    if (pendingRevocation && !bearer) await revokePendingSession()
+    if (recoveryBlocked && !bearer) throw new APIError(409, 'session_recovery_blocked', 'explicit sign-in required after an incomplete session response')
+    if (gen !== sessionGen) throw new DOMException('session changed during sign-in', 'AbortError')
+    const headers = new Headers()
+    if (bearer) headers.set('Authorization', `Bearer ${bearer}`)
+    const csrf = getCsrf()
+    if (csrf) headers.set(CSRF_HEADER, csrf)
+    const res = await fetch('/v1/session', { method: 'POST', credentials: 'include', headers })
+    if (!res.ok) throw await readProblem(res)
+    recoveryBlocked = true
+    clear()
+    let body: SessionResponse
+    try {
+      body = await parseSession(res)
+    } catch (err) {
+      // The cookie is set but its CSRF is only in the unreadable body; learn it
+      // from a cookie GET so logout can revoke that session.
+      orphanCsrf = await cookieCsrf()
+      throw err
+    }
+    if (gen !== sessionGen) {
+      pendingRevocation = body.csrf
+      await revokePendingSession()
+      throw new DOMException('session changed during sign-in', 'AbortError')
+    }
+    pendingRevocation = ''
+    recoveryBlocked = false
+    orphanCsrf = ''
+    setCsrf(body.csrf)
+    return body
   })
-  if (!res.ok) {
-    throw await readProblem(res)
-  }
-  return parseSession(res)
 }
 
 export async function deleteSession(): Promise<void> {
-  const headers = new Headers()
-  const csrf = getCsrf()
-  if (csrf !== '') {
-    headers.set(CSRF_HEADER, csrf)
-  }
-  const res = await fetch('/v1/session', {
-    method: 'DELETE',
-    credentials: 'include',
-    headers,
-  })
+  ++sessionGen
+  const memoryCsrf = getCsrf()
   clear()
-  if (res.status === 204 || res.status === 401) {
-    return
-  }
-  if (!res.ok) {
-    throw await readProblem(res)
-  }
+  return enqueueMutation(async () => {
+    if (pendingRevocation) await revokePendingSession()
+    // Read late so a queued sign-in has finished learning an orphan cookie's CSRF;
+    // it wins over the call-time snapshot because it belongs to the newest cookie.
+    const csrf = orphanCsrf || memoryCsrf
+    pendingRevocation = csrf
+    recoveryBlocked = true
+    await deleteWithCsrf(csrf)
+    pendingRevocation = ''
+    recoveryBlocked = false
+    orphanCsrf = ''
+  })
 }
 
 export async function getJSON(path: string): Promise<unknown> {
+  const gen = sessionGen
   const res = await fetch(path, { method: 'GET', credentials: 'include' })
-  if (res.status === 401) {
+  if (res.status === 401 && gen === sessionGen) {
     clear()
   }
   if (!res.ok) {
