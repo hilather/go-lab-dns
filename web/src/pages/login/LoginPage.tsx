@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { APIError, createSession, getSession } from '../../auth/sessionApi'
+import { queryClient, clearSessionQueries } from '../../query/client'
 
 export function isLoopbackHost(hostname: string): boolean {
   const h = hostname.replace(/^\[|\]$/g, '')
@@ -30,6 +31,7 @@ export function LoginPage() {
   const disabled = checking || busy
 
   useEffect(() => {
+    void clearSessionQueries(queryClient)
     const ac = new AbortController()
     void getSession({ signal: ac.signal })
       .then((sess) => {
@@ -56,6 +58,7 @@ export function LoginPage() {
     setBusy(true)
     setError('')
     try {
+      await clearSessionQueries(queryClient)
       await run()
       navigate('/', { replace: true })
     } catch (err) {

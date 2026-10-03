@@ -2,6 +2,7 @@
 
 Status: Proposed normative quality gate
 Owners: All teams
+Last reviewed: 2026-10-03 (session isolation, mutation workflows, dependency audit)
 Last reviewed: 2026-09-04 (refuse-forward overlay CNAME must not poison AllowForward cache)
 Last reviewed: 2026-09-01 (resolve useCache fallthrough must not poison DNS cache)
 Last reviewed: 2026-08-29 (app tsc excludes Vitest files; web-test runs tsc --noEmit)
@@ -93,6 +94,8 @@ For each capability:
 5. Assert equivalent domain output, error code, authorization result, revision behavior, and audit event.
 
 ### Operator UI tests
+
+Web regressions cover late session successes and JSON parsing across login/logout, cancellation-resistant cache fetches across identities, shared shell revision refresh, split mutation scopes, and activation request identity.
 
 `make web-test` runs `tsc --noEmit` then Vitest in `web/` (fail closed if Node is missing; not Playwright) and fails if committed `web/src/api/openapi.d.ts` is stale versus `api/openapi/v1.json`. App `web/tsconfig.json` excludes `src/**/*.test.ts` and `src/**/*.test.tsx` so Docker `npm run build` does not typecheck Vitest files (those stay on Vitest). `make web-generate` writes that file; `make generate` stays Go-only. `make web-build` emits `web/dist` only. GitHub job id `web` is required. Session-memory and login tests must prove CSRF and bearer tokens are not written to `localStorage`, `sessionStorage`, IndexedDB, or the URL. Query-key tests must prove snapshot keys include revision and invalidate on revision change without touching live upstream/cache/chaos keys. Shell/nav tests cover Inspect/Mutate/Ref grouping (including Reset). Emergency-control tests cover a single visible verb plus ScopeGate. Zones tests cover the FQDN-first inventory, records columns, and `/changes` hops with raw GET JSON. Chrome tests read operator CSS for leftover `#ccc` / Segoe / Google Fonts and assert charcoal/amber tokens on both `.login` and `.shell`; page tests assert `page-lede` / `surface` / `data-table` / `code-block` / `btn-accent` on the leftover routes. Login contrast remains a Playwright check (`web/e2e/a11y.spec.ts`). REST/cmd tests prove non-loopback `GET /` is 200 HTML without a bearer when the UI is enabled, and `GET /v1/state` is 401.
 

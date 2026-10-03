@@ -2,7 +2,7 @@ import { clear, getCsrf, setCsrf } from './sessionMemory'
 
 export const CSRF_HEADER = 'X-LabDNS-CSRF'
 
-// Bumped on createSession so a stale GET 401 cannot clear() a newer CSRF.
+// Identity transitions invalidate every earlier response, including body parsing.
 let sessionGen = 0
 
 function isAbortError(err: unknown): boolean {
@@ -60,7 +60,6 @@ async function parseSession(res: Response): Promise<SessionResponse> {
   if (typeof body.csrf !== 'string' || body.csrf === '') {
     throw new APIError(res.status, 'invalid_value', 'session response missing csrf')
   }
-  setCsrf(body.csrf)
   return body
 }
 
@@ -89,11 +88,16 @@ export async function getSession(opts?: GetSessionOpts): Promise<SessionResponse
   if (!res.ok) {
     throw await readProblem(res)
   }
-  return parseSession(res)
+  const body = await parseSession(res)
+  if (signal?.aborted || gen !== sessionGen) {
+    return null
+  }
+  setCsrf(body.csrf)
+  return body
 }
 
 export async function createSession(bearer?: string): Promise<SessionResponse> {
-  sessionGen += 1
+  const gen = ++sessionGen
   const headers = new Headers()
   if (bearer) {
     headers.set('Authorization', `Bearer ${bearer}`)
@@ -110,21 +114,30 @@ export async function createSession(bearer?: string): Promise<SessionResponse> {
   if (!res.ok) {
     throw await readProblem(res)
   }
-  return parseSession(res)
+  const body = await parseSession(res)
+  if (gen !== sessionGen) {
+    throw new DOMException('session changed during sign-in', 'AbortError')
+  }
+  setCsrf(body.csrf)
+  return body
 }
 
 export async function deleteSession(): Promise<void> {
+  const gen = ++sessionGen
   const headers = new Headers()
   const csrf = getCsrf()
   if (csrf !== '') {
     headers.set(CSRF_HEADER, csrf)
   }
+  clear()
   const res = await fetch('/v1/session', {
     method: 'DELETE',
     credentials: 'include',
     headers,
   })
-  clear()
+  if (gen === sessionGen) {
+    clear()
+  }
   if (res.status === 204 || res.status === 401) {
     return
   }
@@ -134,8 +147,9 @@ export async function deleteSession(): Promise<void> {
 }
 
 export async function getJSON(path: string): Promise<unknown> {
+  const gen = sessionGen
   const res = await fetch(path, { method: 'GET', credentials: 'include' })
-  if (res.status === 401) {
+  if (res.status === 401 && gen === sessionGen) {
     clear()
   }
   if (!res.ok) {

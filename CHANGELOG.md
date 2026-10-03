@@ -4,6 +4,12 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+### Fixed
+
+- Operator console cancels and clears cached session, audit, and state data on identity transitions; late session responses cannot replace a newer CSRF secret or restore an old actor after logout.
+- Shell revision uses the shared status query and refreshes after mutations, promptly discarding stale plans. Changes permits forwarder and chaos mutation scopes and built-in editor/operator roles while REST still authorizes each operation.
+- Chaos activation retries reuse idempotency keys only for the same request; edits to reason, expiry, policy, or revision get a new key.
+
 ## v1.3.2 — 2026-09-21
 
 Curated notes: [docs/releases/v1.3.2.md](https://github.com/hilather/go-lab-dns/blob/v1.3.2/docs/releases/v1.3.2.md).

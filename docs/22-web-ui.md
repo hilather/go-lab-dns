@@ -2,6 +2,7 @@
 
 Status: Implemented
 Owners: Control Plane, REST, Security, UI
+Last reviewed: 2026-10-03 (session isolation, mutation workflows, dependency audit)
 Last reviewed: 2026-09-01 (resolve useCache does not store Fallthrough)
 Last reviewed: 2026-08-29 (unknown /zones/:zoneId shows one not_found)
 Last reviewed: 2026-08-29 (charcoal/amber chrome on login and remaining operator pages)
@@ -220,6 +221,8 @@ Treat all server strings as untrusted text. Do not render raw HTML. LabDNS has n
 
 ## Reactive model
 
+The shell shares the status query with route pages, so apply/reset/activation invalidation refreshes its revision and discards stale plans immediately. Changes admits DNS, forwarder, and chaos mutation scopes or their built-in roles; REST remains authoritative for each operation. Chaos activation retries retain a key for an identical request and rotate it when payload, policy, or revision changes.
+
 “Reactive” means the console tracks live process state without a full page reload.
 
 First increment (required):
@@ -234,6 +237,8 @@ First increment (required):
 Follow-on (not required to close UI-001–UI-004): `GET /v1/events/stream` SSE as `PARITY_DIFFERENT_BINDING` with an ADR. Do not add it in the first UI slices.
 
 ## Session and CSRF
+
+Session transitions cancel and clear every cached query before sign-in or sign-out, including actor scopes and audit/state data. Late session responses cannot restore a prior actor or CSRF secret.
 
 New REST_ONLY capabilities (UI-001):
 
@@ -250,7 +255,7 @@ Behavior (aligned with LabMail/LabLDAP, LabDNS cookie names):
 - `Authorization: Bearer` wins: cookie and CSRF are ignored for that request. `POST /v1/session` with Bearer creates a **new** session for that token's Actor (old cookie session is left to expire or `DELETE`).
 - Cookie-authenticated requests send `X-LabDNS-CSRF`. Required on every cookie non-GET, including cookie-present `POST /v1/session` and `DELETE /v1/session`. GET/HEAD never require CSRF.
 - `GET /v1/session` returns the CSRF secret for a valid cookie (reload recovery). If GET fails, show `/login`.
-- `DELETE /v1/session` revokes the server session (`Max-Age=0`) then the UI drops CSRF and Query cache.
+- `DELETE /v1/session` revokes the server session (`Max-Age=0`); the UI clears its CSRF and cancels and clears Query cache when sign-out starts, even if the network request fails.
 - Session table is in-process memory (ADR 0003), max **256**, **12h sliding** TTL on any successful Lookup. At cap, reject **new** POST with `rate_limited` (429, detail `session table full`). Rotation does not consume a slot. Restart logs the operator in again. `ResetIfDigestChanged` exists for a later token-reread; 1.1.0 never calls it.
 - Audit `transport` for cookie calls is `rest` with actor class `ui-session`. The underlying token ID remains the durable identity when a bearer was exchanged.
 - MCP stays bearer-only. Cookies are ignored on `/mcp`.

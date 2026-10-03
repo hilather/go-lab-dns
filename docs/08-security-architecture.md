@@ -2,6 +2,7 @@
 
 Status: Implemented (SEC-001)
 Owners: Security, DNS, Control Plane
+Last reviewed: 2026-10-03 (browser session response races and query isolation)
 Last reviewed: 2026-08-31 (protected-name wildcard synthesis)
 Related ADRs: 0003, 0004, 0005, 0007
 
@@ -65,6 +66,8 @@ The operator console authenticates with an in-process session table (max 256, 12
 Session create copies Identify `id`/`role`/`scopes`/`groups`. `ClassUISession` plus `administrator` role still yields all scopes via role expansion. MCP ignores cookies (off-loopback cookie-only MCP is 401). Cookie value, CSRF, and bearer are never logged. Cap reject uses existing `rate_limited` (429, detail `session table full`); do not evict.
 
 GET/HEAD outside `/v1` and `/mcp` is a pre-auth SPA branch and must not 401. Management JSON still gets nosniff / frame-deny / referrer-policy; CSP is applied on HTML/SPA.
+
+Browser identity transitions cancel and clear cached queries, including previous actors' scopes, audit entries, and state. Generation checks prevent late session responses or delayed body parsing from restoring a previous actor or replacing a newer CSRF secret. Sign-out clears the in-memory CSRF immediately, including when the revoke request fails.
 
 ### Scope catalog
 
