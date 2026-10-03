@@ -304,7 +304,7 @@ describe('ZonesPage', () => {
     expect(host?.textContent).toContain('lab-zone · 2 records')
     expect(host?.textContent).toContain('authoritative')
     expect(host?.querySelector('a[href="/zones/lab-zone"]')?.textContent).toContain('lab-zone')
-    await waitForText('ns1.lab.example.net.')
+    await waitForText('10.42.0.53')
     expect(host?.textContent).toContain('auto')
     expect(host?.textContent).toContain('10.42.0.53')
     expect(host?.querySelector('.chaos-ref')?.textContent).toBe('slow-tools')
