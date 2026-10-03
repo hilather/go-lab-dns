@@ -4,6 +4,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+- Chaos delay and pressure bookkeeping now discards released or expired idle policy entries. Unlimited-rate pressure policies no longer retain unnecessary request timestamps.
+
 - Configuration JSON now rejects trailing closing delimiters, label keys named after duration fields round-trip unchanged, and duration formatting handles the minimum signed 64-bit duration without recursive overflow.
 
 - Configuration schema inspection now works in standalone binaries and the scratch container; the published schema is embedded directly in the executable.

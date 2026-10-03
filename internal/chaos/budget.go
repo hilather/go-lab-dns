@@ -93,6 +93,9 @@ func (t *Token) Release() {
 		for _, id := range t.ids {
 			if t.b.perPolicy[id] > 0 {
 				t.b.perPolicy[id]--
+				if t.b.perPolicy[id] == 0 {
+					delete(t.b.perPolicy, id)
+				}
 			}
 		}
 	})
@@ -145,6 +148,7 @@ func (b *Budgets) WatchCancel(fn func()) (unregister func()) {
 					kept = append(kept, c)
 				}
 			}
+			clear(b.cancels[len(kept):])
 			b.cancels = kept
 		})
 	}
