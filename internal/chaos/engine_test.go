@@ -624,3 +624,35 @@ func compileSnap(t *testing.T, st *model.State) *snapshot.Snapshot {
 		},
 	}
 }
+
+func TestComposedTransportKeepsHigherPrecedence(t *testing.T) {
+	st := sampleState(t)
+	for zi := range st.Spec.Zones {
+		for ri := range st.Spec.Zones[zi].Records {
+			st.Spec.Zones[zi].Records[ri].ChaosPolicyRefs = nil
+		}
+	}
+	st.Spec.Chaos.Policies = nil
+	for _, tc := range []struct {
+		id     model.PolicyID
+		action string
+		owner  bool
+	}{{"specific", model.ActionDrop, true}, {"global", model.ActionTruncate, false}} {
+		p := model.ChaosPolicy{ID: tc.id, Owner: "lab", Reason: "transport precedence", Enabled: true, SafetyClass: model.SafetyClassLow, Selector: model.ChaosSelector{Probability: 1}, Outcomes: []model.ChaosOutcome{{ID: "o", Weight: 1, Actions: []model.ChaosAction{{Type: tc.action}}}}}
+		if tc.owner {
+			p.Scope.Owners = []model.Name{"x.example."}
+		}
+		st.Spec.Chaos.Policies = append(st.Spec.Chaos.Policies, p)
+	}
+	snap := compileSnap(t, st)
+	eng := NewEngine(nil, nil)
+	for _, simulate := range []bool{false, true} {
+		plan, err := eng.decide(snap, DecisionIn{Query: model.Query{Name: "x.example.", Type: model.TypeA, Transport: model.TransportUDP}, Phase: PhaseResponse}, nil, simulate)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if plan.TransportHint != "drop" || !hasSkip(plan, "global", "transport_conflict") {
+			t.Fatalf("simulate=%v plan=%+v", simulate, plan)
+		}
+	}
+}

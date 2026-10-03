@@ -254,7 +254,7 @@ func (e *Engine) decide(snap *snapshot.Snapshot, in DecisionIn, filter []model.P
 		}
 
 		acts, clamps, delay, early, hint, skipRes, transportConflict := e.planActions(p, out, in, snap, h, now, simulate)
-		if transportConflict && haveTransport != "" {
+		if transportConflict || (hint != "" && haveTransport != "" && hint != haveTransport) {
 			plan.Decisions = append(plan.Decisions, PolicyDecision{
 				PolicyID: p.ID, Precedence: cp.Precedence, SkipReason: "transport_conflict", Hash: h, OutcomeID: out.ID,
 			})

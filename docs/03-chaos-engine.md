@@ -2,6 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Chaos, DNS, Security
+Last reviewed: 2026-10-03 (composed delay caps and transport precedence)
 Last reviewed: 2026-08-18 (exclusive-group spans Decide phases)
 Related ADRs: 0005, 0007
 
@@ -88,7 +89,7 @@ Precedence controls evaluation order, not automatic cancellation. A policy can d
 - `terminal`: stop after this policy selects an outcome.
 - `exclusive-group`: only the highest-priority selected policy in the named group runs. Winners are per query, shared across the pre-resolution and response `Decide` calls (not reset between phases).
 
-Conflicting terminal transport actions are rejected during candidate-state validation.
+Conflicting terminal transport actions within one outcome are rejected during candidate-state validation. Across matching policies and resolution phases, the higher-precedence selected transport action wins (configuration order breaks ties within one scope class); a lower-precedence outcome with a conflicting transport action is skipped with `transport_conflict`.
 
 ## Decision modes
 
@@ -179,7 +180,7 @@ Fields:
 - Probability or weighted outcome selection.
 - Maximum effective duration after global clamping.
 
-Per-entry delay is normally applied in `before response` after the RRset is selected. Delay must use context-aware timers and release concurrency budget on cancellation.
+Per-entry delay is normally applied in `before response` after the RRset is selected. Delay must use context-aware timers and release concurrency budget on cancellation. The global `maxDelay` bounds the sum of requested sleeps across all actions and phases in one query, and a policy `budget.maxDelay` bounds that policy's cumulative sleeps. Simulation reports individually clamped action delays and their longest delay; it does not reserve slots or account sleeps from a previous live phase. The execution session enforces the cumulative limits across phases. One query consumes one global delayed slot and one slot for every policy contributing a delay; composing policies cannot bypass a policy concurrency cap.
 
 Execution (CHA-002) lives in `internal/chaos/effects`. `Decide` still does not sleep. `effects.Session.Sleep` reserves one delayed-request token for the whole query, waits with `Clock.NewTimer`, and releases on return, shutdown/peer cancel, or `CancelAll` (emergency disable). Query-timeout (`DeadlineExceeded`) does **not** abort a planned delay — the timer still runs so a documented 2s/10s delay becomes a delayed **answer**, not a silent drop. Emergency cancel skips remaining delay and returns success so the handler can send the base result (`HintSend`); it must not become SERVFAIL. `dnsquery` re-checks `Store.EmergencyChaosOff` before each later `Decide` / `ApplyResponse` / transport hint. Live `Decide` leaves hash-v1 field 10 empty (only `Simulate` sets a nonce). Random-mode pre/post agreement uses a per-query `StickyRand` draw table, not field 10. After a query deadline, remaining delay still watches the listener shutdown context. Budget exhaustion skips the delay and does not block. Uniform delay (including `type: upstream` / `value: delay`) uses the frozen `hash-v1` second encoding (`field 10` = `delay` + simulation nonce, or `delay` alone on the live path). First-GA distributions are `fixed` and `uniform` only.
 

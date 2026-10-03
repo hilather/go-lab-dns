@@ -31,7 +31,7 @@ func NewBudgets() *Budgets {
 // Token releases one reservation. Release is idempotent.
 type Token struct {
 	b     *Budgets
-	id    model.PolicyID
+	ids   []model.PolicyID
 	once  sync.Once
 	valid bool
 }
@@ -55,7 +55,28 @@ func (b *Budgets) ReserveDelay(id model.PolicyID, maxGlobal, maxPolicy int) (*To
 		b.perPolicy = map[model.PolicyID]int{}
 	}
 	b.perPolicy[id]++
-	return &Token{b: b, id: id, valid: true}, nil
+	return &Token{b: b, ids: []model.PolicyID{id}, valid: true}, nil
+}
+
+// ReservePolicy adds a contributing policy to the same delayed request.
+// It does not consume another global slot. Call before Release.
+func (t *Token) ReservePolicy(id model.PolicyID, maxPolicy int) error {
+	if t == nil || !t.valid || t.b == nil {
+		return nil
+	}
+	t.b.mu.Lock()
+	defer t.b.mu.Unlock()
+	for _, existing := range t.ids {
+		if existing == id {
+			return nil
+		}
+	}
+	if maxPolicy > 0 && t.b.perPolicy[id] >= maxPolicy {
+		return domainerr.ChaosBudgetExceeded("policy maxConcurrency exhausted")
+	}
+	t.b.perPolicy[id]++
+	t.ids = append(t.ids, id)
+	return nil
 }
 
 // Release decrements the reservation. Safe on a nil token.
@@ -69,8 +90,10 @@ func (t *Token) Release() {
 		if t.b.global > 0 {
 			t.b.global--
 		}
-		if t.b.perPolicy != nil && t.b.perPolicy[t.id] > 0 {
-			t.b.perPolicy[t.id]--
+		for _, id := range t.ids {
+			if t.b.perPolicy[id] > 0 {
+				t.b.perPolicy[id]--
+			}
 		}
 	})
 }

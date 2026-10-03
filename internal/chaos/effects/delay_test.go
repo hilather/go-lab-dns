@@ -225,3 +225,64 @@ func delaySnap(maxG, maxP int) *snapshot.Snapshot {
 		},
 	}
 }
+
+// instantDelayClock records requested sleeps without real timers or timing tolerances.
+type instantDelayClock struct{ total time.Duration }
+
+func (c *instantDelayClock) Now() time.Time           { return time.Unix(0, 0) }
+func (c *instantDelayClock) Monotonic() time.Duration { return c.total }
+func (c *instantDelayClock) NewTimer(d time.Duration) testutil.Timer {
+	c.total += d
+	ch := make(chan time.Time, 1)
+	ch <- c.Now()
+	return instantDelayTimer{ch}
+}
+
+type instantDelayTimer struct{ ch <-chan time.Time }
+
+func (t instantDelayTimer) C() <-chan time.Time { return t.ch }
+func (t instantDelayTimer) Stop() bool          { return false }
+
+func TestComposedDelaysRespectCumulativeGlobalCap(t *testing.T) {
+	clk := &instantDelayClock{}
+	snap := delaySnap(4, 4)
+	snap.Safety.MaxDelay = time.Second
+	sess := NewSession(clk, chaos.NewBudgets(), snap, nil)
+	defer sess.Release()
+	for _, phase := range []string{model.PhaseBeforeResolution, model.PhaseBeforeResponse} {
+		plan := chaos.ActionPlan{Actions: []chaos.PlannedAction{{Type: model.ActionDelay, PolicyID: "p", Phase: phase, Delay: 700 * time.Millisecond}}}
+		if err := sess.Sleep(context.Background(), plan, phase); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if clk.total != time.Second {
+		t.Fatalf("total delay = %s, want global cap 1s", clk.total)
+	}
+}
+
+func TestComposedDelaysReserveEachPolicy(t *testing.T) {
+	clk := &instantDelayClock{}
+	snap := delaySnap(4, 4)
+	snap.Chaos.ByID["q"] = &snapshot.CompiledChaos{Policy: model.ChaosPolicy{ID: "q", Budget: &model.ChaosBudget{MaxConcurrency: 1}}}
+	budgets := chaos.NewBudgets()
+	blocker, err := budgets.ReserveDelay("q", 4, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer blocker.Release()
+	sess := NewSession(clk, budgets, snap, nil)
+	plan := chaos.ActionPlan{Actions: []chaos.PlannedAction{{Type: model.ActionDelay, PolicyID: "p", Delay: time.Millisecond}, {Type: model.ActionDelay, PolicyID: "q", Delay: time.Millisecond}}}
+	if err := sess.Sleep(context.Background(), plan, ""); err != nil {
+		t.Fatal(err)
+	}
+	if clk.total != time.Millisecond {
+		t.Fatalf("slept %s; second policy cap bypassed", clk.total)
+	}
+	if budgets.InFlight() != 2 {
+		t.Fatalf("global reservations=%d, want one per session", budgets.InFlight())
+	}
+	sess.Release()
+	if budgets.PolicyInFlight("p") != 0 || budgets.InFlight() != 1 {
+		t.Fatal("composed delay reservation leaked")
+	}
+}
