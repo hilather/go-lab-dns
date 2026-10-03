@@ -7,7 +7,7 @@ func TestManagementListenerPathsFailClosed(t *testing.T) {
 		rest, mcp string
 		valid     bool
 	}{
-		{"/v1", "/mcp", true}, {"/v1", "/control/mcp", true}, {"/v1", "/api/mcp", true}, {"/v1", "/login", false}, {"/v1", "/assets/x.js", false}, {"/v1", "/zones/detail", false}, {"/other", "/mcp", false},
+		{"/v1", "/mcp", true}, {"/v1", "/control/mcp", true}, {"/v1", "/api/mcp", true}, {"/v1", "/api/mcp/", true}, {"/v1", "/mcp/", true}, {"/v1", "/v1/", false}, {"/v1", "/assets/", false}, {"/v1", "/login", false}, {"/v1", "/assets/x.js", false}, {"/v1", "/zones/detail", false}, {"/other", "/mcp", false},
 		{"/v1", "/", false}, {"/v1", "/v1", false}, {"/v1", "/v1/state", false},
 		{"/v1", "/mcp/{bad", false}, {"/v1", "GET /mcp", false}, {"/v1", "//mcp", false}, {"/v1", "/x/../mcp", false}, {"/v1", "/mcp?query", false},
 	} {

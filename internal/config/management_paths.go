@@ -8,7 +8,7 @@ import (
 // ValidManagementMountPath reports whether a literal HTTP path can be mounted
 // without colliding with REST/UI namespaces or introducing ServeMux syntax.
 func ValidManagementMountPath(value string) bool {
-	if value == "" || value == "/" || value == "/v1" || strings.HasPrefix(value, "/v1/") || !strings.HasPrefix(value, "/") || path.Clean(value) != value {
+	if value == "" || value == "/" || value == "/v1" || strings.HasPrefix(value, "/v1/") || !strings.HasPrefix(value, "/") || path.Clean(value) != strings.TrimSuffix(value, "/") {
 		return false
 	}
 	first := strings.Split(strings.TrimPrefix(value, "/"), "/")[0]
