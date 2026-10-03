@@ -4,9 +4,15 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+### Fixed
+
 - Forwarding runtime health and round-robin counters discard removed topology IDs instead of retaining every historical deployment. Late old-snapshot exchanges cannot restore retired state; retargeting an upstream endpoint or transport clears its previous health. Caller cancellation and simulated upstream failures do not mark real upstreams unhealthy.
 
 - Snapshot publication keeps generation monotonic when emergency controls advance it during compilation; apply/reset results report the actual published generation.
+- DNS admission preserves reserved QCLASS zero and returns NOTIMP over UDP and TCP instead of treating it as IN.
+- Forwarding rejects upstream packets whose QR, opcode, question count, name, type, or class does not match the request. Invalid and incomplete truncated replies follow transport-error failover and otherwise return SERVFAIL; disabling TCP retry no longer turns a partial reply into a complete cacheable answer.
+- Canceling an in-flight upstream exchange now closes its socket immediately instead of waiting for the attempt deadline.
+- Negative caching requires an SOA and respects SOA MINIMUM (including zero) and detects CNAME chains ending in NXDOMAIN or SOA-backed NODATA, including management resolve cache writes.
 
 ## v1.3.2 — 2026-09-21
 

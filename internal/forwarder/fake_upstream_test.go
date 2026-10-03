@@ -33,6 +33,7 @@ type fakeUpstream struct {
 	delay   time.Duration
 	hang    bool
 	handler func(q model.Query) model.Result
+	mutate  func([]byte) []byte
 }
 
 func startFake(t *testing.T) *fakeUpstream {
@@ -143,6 +144,12 @@ func (f *fakeUpstream) serveTCP() {
 			f.Packets.Add(1)
 			out := f.reply(body, true)
 			if len(out) == 0 {
+				f.mu.Lock()
+				hang := f.hang
+				f.mu.Unlock()
+				if hang {
+					_, _ = io.Copy(io.Discard, c)
+				}
 				return
 			}
 			binary.BigEndian.PutUint16(hdr[:], uint16(len(out)))
@@ -161,6 +168,7 @@ func (f *fakeUpstream) reply(pkt []byte, tcp bool) []byte {
 	answers := append([]model.RR(nil), f.answers...)
 	auth := append([]model.RR(nil), f.auth...)
 	h := f.handler
+	mutate := f.mutate
 	f.mu.Unlock()
 	if hang {
 		return nil
@@ -184,6 +192,9 @@ func (f *fakeUpstream) reply(pkt []byte, tcp bool) []byte {
 	out, err := dnswire.Encode(req, res, opts)
 	if err != nil {
 		return nil
+	}
+	if mutate != nil {
+		out = mutate(out)
 	}
 	return out
 }
