@@ -2,6 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Application, REST, MCP, UI
+Last reviewed: 2026-10-03 (shared active-chaos resolution output)
 Last reviewed: 2026-10-03 (sequential authorization of atomic change sets)
 Last reviewed: 2026-08-31 (protected-name wildcard synthesis)
 Related ADRs: 0004, 0006
@@ -198,6 +199,8 @@ MCP tools are powerful and model-controlled. Mutation descriptions, scopes, dry-
 ## Observability
 
 Measure calls by capability, transport, result, latency, actor class, and authorization outcome. Avoid high-cardinality actor IDs in metrics; use audit logs for exact identity.
+
+REST resolve/explain and MCP `dns_resolve`/`dns_explain_resolution` use the same active-chaos model. The shared explanation includes `baseAnswers` and `chaosDecisions`; each decision identifies its policy/outcome, trigger or skip reason, deterministic digest, and modeled delay. The model executes no delays, upstream exchanges, or live chaos mutations. Resolve may cache the base result when `useCache` is requested; explain bypasses the cache.
 
 ## Testing strategy
 

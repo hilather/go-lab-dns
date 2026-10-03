@@ -134,18 +134,18 @@ func validateListeners(l *model.ListenersSpec, vs *[]domainerr.FieldViolation) {
 			})
 		}
 	}
-	if l.Management.RESTPath != "" && !strings.HasPrefix(l.Management.RESTPath, "/") {
+	if l.Management.RESTPath != "" && l.Management.RESTPath != DefaultRESTPath {
 		*vs = append(*vs, domainerr.FieldViolation{
 			Path:    "spec.listeners.management.restPath",
 			Code:    violationInvalidValue,
-			Message: "restPath must start with /",
+			Message: "restPath must be /v1; alternate REST prefixes are not supported",
 		})
 	}
-	if l.Management.MCPPath != "" && !strings.HasPrefix(l.Management.MCPPath, "/") {
+	if l.Management.MCPPath != "" && !ValidManagementMountPath(l.Management.MCPPath) {
 		*vs = append(*vs, domainerr.FieldViolation{
 			Path:    "spec.listeners.management.mcpPath",
 			Code:    violationInvalidValue,
-			Message: "mcpPath must start with /",
+			Message: "mcpPath must be a clean literal path outside /v1 and must not be /",
 		})
 	}
 }

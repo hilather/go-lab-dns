@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Deployment, Operations, Security
+Last reviewed: 2026-10-03 (runtime signal lifecycle and configuration update boundaries)
 Last reviewed: 2026-10-03 (failed deployments preserve successful rollback snapshots)
 Last reviewed: 2026-10-03 (canonical documentation embed inputs in Docker context)
 Last reviewed: 2026-08-19 (operator console on :8080, ui.enabled, allowedOrigins)
@@ -172,9 +173,13 @@ Startup validates and compiles before reporting ready. Graceful shutdown:
 6. Flush bounded telemetry.
 7. Exit.
 
+The runtime owns its signal worker: shutdown and every failed startup cancel and join it without requiring the caller to cancel the parent context. The worker unregisters its SIGUSR1 subscription on exit.
+
 ## Runtime mutations and replicas
 
 The initial release supports one mutable runtime replica. Multiple replicas may serve the same read-only desired state, but REST/MCP runtime mutations would diverge unless an external orchestrator applies the same change everywhere. Do not imply strong multi-replica runtime consistency.
+
+Cache policy mutations take effect immediately and reset restores bootstrap cache settings. Listener and management mount changes require restart. REST remains `/v1`; configure MCP at a distinct literal path such as `/mcp` or `/api/mcp`, outside REST and operator-console namespaces. Unsupported REST paths or colliding MCP mounts are rejected before listeners bind.
 
 ## Emergency chaos disable
 

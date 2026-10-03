@@ -38,6 +38,12 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Release CI verification rejects missing commit SHAs and pending reruns instead of reusing an older successful check. GitHub check-run IDs identify the current attempt.
 - Changelog enforcement covers operator web application changes and Go/frontend dependency manifests and locks while excluding test-only files and build output.
 - Architecture documentation now describes the implemented operator console and the current DNS wire adapter dependency.
+- Wire shared upstream health and DNS/REST/MCP/application metrics in production; synthetic chaos faults no longer poison upstream health. Stop runtime signal workers on shutdown and failed startup.
+- Reject unsupported REST paths and MCP paths that collide with REST/operator-console routes or contain mux patterns. REST remains `/v1`; distinct MCP prefixes remain supported.
+- Apply cache policies immediately across DNS and management queries, clear disabled caches, and reject stale-generation cache writes. Reset restores bootstrap cache policy.
+- Management resolve with `applyChaos: true` and explain now model active chaos without executing delays, forwarding, or live chaos mutations. Add optional `baseAnswers` and `chaosDecisions` explanation fields to REST/MCP and generated schemas; TTLs and decision delays remain duration strings. Resolve may cache the base result, while explain bypasses the cache. Cached explanations use the current caller and transport.
+- Keep the displaced snapshot pointer monotonic under concurrent emergency and normal publications.
+- Snapshot publication keeps generation monotonic when emergency controls advance it during compilation; apply/reset results report the actual published generation.
 
 ## v1.3.2 — 2026-09-21
 

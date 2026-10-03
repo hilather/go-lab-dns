@@ -286,6 +286,8 @@ func copyResult(r model.Result) model.Result {
 	}
 	if r.Explanation != nil {
 		ex := *r.Explanation
+		ex.BaseAnswers = append([]model.RR(nil), ex.BaseAnswers...)
+		ex.ChaosDecisions = append([]model.ChaosDecision(nil), ex.ChaosDecisions...)
 		if ex.WildcardSource != nil {
 			v := *ex.WildcardSource
 			ex.WildcardSource = &v

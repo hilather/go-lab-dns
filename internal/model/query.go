@@ -84,20 +84,32 @@ type Result struct {
 
 // Explanation is the resolve:explain payload shell. Later packages fill it.
 type Explanation struct {
-	Query           Query         `json:"query"`
-	ClientGroupID   ClientGroupID `json:"clientGroupId,omitempty"`
-	ZoneID          ZoneID        `json:"zoneId,omitempty"`
-	ZoneMode        ZoneMode      `json:"zoneMode,omitempty"`
-	Source          Source        `json:"source,omitempty"`
-	WildcardSource  *RecordID     `json:"wildcardSource,omitempty"`
-	ClosestEncloser *Name         `json:"closestEncloser,omitempty"`
-	ForwardingID    PolicyID      `json:"forwardingId,omitempty"`
-	PoolID          PoolID        `json:"poolId,omitempty"`
-	UpstreamID      UpstreamID    `json:"upstreamId,omitempty"`
-	Revision        Revision      `json:"revision,omitempty"`
-	BaseRCode       RCode         `json:"baseRcode,omitempty"`
-	ChaosDisabled   bool          `json:"chaosDisabled,omitempty"`
-	ChaosReason     string        `json:"chaosReason,omitempty"`
-	ChaosPolicyIDs  []PolicyID    `json:"chaosPolicyIds,omitempty"`
-	ChaosActions    []string      `json:"chaosActions,omitempty"`
+	Query           Query           `json:"query"`
+	ClientGroupID   ClientGroupID   `json:"clientGroupId,omitempty"`
+	ZoneID          ZoneID          `json:"zoneId,omitempty"`
+	ZoneMode        ZoneMode        `json:"zoneMode,omitempty"`
+	Source          Source          `json:"source,omitempty"`
+	WildcardSource  *RecordID       `json:"wildcardSource,omitempty"`
+	ClosestEncloser *Name           `json:"closestEncloser,omitempty"`
+	ForwardingID    PolicyID        `json:"forwardingId,omitempty"`
+	PoolID          PoolID          `json:"poolId,omitempty"`
+	UpstreamID      UpstreamID      `json:"upstreamId,omitempty"`
+	Revision        Revision        `json:"revision,omitempty"`
+	BaseRCode       RCode           `json:"baseRcode,omitempty"`
+	ChaosDisabled   bool            `json:"chaosDisabled,omitempty"`
+	ChaosReason     string          `json:"chaosReason,omitempty"`
+	ChaosPolicyIDs  []PolicyID      `json:"chaosPolicyIds,omitempty"`
+	ChaosActions    []string        `json:"chaosActions,omitempty"`
+	ChaosDecisions  []ChaosDecision `json:"chaosDecisions,omitempty"`
+	BaseAnswers     []RR            `json:"baseAnswers,omitempty"`
+}
+
+// ChaosDecision is transport-independent modeled policy decision metadata.
+type ChaosDecision struct {
+	PolicyID   PolicyID      `json:"policyId"`
+	OutcomeID  string        `json:"outcomeId,omitempty"`
+	Triggered  bool          `json:"triggered"`
+	SkipReason string        `json:"skipReason,omitempty"`
+	DigestHex  string        `json:"digestHex,omitempty"`
+	Delay      time.Duration `json:"delay,omitempty"`
 }

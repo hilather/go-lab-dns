@@ -16,6 +16,7 @@ func TestAppImportDAG(t *testing.T) {
 		t.Fatal(err)
 	}
 	allowed := map[string]bool{
+		"github.com/hilather/go-lab-dns/internal/chaos/effects": true,
 		"github.com/hilather/go-lab-dns/internal/audit":         true,
 		"github.com/hilather/go-lab-dns/internal/auth":          true,
 		"github.com/hilather/go-lab-dns/internal/buildinfo":     true,

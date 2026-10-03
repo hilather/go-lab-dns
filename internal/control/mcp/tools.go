@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/hilather/go-lab-dns/internal/app"
 	"github.com/hilather/go-lab-dns/internal/auth"
@@ -355,6 +356,12 @@ func addTool[In any](s *Server, name, desc string, mutating, idempotent bool, h 
 		Description: desc,
 		Annotations: ann,
 	}, func(ctx context.Context, _ *sdk.CallToolRequest, in In) (*sdk.CallToolResult, any, error) {
+		started, failed := time.Now(), true
+		defer func() {
+			if len(caps) > 0 {
+				s.observeCapability(string(caps[0].ID), started, failed)
+			}
+		}()
 		if err := ctx.Err(); err != nil {
 			return toolErrorResult(canceledError(err)), nil, nil
 		}
@@ -372,6 +379,7 @@ func addTool[In any](s *Server, name, desc string, mutating, idempotent bool, h 
 		if err != nil {
 			return nil, nil, rpcError(domainerr.Internal("internal error"))
 		}
+		failed = false
 		return nil, structured, nil
 	})
 }

@@ -15,7 +15,7 @@ var durationKeys = map[string]bool{
 	"expire": true, "minimum": true, "timeout": true, "minimumTTL": true,
 	"maximumTTL": true, "maximumNegativeTTL": true, "maxDelay": true,
 	"defaultMaxLifetime": true, "timeBucket": true, "period": true,
-	"unhealthy": true, "phaseOffset": true, "duration": true, "min": true,
+	"delay": true, "unhealthy": true, "phaseOffset": true, "duration": true, "min": true,
 	"max": true, "hold": true,
 }
 

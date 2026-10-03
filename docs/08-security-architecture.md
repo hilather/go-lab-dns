@@ -2,6 +2,7 @@
 
 Status: Implemented (SEC-001)
 Owners: Security, DNS, Control Plane
+Last reviewed: 2026-10-03 (safe management mounts and current caller protections on cached resolve)
 Last reviewed: 2026-10-03 (sequential authorization of atomic change sets)
 Last reviewed: 2026-08-31 (protected-name wildcard synthesis)
 Last reviewed: 2026-10-03 (upstream reply correlation and cancellation)
@@ -168,6 +169,8 @@ Audit delivery failure cannot block DNS. First GA does **not** fail-close manage
 - Management plane is out of scope for the chaos engine.
 - Unsafe malformed-wire actions are absent.
 - Emergency disable is tested in every release.
+
+Management mounts reject REST and operator-console route collisions and ServeMux pattern syntax. Cached management results reconstruct the current query context before chaos modeling, so protected clients and exempt groups cannot inherit another caller’s selectors or explanation context.
 
 ## Failure modes
 

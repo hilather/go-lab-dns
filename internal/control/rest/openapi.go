@@ -345,6 +345,9 @@ func openAPIComponents() map[string]any {
 		"State": specSchema(),
 		"Spec":  specFieldsSchema(),
 	}
+	for name, schema := range resolutionSchemas() {
+		schemas[name] = schema
+	}
 	// SchemaRef names from the registry become components.
 	for _, c := range capabilities.All() {
 		for _, ref := range []*capabilities.SchemaRef{c.InputSchema, c.OutputSchema} {

@@ -2,6 +2,7 @@
 
 Status: Proposed normative quality gate
 Owners: All teams
+Last reviewed: 2026-10-03 (runtime wiring, active-chaos parity, and snapshot-aware cache regressions)
 Last reviewed: 2026-10-03 (successful snapshot preservation after Kubernetes deployment failure)
 Last reviewed: 2026-10-03 (Docker documentation embed context and runtime smoke checks)
 Last reviewed: 2026-10-03 (aggregate drop-cap and numeric boundary regressions)
@@ -232,6 +233,8 @@ Chaos drop-cap regressions cover a snapshot-wide union bound across policies and
 - Forced truncation causes client TCP retry.
 - TCP reset does not crash or leak.
 - Base and final answers are visible in explanation.
+
+Runtime regressions cover shared upstream health and control metrics, signal-worker cleanup on shutdown and startup failure, safe management mounts, and live cache mutation/reset over UDP and TCP. Generation-aware cache tests reject old completions after policy changes and ensure previous snapshot publication cannot regress. Management chaos tests verify REST/MCP parity, base/final answers, current caller protections on cache hits, and absence of live delay, chaos-counter, or modeled-cache effects. Resolve may still read or store a base result when `useCache` is requested; explain must leave cache statistics and entries unchanged.
 
 ## Release test evidence
 

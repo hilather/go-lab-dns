@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Architecture, DNS, Control Plane
+Last reviewed: 2026-10-03 (shared runtime health/metrics and signal lifecycle)
 Last reviewed: 2026-08-19 (web/ nested module fence and internal/web embed stub)
 Last reviewed: 2026-08-18 (emergency disable cancels delays; plan idempotency rechecks revision)
 Last reviewed: 2026-10-03 (operator UI and current DNS adapter dependency)
@@ -218,6 +219,8 @@ Parse/admission RCODEs: empty or short datagram → drop; malformed with a 12-by
 Transport hints: TCP-only actions on UDP are **drop** (no successful answer). `HintTruncate` on TCP is **send** of the full response (TC is a UDP signal). Unknown hints are **drop**. After `ServeDNS` returns the server owns the `Response`; later `SetHint` fails.
 
 Metrics hooks take only bounded labels (transport, RCODE, action, reason). QNAME and client IP are not recorded.
+
+Production DNS and management services share one upstream health tracker and one in-process metrics registry. Runtime signal handling owns a cancellation context and joins its worker on shutdown and failed startup, even when the parent context remains live.
 
 ## Reverse-proxy relationship
 

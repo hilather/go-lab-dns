@@ -212,7 +212,8 @@ type RecordList struct {
 	NextCursor string
 }
 
-// ResolveIn is a management-plane lookup. ApplyChaos is reserved for CHA-002.
+// ResolveIn is a local management lookup. ApplyChaos models active effects
+// without sleeping, forwarding, consuming budgets, or modifying cached answers.
 type ResolveIn struct {
 	Name        model.Name
 	Type        model.RRType
