@@ -118,7 +118,7 @@ Known exclusions in this release:
 - NXDOMAIN means the owner name does not exist.
 - NODATA means the owner exists but the requested type does not.
 - Authoritative negative answers include the zone SOA.
-- Negative cache TTL follows the smaller of the SOA TTL and SOA MINIMUM, then configured bounds. Zero SOA MINIMUM prevents caching. CNAME chains ending in NXDOMAIN or SOA-backed NODATA follow the same negative bounds, including on management `resolve` with `useCache`.
+- Negative cache TTL follows the smaller of the SOA TTL and SOA MINIMUM, then configured bounds. Zero SOA MINIMUM and negatives without an SOA prevent caching. CNAME chains ending in NXDOMAIN or SOA-backed NODATA follow the same negative bounds, including on management `resolve` with `useCache`.
 - Injected negative chaos responses are marked in explanation and telemetry and must still be syntactically correct.
 
 ## Forwarding

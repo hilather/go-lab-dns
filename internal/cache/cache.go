@@ -184,7 +184,7 @@ func (c *Cache) Put(key Key, ent Entry, opts PutOpts) {
 	if c == nil || !c.Enabled() || opts.Skip {
 		return
 	}
-	ent.Negative = ent.Negative || negativeResult(ent.Result)
+	ent.Negative = ent.Negative || negativeResult(ent.Result, key.Type)
 	ttl := clampTTL(ent, c.policy)
 	if ttl <= 0 {
 		return
@@ -256,11 +256,11 @@ func PolicyFromSpec(s model.CacheSpec) Policy {
 
 // negativeResult includes CNAME chains whose terminal target is negative.
 // Callers need not independently classify responses before storing them.
-func negativeResult(res model.Result) bool {
+func negativeResult(res model.Result, qtype model.RRType) bool {
 	if res.RCode == model.RCodeNXDomain {
 		return true
 	}
-	if res.RCode != model.RCodeNoError {
+	if res.RCode != model.RCodeNoError || qtype == model.TypeCNAME || qtype == "ANY" {
 		return false
 	}
 	for _, rr := range res.Answers {
@@ -300,6 +300,15 @@ func clampTTL(ent Entry, p Policy) time.Duration {
 }
 
 func entryTTL(ent Entry) time.Duration {
+	if ent.Negative {
+		haveSOA := false
+		for _, rr := range ent.Result.Authority {
+			haveSOA = haveSOA || rr.Type == model.TypeSOA
+		}
+		if !haveSOA {
+			return 0
+		}
+	}
 	if !ent.ExpireAt.IsZero() && !ent.StoredAt.IsZero() {
 		d := ent.ExpireAt.Sub(ent.StoredAt)
 		if d > 0 {

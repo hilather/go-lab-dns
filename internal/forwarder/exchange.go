@@ -275,7 +275,9 @@ func (rt *Runtime) attempt(ctx context.Context, q model.Query, up snapshot.Compi
 	defer func() { _ = conn.Close() }()
 	// Socket deadlines alone do not observe a parent cancellation. Closing
 	// the connection interrupts an in-flight read or write immediately.
-	stopCancel := context.AfterFunc(actx, func() { _ = conn.Close() })
+	// Attempt expiry is handled by the socket deadline so it stays a timeout
+	// rather than racing Close and becoming a transport error.
+	stopCancel := context.AfterFunc(ctx, func() { _ = conn.Close() })
 	defer stopCancel()
 
 	if dl, ok := actx.Deadline(); ok {
