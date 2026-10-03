@@ -434,6 +434,9 @@ func TestBudgetExhausted(t *testing.T) {
 
 func TestPlanSummaryCacheUpstreamPressure(t *testing.T) {
 	st := sampleState(t)
+	// Summary construction needs an unconditional selected outcome; pressure
+	// drops now obey the same selector safety allocation as silent drops.
+	st.Spec.Chaos.Safety.MaxDropProbability = 1
 	for i := range st.Spec.Zones[0].Records {
 		st.Spec.Zones[0].Records[i].ChaosPolicyRefs = nil
 	}

@@ -82,6 +82,7 @@ func Compile(st *model.State) (snapshot.ChaosIndex, error) {
 				Message: fmt.Sprintf("%d enabled high-impact policies exceed maxActiveHighImpactPolicies %d", high, maxHigh),
 			})
 	}
+	allocateDropProbabilities(&idx, st.Spec.Chaos.Policies, st.Spec.Chaos.Safety.MaxDropProbability)
 	return idx, nil
 }
 

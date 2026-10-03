@@ -236,8 +236,8 @@ func (e *Engine) decide(snap *snapshot.Snapshot, in DecisionIn, filter []model.P
 			continue
 		}
 		prob := p.Selector.Probability
-		if canDrop(p) && safety.MaxDropProbability > 0 && prob > safety.MaxDropProbability {
-			prob = safety.MaxDropProbability
+		if cp.RequestedProbability > prob {
+			plan.Clamped = append(plan.Clamped, ClampRecord{PolicyID: p.ID, Action: "selector", Reason: "max_drop_probability", From: strconv.FormatFloat(cp.RequestedProbability, 'g', -1, 64), To: strconv.FormatFloat(prob, 'g', -1, 64)})
 		}
 		if pval >= prob {
 			plan.Decisions = append(plan.Decisions, PolicyDecision{
@@ -591,17 +591,6 @@ func normalizeActionValue(v string) string {
 }
 
 func unit(u uint64) float64 { return float64(u) / two64 }
-
-func canDrop(p model.ChaosPolicy) bool {
-	for _, o := range p.Outcomes {
-		for _, a := range o.Actions {
-			if a.Type == model.ActionDrop {
-				return true
-			}
-		}
-	}
-	return false
-}
 
 func policyHasPhase(p model.ChaosPolicy, want Phase) bool {
 	if want == "" {

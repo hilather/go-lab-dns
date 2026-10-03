@@ -4,6 +4,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+- Enforce aggregate drop probability across composed policies and both execution groups by allocating an immutable snapshot-wide selector budget. Pressure drops and inactive policies reserve shares too; mixed outcomes, disjoint policies, and policies dropping in both phases may trigger less often under a positive cap. Canonical export, hash-v1 encoding, and random draw counts are unchanged; decision clamp evidence reports effective thresholds. Zero remains unlimited and cap one leaves selectors unchanged.
+
 - Deployment chaos verification now rejects unlimited zero delay/concurrency caps when delays are configured, checks actual drop-policy probabilities, and counts enabled high-impact policies directly against deployment ceilings.
 
 - Chaos delay and pressure bookkeeping now discards released or expired idle policy entries. Unlimited-rate pressure policies no longer retain unnecessary request timestamps.

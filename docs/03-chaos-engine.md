@@ -2,7 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Chaos, DNS, Security
-Last reviewed: 2026-10-03 (composed delay caps and transport precedence)
+Last reviewed: 2026-10-03 (aggregate drop selector allocation, composed delay caps and transport precedence)
 Last reviewed: 2026-08-18 (exclusive-group spans Decide phases)
 Related ADRs: 0005, 0007
 
@@ -209,7 +209,9 @@ An optional Extended DNS Error can explain an injected failure. EDE never change
 - UDP: intentionally send no response.
 - TCP: hold only until the configured bounded chaos timeout, then close gracefully or reset according to the selected action.
 - Never retain an operation beyond the global request lifetime.
-- Current implementation: a positive global `maxDropProbability` clamps the selector probability of each matching policy that can select a drop action. It does not bound the aggregate drop probability across composed policies. Multiple eligible drop policies can therefore produce an aggregate drop probability above that configured value; this is a current limitation. Zero leaves the per-policy probability unclamped.
+- A global `maxDropProbability` between zero and one bounds aggregate drop probability across policies and execution phases. Compilation reserves a conservative snapshot-wide selector budget: sum each drop-capable policy’s requested probability once for each distinct execution group capable of dropping (pre-resolution and response). When this sum exceeds the cap, scale all those compiled selector probabilities proportionally so the sum stays within the cap. The same effective threshold is used in both phases. This union bound requires no independence between decisions and covers time-bucket transitions and callers without random sticky draws.
+- A positive-weight outcome containing silent drop or pressure-on-exceed drop reserves a share; outcome weights do not relax that share. Disabled, scheduled, expired, disjoint-scope, and exclusive policies also reserve shares, preserving the same bounded thresholds for simulation and activation. This conservative allocation can reduce fault frequency even when scopes cannot overlap, and mixed non-drop outcomes in a drop-capable policy become less frequent too. A policy that can drop in both execution groups reserves twice; a single policy dropping in one group retains its previous `min(probability, cap)` threshold. Zero retains unlimited selector semantics; one requires no clamping because aggregate probability cannot exceed one.
+- Allocation changes only immutable compiled policy copies. Canonical configuration and exports retain requested probabilities; decisions include `max_drop_probability` selector clamp evidence with requested and effective thresholds. The frozen hash encoding, weighted-outcome mapping, and random draw sequence remain unchanged. Existing experiments with composed or multi-phase drop policies can trigger fewer faults under a positive cap.
 
 ### 4. TCP close or reset
 
