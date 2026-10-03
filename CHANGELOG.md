@@ -4,6 +4,8 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+- Snapshot publication keeps generation monotonic when emergency controls advance it during compilation; apply/reset results report the actual published generation.
+
 ## v1.3.2 — 2026-09-21
 
 Curated notes: [docs/releases/v1.3.2.md](https://github.com/hilather/go-lab-dns/blob/v1.3.2/docs/releases/v1.3.2.md).

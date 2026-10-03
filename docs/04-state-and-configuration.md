@@ -2,6 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Configuration, Application
+Last reviewed: 2026-10-03 (snapshot publication advances past concurrent emergency generations)
 Last reviewed: 2026-08-18 (plan idempotency rechecks expectedRevision; emergency cancel)
 Last reviewed: 2026-08-19 (spec.ui.enabled, TargetUI, management.allowedOrigins)
 Last reviewed: 2026-08-23 (over-length desired-state names; ADR 0009)
@@ -65,7 +66,7 @@ Use a content hash over the canonical normalized state, not raw YAML formatting.
 }
 ```
 
-Generation is process-local and monotonically increasing. Revision is content-addressed and portable.
+Generation is process-local and monotonically increasing. Publication advances beyond the displaced snapshot even when emergency changes occurred after candidate compilation; apply/reset results report the published generation. Revision is content-addressed and portable.
 
 ## Mutation envelope
 
