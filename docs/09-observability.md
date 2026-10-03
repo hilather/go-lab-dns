@@ -3,6 +3,7 @@
 Status: Proposed
 Owners: Observability, Operations
 Last reviewed: 2026-10-03 (forwarding topology state lifetime and health identity)
+Last reviewed: 2026-10-03 (shared live control metrics and real upstream health)
 Last reviewed: 2026-08-19 (event ui.session)
 
 ## Goals
@@ -109,6 +110,8 @@ Catalog-only (not yet live-incremented): CNAME depth failures, cache entries/evi
 Allowed bounded labels include configured zone ID, chaos policy ID, upstream ID, capability name, transport, RCODE, result, resolution source, QTYPE class, and client-group class (`known` / `unknown` / `local_only`). Prohibited default labels include raw QNAME, raw client IP, idempotency key, actor ID, and arbitrary error text.
 
 Automated checks: catalog rows cannot declare forbidden labels; `Registry.Inc` drops samples that include them and increments `labdns_telemetry_dropped_total{reason="forbidden_label"}`.
+
+Production DNS, REST, MCP, and application operations share one in-process metrics registry. REST/MCP capability calls, including MCP resource reads, record bounded capability, transport, and result labels. This registry has no public scrape endpoint. The shared upstream tracker supplies upstream status and `Status.Degraded` from real exchange outcomes; injected timeouts and transport errors do not mark an upstream unhealthy. Upstream failure does not make local DNS unready.
 
 ## Tracing
 

@@ -220,9 +220,9 @@ func TestResolveUseCacheDoesNotStoreFallthrough(t *testing.T) {
 }
 
 func TestForwardingAndCacheStatus(t *testing.T) {
-	path := copyFixture(t)
+	path := copyNamedFixture(t, "pack-sample.yaml")
 	svc, boot := mustBoot(t, path)
-	c := cache.New(cache.Policy{Enabled: true, MaxEntries: 8, MinimumTTL: 0, MaximumTTL: 0}, nil)
+	c := cache.New(cache.PolicyFromSpec(boot.Canonical.Spec.Cache), nil)
 	svc.cache = c
 	ctx := context.Background()
 	pols, err := svc.ListForwardingPolicies(ctx, actor())

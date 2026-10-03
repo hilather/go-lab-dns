@@ -180,12 +180,15 @@ func decodeChaosPolicy(op model.Operation) (model.ChaosPolicy, bool, error) {
 	if len(bytes.TrimSpace(op.Value)) == 0 {
 		return model.ChaosPolicy{}, false, nil
 	}
-	var p model.ChaosPolicy
+	var p struct {
+		Enabled     bool              `json:"enabled"`
+		SafetyClass model.SafetyClass `json:"safetyClass"`
+	}
 	if err := json.Unmarshal(op.Value, &p); err != nil {
 		return model.ChaosPolicy{}, false, domainerr.ValidationFailed("invalid chaos policy",
 			domainerr.FieldViolation{Path: "value", Code: "invalid_value", Message: "value is not a chaos policy"})
 	}
-	return p, true, nil
+	return model.ChaosPolicy{Enabled: p.Enabled, SafetyClass: p.SafetyClass}, true, nil
 }
 
 func findChaos(st *model.State, id model.PolicyID) *model.ChaosPolicy {
@@ -286,7 +289,13 @@ func zoneTouchesProtected(op model.Operation, current *model.State, prot Protect
 	if len(bytes.TrimSpace(op.Value)) == 0 {
 		return false
 	}
-	var z model.Zone
+	var z struct {
+		Name    model.Name `json:"name"`
+		Records []struct {
+			ID    model.RecordID `json:"id"`
+			Owner string         `json:"owner"`
+		} `json:"records"`
+	}
 	if err := json.Unmarshal(op.Value, &z); err != nil {
 		return true
 	}
@@ -309,7 +318,10 @@ func recordTouchesProtected(op model.Operation, current *model.State, prot Prote
 	if len(bytes.TrimSpace(op.Value)) == 0 {
 		return false
 	}
-	var r model.Record
+	var r struct {
+		ID    model.RecordID `json:"id"`
+		Owner string         `json:"owner"`
+	}
 	if err := json.Unmarshal(op.Value, &r); err != nil {
 		return true
 	}

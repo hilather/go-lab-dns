@@ -43,3 +43,13 @@ func TestNoMountsUnchanged(t *testing.T) {
 		t.Fatalf("/mcp without mounts status=%d want 404", rec.Code)
 	}
 }
+
+func TestMountsRejectUnsafePatternsWithoutPanic(t *testing.T) {
+	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
+	handler := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
+	for _, path := range []string{"/", "/v1", "/v1/state", "/mcp/{bad", "//mcp", "/x/../mcp", "/login", "/assets/x.js", "/zones/detail"} {
+		if _, err := New(Config{Service: svc, Mounts: map[string]http.Handler{path: handler}}); err == nil {
+			t.Fatalf("unsafe mount %q accepted", path)
+		}
+	}
+}

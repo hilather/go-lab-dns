@@ -49,7 +49,7 @@ func (s *Store) Swap(next *Snapshot) *Snapshot {
 			continue
 		}
 		if previous != nil {
-			s.previous.Store(previous)
+			s.publishPrevious(previous)
 		}
 		// An emergency bit can change after it was read above even when the
 		// previous snapshot already had that bit. Reconcile the committed pointer.
@@ -108,7 +108,7 @@ func (s *Store) StampEmergency() *Snapshot {
 		}
 		next.Generation = live.Generation + 1
 		if s.active.CompareAndSwap(live, next) {
-			s.previous.Store(live)
+			s.publishPrevious(live)
 			return next
 		}
 	}
@@ -155,4 +155,21 @@ func (s *Store) InstallBootstrap(next *Snapshot) *Snapshot {
 	}
 	s.SetBootstrap(next)
 	return s.Swap(next)
+}
+
+// publishPrevious cannot let a delayed publisher overwrite a newer displaced
+// generation after another concurrent Swap or emergency stamp completed.
+func (s *Store) publishPrevious(previous *Snapshot) {
+	if previous == nil {
+		return
+	}
+	for {
+		current := s.previous.Load()
+		if current != nil && current.Generation >= previous.Generation {
+			return
+		}
+		if s.previous.CompareAndSwap(current, previous) {
+			return
+		}
+	}
 }

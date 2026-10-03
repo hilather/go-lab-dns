@@ -16,6 +16,7 @@ import (
 	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/buildinfo"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
+	"github.com/hilather/go-lab-dns/internal/observability"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -92,6 +93,8 @@ type Config struct {
 	RequestTimeout time.Duration
 	// MaxConcurrent admits at most this many overlapping requests. Non-positive uses DefaultMaxConcurrent.
 	MaxConcurrent int
+	// Metrics records bounded capability metrics without waiting on an exporter.
+	Metrics *observability.Registry
 }
 
 // Server is the official-SDK adapter. Third-party MCP types do not escape it.

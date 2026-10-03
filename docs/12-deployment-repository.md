@@ -2,7 +2,10 @@
 
 Status: Normative (GIT-001)
 Owners: Deployment, Platform
+Last reviewed: 2026-10-03 (alternate action address checks)
 Last reviewed: 2026-08-19 (operator console :8080, ui.enabled, allowedOrigins)
+
+Last reviewed: 2026-10-03 (explicit Kubernetes restart and matching rollback image pins)
 
 ## Purpose
 
@@ -90,6 +93,10 @@ labdns verify --config dns.yaml --probes probes.yaml \
 
 `labdns verify` compiles the document, checks digest pin and allowlists, then executes probes through the DNS orchestrator (`internal/dnsquery`) so refuse-forward and RA match the data plane. Probes with `live: true` run only when `--server` is set.
 
+The `AllowedAlternateAddresses` gate checks both desired-state `allowedAddressCIDRs` and every IPv4/IPv6 value in every alternate action, including disabled policies. Removing or emptying the desired-state allowlist cannot bypass the deployment gate. An empty deployment address allowlist denies all alternate IP addresses; non-address targets are outside this address gate.
+
+Deployment chaos checks account for runtime zero semantics: configured delays require finite desired-state delay and concurrency bounds, actual drop-policy probabilities must obey the deployment ceiling, and enabled high-impact policy counts are checked directly. Zero or omitted desired-state caps cannot broaden configured faults past deployment policy.
+
 ## Runtime-to-Git workflow
 
 1. Agent plans an ephemeral runtime change.
@@ -103,7 +110,7 @@ labdns verify --config dns.yaml --probes probes.yaml \
 9. Deployment recreates or resets LabDNS from Git state.
 10. Drift returns to false.
 
-Container recreation always discards unsaved runtime mutations (ADR 0003).
+Container recreation always discards unsaved runtime mutations (ADR 0003). Kubernetes `deploy.sh` applies manifests, explicitly restarts the Deployment even when unchanged, and waits for rollout success before recording the successful snapshot.
 
 ## Probe format example
 
@@ -172,7 +179,7 @@ Unknown-client probes: a local name still succeeds with **RA=0**; a name that wo
 
 ## Rollback
 
-Rollback means reverting desired state or image pin in Git and redeploying. `scripts/rollback.sh` restores the previous successful `deploy.sh` snapshot (one generation) and redeploys. Runtime emergency rollback may deactivate a chaos policy or reset to bootstrap, but the deployment repository remains authoritative.
+Rollback means reverting desired state or image pin in Git and redeploying. `scripts/rollback.sh` restores the previous successful `deploy.sh` snapshot (one generation) and redeploys. The snapshot includes `dns.yaml`, `image.env`, and `k8s/kustomization.yaml` when present; restoring both image pins together preserves digest validation. Runtime emergency rollback may deactivate a chaos policy or reset to bootstrap, but the deployment repository remains authoritative.
 
 ## Agent instructions for deployment changes
 

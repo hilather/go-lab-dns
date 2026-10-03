@@ -110,13 +110,15 @@ func (e *Engine) Simulate(ctx context.Context, snap *snapshot.Snapshot, in Simul
 		}
 	}
 	plan, err := e.decide(snap, DecisionIn{
-		Query:           in.Query,
-		ClientGroupID:   in.ClientGroupID,
-		ZoneID:          in.ZoneID,
-		ForwardingID:    in.ForwardingID,
-		Base:            in.Base,
-		Phase:           in.Phase,
-		SimulationNonce: in.Nonce,
+		Query:             in.Query,
+		ClientGroupID:     in.ClientGroupID,
+		ZoneID:            in.ZoneID,
+		ForwardingID:      in.ForwardingID,
+		Base:              in.Base,
+		Phase:             in.Phase,
+		SimulationNonce:   in.Nonce,
+		RespectActivation: in.RespectActivation,
+		Exclusive:         in.Exclusive,
 	}, in.PolicyIDs, true)
 	if err != nil {
 		return SimulateOut{}, err
@@ -220,7 +222,7 @@ func (e *Engine) decide(snap *snapshot.Snapshot, in DecisionIn, filter []model.P
 		if reason := gateSkip(p, now, safety, snap.CompiledAt); reason != "" {
 			// Simulation answers "what would this policy do if activated".
 			// Live Decide still skips disabled policies.
-			if !simulate || reason != "disabled" {
+			if !simulate || in.RespectActivation || reason != "disabled" {
 				plan.Decisions = append(plan.Decisions, PolicyDecision{
 					PolicyID: p.ID, Precedence: cp.Precedence, SkipReason: reason,
 				})
@@ -236,10 +238,10 @@ func (e *Engine) decide(snap *snapshot.Snapshot, in DecisionIn, filter []model.P
 			continue
 		}
 		prob := p.Selector.Probability
-		if canDrop(p) && safety.MaxDropProbability > 0 && prob > safety.MaxDropProbability {
-			prob = safety.MaxDropProbability
+		if cp.RequestedProbability > prob {
+			plan.Clamped = append(plan.Clamped, ClampRecord{PolicyID: p.ID, Action: "selector", Reason: "max_drop_probability", From: strconv.FormatFloat(cp.RequestedProbability, 'g', -1, 64), To: strconv.FormatFloat(prob, 'g', -1, 64)})
 		}
-		if pval >= prob {
+		if prob <= 0 || (prob < 1 && pval >= prob) {
 			plan.Decisions = append(plan.Decisions, PolicyDecision{
 				PolicyID: p.ID, Precedence: cp.Precedence, SkipReason: "probability", Hash: h,
 			})
@@ -254,7 +256,7 @@ func (e *Engine) decide(snap *snapshot.Snapshot, in DecisionIn, filter []model.P
 		}
 
 		acts, clamps, delay, early, hint, skipRes, transportConflict := e.planActions(p, out, in, snap, h, now, simulate)
-		if transportConflict && haveTransport != "" {
+		if transportConflict || (hint != "" && haveTransport != "" && hint != haveTransport) {
 			plan.Decisions = append(plan.Decisions, PolicyDecision{
 				PolicyID: p.ID, Precedence: cp.Precedence, SkipReason: "transport_conflict", Hash: h, OutcomeID: out.ID,
 			})
@@ -591,17 +593,6 @@ func normalizeActionValue(v string) string {
 }
 
 func unit(u uint64) float64 { return float64(u) / two64 }
-
-func canDrop(p model.ChaosPolicy) bool {
-	for _, o := range p.Outcomes {
-		for _, a := range o.Actions {
-			if a.Type == model.ActionDrop {
-				return true
-			}
-		}
-	}
-	return false
-}
 
 func policyHasPhase(p model.ChaosPolicy, want Phase) bool {
 	if want == "" {

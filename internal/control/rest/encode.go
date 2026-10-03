@@ -17,7 +17,7 @@ var durationKeys = map[string]bool{
 	"expire": true, "minimum": true, "timeout": true, "minimumTTL": true,
 	"maximumTTL": true, "maximumNegativeTTL": true, "maxDelay": true,
 	"defaultMaxLifetime": true, "timeBucket": true, "period": true,
-	"unhealthy": true, "phaseOffset": true, "duration": true, "min": true,
+	"delay": true, "unhealthy": true, "phaseOffset": true, "duration": true, "min": true,
 	"max": true, "hold": true,
 }
 
@@ -94,9 +94,6 @@ func jsonNumberDuration(v any) (time.Duration, bool) {
 func formatDuration(d time.Duration) string {
 	if d == 0 {
 		return "0s"
-	}
-	if d < 0 {
-		return "-" + formatDuration(-d)
 	}
 	if d%time.Hour == 0 {
 		return strconv.FormatInt(int64(d/time.Hour), 10) + "h"

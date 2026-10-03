@@ -105,7 +105,14 @@ func UniformDelay(min, max time.Duration, u1 uint64) time.Duration {
 		return min
 	}
 	unit := float64(u1) / two64
-	return min + time.Duration(unit*float64(max-min))
+	span := max - min
+	offset := time.Duration(unit * float64(span))
+	// At the upper edge the float can round to span (or overflow the
+	// duration conversion). Valid ranges are nonnegative and half-open.
+	if offset < 0 || offset >= span {
+		offset = span - 1
+	}
+	return min + offset
 }
 
 // DelayNonce is field 10 of the second hash-v1 encoding used for uniform
@@ -126,6 +133,24 @@ func PickOutcome(outcomes []model.ChaosOutcome, w float64) (model.ChaosOutcome, 
 	if total == 0 || math.IsNaN(total) {
 		return model.ChaosOutcome{}, false
 	}
+	scale := 1.0
+	if math.IsInf(total, 1) {
+		// Preserve normal finite-total mapping; rescale only an overflowed sum.
+		for _, outcome := range outcomes {
+			if outcome.Weight > scale {
+				scale = outcome.Weight
+			}
+		}
+		total = 0
+		for _, outcome := range outcomes {
+			if outcome.Weight > 0 {
+				total += outcome.Weight / scale
+			}
+		}
+		if math.IsNaN(total) {
+			return model.ChaosOutcome{}, false
+		}
+	}
 	t := w * total
 	var cum float64
 	var last model.ChaosOutcome
@@ -134,7 +159,7 @@ func PickOutcome(outcomes []model.ChaosOutcome, w float64) (model.ChaosOutcome, 
 		if o.Weight <= 0 {
 			continue
 		}
-		cum += o.Weight
+		cum += o.Weight / scale
 		last = o
 		have = true
 		if cum > t {

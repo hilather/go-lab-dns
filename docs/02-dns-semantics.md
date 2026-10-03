@@ -3,6 +3,7 @@
 Status: Implementation-confirmed for local resolution (RES-001) and forwarding/cache/orchestrator (FWD-001)
 Owners: DNS
 Last reviewed: 2026-10-03 (upstream identity health and caller cancellation)
+Last reviewed: 2026-10-03 (management active-chaos modeling and current cached caller context)
 Last reviewed: 2026-08-18 (overlay CNAME kept when forward refused)
 Last reviewed: 2026-08-23 (over-length desired-state names; ADR 0009)
 Last reviewed: 2026-09-01 (management resolve useCache does not store Fallthrough)
@@ -287,6 +288,8 @@ Count resolution source, zone mode, RCODE, cache status, upstream result, wildca
 ## Testing strategy
 
 Use table-driven tests from RFC wildcard examples, empty non-terminal cases, exact-over-wildcard cases, CNAME chains, NXDOMAIN/NODATA distinctions, forwarding suffix precedence, UDP/TCP equivalence, and flag correctness.
+
+Management resolve with `applyChaos: true` and resolution explain model currently active chaos policies against the captured snapshot without sleeping, forwarding, reserving delay budgets, consuming live randomness, or changing live chaos counters. Explanations include `baseAnswers` and `chaosDecisions` alongside the final answer. A resolve request with `useCache` may read or store the base result; modeled effects never enter the shared cache. Explain always bypasses the cache. Cached base results use the current caller, transport, and client group before policy selection. No caller context is inherited from a prior cache fill.
 
 ## Compatibility implications
 

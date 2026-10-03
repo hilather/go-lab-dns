@@ -624,11 +624,62 @@ export interface components {
     CacheSummary: { [key: string]: unknown };
     CapabilityView: { [key: string]: unknown };
     ChangeIn: { [key: string]: unknown };
+    ChaosDecision: {
+      delay?: string;
+      digestHex?: string;
+      outcomeId?: string;
+      policyId: string;
+      skipReason?: string;
+      triggered: boolean;
+    };
     ChaosRuntimeStatus: { [key: string]: unknown };
+    DNSQuery: {
+      cd: boolean;
+      class: string;
+      client: string;
+      name: string;
+      rd: boolean;
+      transport: string;
+      type: string;
+    };
+    DNSRecord: {
+      class: string;
+      data: string;
+      name: string;
+      ttl: string;
+      type: string;
+    };
+    DNSResult: {
+      aa: boolean;
+      ad: boolean;
+      additional?: (components["schemas"]["DNSRecord"])[];
+      answers?: (components["schemas"]["DNSRecord"])[];
+      authority?: (components["schemas"]["DNSRecord"])[];
+      cd: boolean;
+      closestEncloser?: string;
+      ede?: components["schemas"]["ExtendedDNSError"];
+      explanation?: components["schemas"]["ResolutionExplanation"];
+      fallthrough: boolean;
+      forwardingId?: string;
+      ra: boolean;
+      rcode: string;
+      source?: string;
+      upstreamId?: string;
+      wildcardSource?: string;
+      zoneId?: string;
+      zoneMode?: string;
+    };
     EmergencyIn: { [key: string]: unknown };
     ExpiryIn: { [key: string]: unknown };
-    ExplainOut: { [key: string]: unknown };
+    ExplainOut: {
+      explanation: components["schemas"]["ResolutionExplanation"];
+      result: components["schemas"]["DNSResult"];
+    };
     Export: { [key: string]: unknown };
+    ExtendedDNSError: {
+      code: number;
+      text?: string;
+    };
     FieldViolation: {
       code?: string;
       message?: string;
@@ -654,8 +705,30 @@ export interface components {
     };
     Record: { [key: string]: unknown };
     ResetIn: { [key: string]: unknown };
+    ResolutionExplanation: {
+      baseAnswers?: (components["schemas"]["DNSRecord"])[];
+      baseRcode?: string;
+      chaosActions?: (string)[];
+      chaosDecisions?: (components["schemas"]["ChaosDecision"])[];
+      chaosDisabled?: boolean;
+      chaosPolicyIds?: (string)[];
+      chaosReason?: string;
+      clientGroupId?: string;
+      closestEncloser?: string;
+      forwardingId?: string;
+      poolId?: string;
+      query: components["schemas"]["DNSQuery"];
+      revision?: string;
+      source?: string;
+      upstreamId?: string;
+      wildcardSource?: string;
+      zoneId?: string;
+      zoneMode?: string;
+    };
     ResolveIn: { [key: string]: unknown };
-    ResolveOut: { [key: string]: unknown };
+    ResolveOut: {
+      result: components["schemas"]["DNSResult"];
+    };
     Session: {
       actor?: components["schemas"]["SessionActor"];
       csrf?: string;

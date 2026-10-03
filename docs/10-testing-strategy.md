@@ -3,6 +3,10 @@
 Status: Proposed normative quality gate
 Owners: All teams
 Last reviewed: 2026-10-03 (forwarding topology churn and stale completion regression coverage)
+Last reviewed: 2026-10-03 (runtime wiring, active-chaos parity, and snapshot-aware cache regressions)
+Last reviewed: 2026-10-03 (successful snapshot preservation after Kubernetes deployment failure)
+Last reviewed: 2026-10-03 (Docker documentation embed context and runtime smoke checks)
+Last reviewed: 2026-10-03 (aggregate drop-cap and numeric boundary regressions)
 Last reviewed: 2026-09-04 (refuse-forward overlay CNAME must not poison AllowForward cache)
 Last reviewed: 2026-09-01 (resolve useCache fallthrough must not poison DNS cache)
 Last reviewed: 2026-08-29 (app tsc excludes Vitest files; web-test runs tsc --noEmit)
@@ -15,6 +19,7 @@ Last reviewed: 2026-08-15 (REL-001 release-diff and required CI)
 Last reviewed: 2026-08-15 (PERF-001 benches, soak, interop)
 Last reviewed: 2026-08-15 (GIT-001 deployment template probes)
 
+Last reviewed: 2026-10-03 (fake Kubernetes redeploy and exact-commit release-gate regressions)
 Last reviewed: 2026-10-03 (upstream reply correlation, cancellation, and SOA MINIMUM regressions)
 
 ## Policy
@@ -146,6 +151,10 @@ Soak assertions: every wire answer is a complete old or new RRset (never mixed/p
 
 ### Container and deployment tests
 
+`TestDockerContextIncludesEmbeddedDocumentation` derives the docs package's Go sources and embed inputs with `go list` and checks the exact final Docker ignore exceptions. `make test-container` also requests both embedded documentation endpoints from inside the running image using its authenticated loopback principal.
+
+Fake-kubectl regressions deploy A then B, fail C during apply/restart/status, verify `.last/` remains B and `.previous/` remains A, and prove rollback restores A including both image pins.
+
 - Non-root execution.
 - Read-only filesystem.
 - Port mapping.
@@ -157,7 +166,7 @@ Soak assertions: every wire answer is a complete old or new RRset (never mixed/p
 - GitOps template (`examples/labdns-deploy`): digest pin, policy rejection
   (broad CIDRs, unapproved upstreams, unsafe chaos), probe suite (exact,
   wildcard, authoritative miss, overlay, unknown-client RA=0 / REFUSED,
-  chaos simulation), rollback, and script fail-closed checks.
+  chaos simulation), rollback, and script fail-closed checks. Fake-kubectl regressions verify apply/restart/status ordering for unchanged desired state and failure before successful snapshot recording, plus restoration of matching Kubernetes/image.env pins on rollback.
 
 ### Documentation tests
 
@@ -214,6 +223,8 @@ Never use broad retries to conceal a race or flaky assertion.
 
 ## Chaos-specific acceptance tests
 
+Chaos drop-cap regressions cover a snapshot-wide union bound across policies and execution groups, deterministic time-bucket boundary witnesses, unchanged canonical export, live/simulation parity, weighted and pressure drop outcomes, inactive policies, sticky random draw counts, single-phase compatibility, and zero/one cap semantics. Packet tests cover composed selector allocation over UDP and TCP. Numeric regressions lock probability-one behavior at maximum draws, half-open uniform delays near duration limits, and proportional weighted selection when finite weight sums overflow.
+
 - Per-record fixed delay falls within timing tolerance.
 - Uniform delay stays within bounds and distribution checks pass.
 - Deterministic mode repeats decisions across process restarts for the same policy algorithm and inputs.
@@ -225,6 +236,8 @@ Never use broad retries to conceal a race or flaky assertion.
 - Forced truncation causes client TCP retry.
 - TCP reset does not crash or leak.
 - Base and final answers are visible in explanation.
+
+Runtime regressions cover shared upstream health and control metrics, signal-worker cleanup on shutdown and startup failure, safe management mounts, and live cache mutation/reset over UDP and TCP. Generation-aware cache tests reject old completions after policy changes and ensure previous snapshot publication cannot regress. Management chaos tests verify REST/MCP parity, base/final answers, current caller protections on cache hits, and absence of live delay, chaos-counter, or modeled-cache effects. Resolve may still read or store a base result when `useCache` is requested; explain must leave cache statistics and entries unchanged.
 
 ## Release test evidence
 

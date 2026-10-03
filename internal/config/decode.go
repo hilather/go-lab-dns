@@ -80,7 +80,8 @@ func decodeJSON(data []byte) (*model.State, error) {
 		return nil, domainerr.ValidationFailed("JSON decode failed",
 			domainerr.FieldViolation{Path: "", Code: violationInvalidValue, Message: err.Error()})
 	}
-	if dec.More() {
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
 		return nil, domainerr.ValidationFailed("trailing JSON value",
 			domainerr.FieldViolation{Path: "", Code: violationInvalidValue, Message: "document contains more than one JSON value"})
 	}

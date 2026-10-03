@@ -50,11 +50,13 @@ func (s *App) Reset(ctx context.Context, actor Actor, in ResetIn) (*ApplyResult,
 	s.store.SetEmergencyChaosOff(false)
 	displaced := s.store.Swap(next)
 	next = s.store.Load()
+	s.observeCachePolicy(next)
 	// Bootstrap pointer tracks the last successfully compiled mount so a
 	// later reset without a path can still restore it. Set after compile
 	// succeeds so a bad file cannot replace Bootstrap.
 	s.store.SetBootstrap(next)
 	s.idemp.clear()
+	s.engine.CancelDelays()
 
 	cand := &candidate{
 		prev:   displaced,

@@ -434,6 +434,9 @@ func TestBudgetExhausted(t *testing.T) {
 
 func TestPlanSummaryCacheUpstreamPressure(t *testing.T) {
 	st := sampleState(t)
+	// Summary construction needs an unconditional selected outcome; pressure
+	// drops now obey the same selector safety allocation as silent drops.
+	st.Spec.Chaos.Safety.MaxDropProbability = 1
 	for i := range st.Spec.Zones[0].Records {
 		st.Spec.Zones[0].Records[i].ChaosPolicyRefs = nil
 	}
@@ -622,5 +625,37 @@ func compileSnap(t *testing.T, st *model.State) *snapshot.Snapshot {
 			MaxConcurrentDelayed:  st.Spec.Chaos.Safety.MaxConcurrentDelayed,
 			MaxDropProbability:    st.Spec.Chaos.Safety.MaxDropProbability,
 		},
+	}
+}
+
+func TestComposedTransportKeepsHigherPrecedence(t *testing.T) {
+	st := sampleState(t)
+	for zi := range st.Spec.Zones {
+		for ri := range st.Spec.Zones[zi].Records {
+			st.Spec.Zones[zi].Records[ri].ChaosPolicyRefs = nil
+		}
+	}
+	st.Spec.Chaos.Policies = nil
+	for _, tc := range []struct {
+		id     model.PolicyID
+		action string
+		owner  bool
+	}{{"specific", model.ActionDrop, true}, {"global", model.ActionTruncate, false}} {
+		p := model.ChaosPolicy{ID: tc.id, Owner: "lab", Reason: "transport precedence", Enabled: true, SafetyClass: model.SafetyClassLow, Selector: model.ChaosSelector{Probability: 1}, Outcomes: []model.ChaosOutcome{{ID: "o", Weight: 1, Actions: []model.ChaosAction{{Type: tc.action}}}}}
+		if tc.owner {
+			p.Scope.Owners = []model.Name{"x.example."}
+		}
+		st.Spec.Chaos.Policies = append(st.Spec.Chaos.Policies, p)
+	}
+	snap := compileSnap(t, st)
+	eng := NewEngine(nil, nil)
+	for _, simulate := range []bool{false, true} {
+		plan, err := eng.decide(snap, DecisionIn{Query: model.Query{Name: "x.example.", Type: model.TypeA, Transport: model.TransportUDP}, Phase: PhaseResponse}, nil, simulate)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if plan.TransportHint != "drop" || !hasSkip(plan, "global", "transport_conflict") {
+			t.Fatalf("simulate=%v plan=%+v", simulate, plan)
+		}
 	}
 }

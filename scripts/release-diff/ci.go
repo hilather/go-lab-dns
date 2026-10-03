@@ -48,6 +48,7 @@ func loadCheckRuns(fixturePath string) ([]releasecontract.CheckRun, error) {
 
 type ghCheckRuns struct {
 	CheckRuns []struct {
+		ID          int64  `json:"id"`
 		Name        string `json:"name"`
 		Status      string `json:"status"`
 		Conclusion  string `json:"conclusion"`
@@ -86,6 +87,7 @@ func fetchGitHubChecks(token, repo, sha string) ([]releasecontract.CheckRun, err
 		}
 		for _, r := range doc.CheckRuns {
 			item := releasecontract.CheckRun{
+				ID:         r.ID,
 				Name:       r.Name,
 				Status:     r.Status,
 				Conclusion: r.Conclusion,

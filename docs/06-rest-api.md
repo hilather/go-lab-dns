@@ -2,6 +2,7 @@
 
 Status: Implemented (API-001)
 Owners: REST, Application
+Last reviewed: 2026-10-03 (active-chaos resolve/explain output and duration strings)
 Last reviewed: 2026-08-19 (serve wires embedded UI handler)
 Last reviewed: 2026-09-01 (resolve useCache does not store Fallthrough)
 Related ADRs: 0004
@@ -137,7 +138,9 @@ Actor JSON copies Identify `id`/`role`/`scopes`/`groups` and sets `class` to `ui
 }
 ```
 
-The normal management resolve operation defaults to not consuming live chaos decisions. An explicit authorized option can model or apply chaos. `useCache` reads and writes the process DNS cache; overlay `Fallthrough` results are not stored (management resolve never forwards).
+Management resolve returns the base answer by default; `options.applyChaos: true` models active chaos effects. `useCache` reads and writes the process DNS cache; overlay `Fallthrough` results are not stored (management resolve never forwards).
+
+Resolve with `applyChaos: true` models active chaos; `POST /v1/resolve:explain` always includes this model and bypasses the cache. `result.explanation.baseAnswers` preserves the base answer RRsets; `baseRcode` records the base response code. `chaosDecisions` reports `policyId`, `outcomeId`, `triggered`, `skipReason`, `digestHex`, and `delay` (a duration string). Empty optional fields may be omitted. Modeling executes no upstream exchange or delay and changes no live chaos counters or state. When resolve uses the cache, only the base result is read or stored. OpenAPI resolution schemas are generated from shared model types. The explanation fields are additive within `/v1`; RR TTLs and modeled decision delays use duration strings in both REST and MCP output.
 
 ## Pagination
 

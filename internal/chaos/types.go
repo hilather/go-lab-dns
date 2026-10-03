@@ -30,28 +30,31 @@ const (
 // DecisionIn is a classified query. ZoneID and ForwardingID are pre-selected
 // by dnsquery; the engine must not rediscover them.
 type DecisionIn struct {
-	Query           model.Query
-	ClientGroupID   model.ClientGroupID
-	ZoneID          model.ZoneID
-	ForwardingID    model.PolicyID
-	Base            *model.Result // nil in pre-resolution
-	Phase           Phase
-	SimulationNonce string        // hash-v1 field 10; live Decide leaves this empty
-	Sticky          *StickyRand   // live random-mode draws shared across phases
-	Exclusive       *ExclusiveSet // exclusive-group winners shared across phases
+	Query             model.Query
+	ClientGroupID     model.ClientGroupID
+	ZoneID            model.ZoneID
+	ForwardingID      model.PolicyID
+	Base              *model.Result // nil in pre-resolution
+	Phase             Phase
+	SimulationNonce   string        // hash-v1 field 10; live Decide leaves this empty
+	Sticky            *StickyRand   // live random-mode draws shared across phases
+	Exclusive         *ExclusiveSet // exclusive-group winners shared across phases
+	RespectActivation bool          // simulation may honor current enabled state
 }
 
 // SimulateIn is a side-effect-free decision request. IDs are pre-classified
 // by the caller (app.SimulateChaos may classify first).
 type SimulateIn struct {
-	Query         model.Query
-	ClientGroupID model.ClientGroupID
-	ZoneID        model.ZoneID
-	ForwardingID  model.PolicyID
-	Base          *model.Result
-	Phase         Phase
-	Nonce         string
-	PolicyIDs     []model.PolicyID // optional filter; empty = all
+	Query             model.Query
+	ClientGroupID     model.ClientGroupID
+	ZoneID            model.ZoneID
+	ForwardingID      model.PolicyID
+	Base              *model.Result
+	Phase             Phase
+	Nonce             string
+	PolicyIDs         []model.PolicyID // optional filter; empty = all
+	RespectActivation bool             // model current live state instead of hypothetical activation
+	Exclusive         *ExclusiveSet    // request-scoped winners shared across modeled phases
 }
 
 // SimulateOut is the explained, non-executing decision.

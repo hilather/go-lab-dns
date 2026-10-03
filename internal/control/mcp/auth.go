@@ -20,21 +20,26 @@ func (s *Server) authenticate(r *http.Request) (auth.Actor, error) {
 
 func isLoopback(remoteAddr string) bool { return auth.IsLoopback(remoteAddr) }
 
-func (s *Server) authorizeResource(actor auth.Actor, uri string) error {
+func resourceCapability(uri string) (capabilities.Capability, bool) {
 	cap, ok := capabilities.LookupResource(uri)
+	if ok {
+		return cap, true
+	}
+	switch {
+	case strings.HasPrefix(uri, "labdns://zones/"):
+		return capabilities.Lookup(capabilities.Zones)
+	case strings.HasPrefix(uri, "labdns://records/"):
+		return capabilities.Lookup(capabilities.Records)
+	case strings.HasPrefix(uri, "labdns://chaos/policies/"):
+		return capabilities.Lookup(capabilities.ChaosPolicies)
+	}
+	return capabilities.Capability{}, false
+}
+
+func (s *Server) authorizeResource(actor auth.Actor, uri string) error {
+	cap, ok := resourceCapability(uri)
 	if !ok {
-		// Templates (zones/{id}) are not exact matches; fall back to prefix.
-		switch {
-		case strings.HasPrefix(uri, "labdns://zones/"):
-			cap, ok = capabilities.Lookup(capabilities.Zones)
-		case strings.HasPrefix(uri, "labdns://records/"):
-			cap, ok = capabilities.Lookup(capabilities.Records)
-		case strings.HasPrefix(uri, "labdns://chaos/policies/"):
-			cap, ok = capabilities.Lookup(capabilities.ChaosPolicies)
-		}
-		if !ok {
-			return nil
-		}
+		return nil
 	}
 	if err := auth.AuthorizeCapability(actor, cap.RequiredScopes, string(cap.ID)); err != nil {
 		s.auditDenied(actor, string(cap.ID), err)
