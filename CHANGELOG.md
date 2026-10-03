@@ -6,7 +6,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Fixed
 
-- Forwarding runtime health and round-robin counters discard removed topology IDs instead of retaining every historical deployment. Late old-snapshot exchanges cannot restore retired state; retargeting an upstream endpoint or transport clears its previous health. Caller cancellation and simulated upstream failures do not mark real upstreams unhealthy.
+- Forwarding runtime health and round-robin counters discard removed topology IDs instead of retaining every historical deployment. Late old-snapshot exchanges cannot restore retired state; retargeting an upstream endpoint or transport clears its previous health. Caller cancellation and simulated upstream failures do not mark real upstreams unhealthy; expiring the total query deadline while waiting on an upstream still counts against it.
 
 - Snapshot publication keeps generation monotonic when emergency controls advance it during compilation; apply/reset results report the actual published generation.
 - DNS admission preserves reserved QCLASS zero and returns NOTIMP over UDP and TCP instead of treating it as IN.

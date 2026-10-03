@@ -208,6 +208,11 @@ func (rt *Runtime) ExchangeOpts(ctx context.Context, snap *snapshot.Snapshot, q 
 			// Parent total deadline expired: surface the error so dnsquery
 			// can HintDrop instead of synthesizing SERVFAIL.
 			if err := ctx.Err(); err != nil {
+				// Caller cancellation says nothing about the upstream; running
+				// out of the total budget while waiting on it does.
+				if errors.Is(err, context.DeadlineExceeded) {
+					rt.recordHealth(snap, up.ID, false)
+				}
 				return model.Result{}, err
 			}
 			rt.recordHealth(snap, up.ID, false)

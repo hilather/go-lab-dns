@@ -123,7 +123,7 @@ Request/trace correlation uses `X-Request-ID` and `X-Trace-ID` on REST and conte
 - Upstream failure does not make the service unready when local zones still work; `Status.Degraded` is set instead.
 - Chaos does not affect health endpoints or `Ready`/`Degraded`. Emergency-disable is an informational Status warning only.
 
-Forwarding health and round-robin state retain only IDs from the newest snapshot observed by an exchange. Removed IDs are pruned when that generation is observed; old in-flight queries still use their original configured pools, but their completions cannot restore retired state. Retained upstream IDs preserve health only while endpoint and transport remain unchanged. Caller cancellation and simulated faults are not reachability failures. This bounds historical runtime memory during configuration churn without background probes or persistent state.
+Forwarding health and round-robin state retain only IDs from the newest snapshot observed by an exchange. Removed IDs are pruned when that generation is observed; old in-flight queries still use their original configured pools, but their completions cannot restore retired state. Retained upstream IDs preserve health only while endpoint and transport remain unchanged. Caller cancellation and simulated faults are not reachability failures; running out of the total query deadline while waiting on an upstream counts as a timeout failure. This bounds historical runtime memory during configuration churn without background probes or persistent state.
 
 ## Agent-readable status
 

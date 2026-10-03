@@ -193,3 +193,20 @@ func TestAttemptTimeoutStillRecordsReachabilityFailure(t *testing.T) {
 		t.Fatalf("real attempt timeout did not count: %d", failures)
 	}
 }
+
+func TestParentDeadlineRecordsUpstreamFailure(t *testing.T) {
+	rt := NewRuntime(nil, nil, nil, func(ctx context.Context, _, _ string) (net.Conn, error) {
+		<-ctx.Done()
+		return nil, ctx.Err()
+	})
+	snap := churnSnapshot(1, "current", "127.0.0.1:1")
+	snap.Forwarding.ByID["pol"].Failover.Timeout = 5 * time.Second
+	ctx, cancel := context.WithTimeout(t.Context(), 40*time.Millisecond)
+	defer cancel()
+	if _, err := rt.Exchange(ctx, snap, query("x.example."), "pol"); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("error=%v", err)
+	}
+	if _, failures := rt.Health.Snapshot("current"); failures != 1 {
+		t.Fatalf("parent deadline while waiting on upstream did not count: %d", failures)
+	}
+}
