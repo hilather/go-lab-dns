@@ -2,9 +2,8 @@ package app
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 
+	"github.com/hilather/go-lab-dns/docs"
 	"github.com/hilather/go-lab-dns/internal/buildinfo"
 	"github.com/hilather/go-lab-dns/internal/capabilities"
 	"github.com/hilather/go-lab-dns/internal/config"
@@ -140,11 +139,7 @@ func (s *App) Docs(ctx context.Context, actor Actor, id string) ([]byte, error) 
 	if !ok {
 		return nil, domainerr.NotFound("docs " + id + " not found")
 	}
-	root, err := moduleRoot()
-	if err != nil {
-		return nil, domainerr.Internal("docs: " + err.Error())
-	}
-	b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+	b, err := docs.Operator.ReadFile(rel)
 	if err != nil {
 		return nil, domainerr.Internal("docs: " + err.Error())
 	}
@@ -152,23 +147,6 @@ func (s *App) Docs(ctx context.Context, actor Actor, id string) ([]byte, error) 
 }
 
 var docsRel = map[string]string{
-	"dns-semantics": "docs/02-dns-semantics.md",
-	"chaos-safety":  "docs/03-chaos-engine.md",
-}
-
-func moduleRoot() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir, nil
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return "", os.ErrNotExist
-		}
-		dir = parent
-	}
+	"dns-semantics": "02-dns-semantics.md",
+	"chaos-safety":  "03-chaos-engine.md",
 }

@@ -2,6 +2,7 @@
 
 Status: Proposed normative quality gate
 Owners: All teams
+Last reviewed: 2026-10-03 (Docker documentation embed context and runtime smoke checks)
 Last reviewed: 2026-10-03 (aggregate drop-cap and numeric boundary regressions)
 Last reviewed: 2026-09-04 (refuse-forward overlay CNAME must not poison AllowForward cache)
 Last reviewed: 2026-09-01 (resolve useCache fallthrough must not poison DNS cache)
@@ -143,6 +144,8 @@ Long soak (pre-GA): `go test ./internal/perf -soak=30m` or `LABDNS_SOAK_DURATION
 Soak assertions: every wire answer is a complete old or new RRset (never mixed/partial), delay reservations return to zero, cache stays ≤ `maxEntries`, goroutine count does not grow without bound.
 
 ### Container and deployment tests
+
+`TestDockerContextIncludesEmbeddedDocumentation` derives the docs package's Go sources and embed inputs with `go list` and checks the exact final Docker ignore exceptions. `make test-container` also requests both embedded documentation endpoints from inside the running image using its authenticated loopback principal.
 
 - Non-root execution.
 - Read-only filesystem.

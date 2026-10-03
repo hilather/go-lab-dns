@@ -88,6 +88,15 @@ if ! docker exec "${NAME}" /labdns version >/dev/null; then
 	exit 1
 fi
 
+# Invoke HTTP from inside the container so the documented loopback principal
+# authenticates the docs reads; published ports may appear as a bridge peer.
+for doc in dns-semantics chaos-safety; do
+	if ! docker exec "${NAME}" /labdns healthcheck --url="http://127.0.0.1:8080/v1/docs/${doc}"; then
+		echo "embedded documentation endpoint ${doc} failed in production container" >&2
+		exit 1
+	fi
+done
+
 query_ok() {
 	local transport="$1"
 	local port="$2"

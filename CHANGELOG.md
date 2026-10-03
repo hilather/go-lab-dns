@@ -27,6 +27,12 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Forwarding rejects upstream packets whose QR, opcode, question count, name, type, or class does not match the request. Invalid and incomplete truncated replies follow transport-error failover and otherwise return SERVFAIL; disabling TCP retry no longer turns a partial reply into a complete cacheable answer.
 - Canceling an in-flight upstream exchange now closes its socket immediately instead of waiting for the attempt deadline.
 - Negative caching requires an SOA and respects SOA MINIMUM (including zero) and detects CNAME chains ending in NXDOMAIN or SOA-backed NODATA, including management resolve cache writes.
+- REST mutations with optional bodies reject trailing JSON values and delimiters before invoking reset, cache flush, or emergency controls. REST/MCP duration formatting handles the minimum signed duration without recursion overflow.
+- Successful bootstrap reset cancels outstanding chaos delay reservations; failed reset leaves existing delays intact. Cache flush now enforces administrator authorization and records successful and denied calls in the shared audit ring.
+- Operation decoding preserves arbitrary chaos policy label values named `ttl`, `duration`, or other duration field names.
+- REST/MCP plans and mutations accept documented duration strings for DNS editor records and chaos designer policies; authorization no longer mistakes valid TTL/delay strings for protected-object or invalid-policy errors.
+- DNS semantics and chaos safety documentation are embedded in the binary so REST/MCP documentation endpoints and the operator console work in production containers without a source checkout. Docker build context includes only the documentation Go package and its two canonical embed inputs; automated packaging and in-container endpoint checks guard against missing embed sources.
+- Atomic plan/apply/validate batches now authorize each operation against preceding candidate changes. This prevents low-privilege actors from activating a newly added high-impact chaos policy or adding a relative protected owner through a newly added zone. REST and MCP share the fix and report complete required permissions.
 
 ## v1.3.2 — 2026-09-21
 

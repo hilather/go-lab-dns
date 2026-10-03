@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hilather/go-lab-dns/internal/audit"
 	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/cache"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
@@ -336,11 +337,17 @@ func (s *App) CacheFlush(ctx context.Context, actor Actor, in FlushIn) error {
 	if err := s.requireCtx(ctx); err != nil {
 		return err
 	}
-	_ = actor
+	if err := auth.AuthorizeCapability(actor, []string{auth.ScopeDNSAdmin}, "dns_cache_flush"); err != nil {
+		s.recordDenied(ctx, actor, "dns_cache_flush", err)
+		return err
+	}
+	// First GA always flushes the whole process cache, including when All is omitted.
 	_ = in
 	if s.cache != nil {
 		s.cache.Flush()
 	}
+	revision := revisionOf(s.store.Load())
+	s.recordAudit(ctx, audit.Event{Time: s.clock.Now(), ActorID: actor.ID, ActorClass: actor.Class, Capability: "dns_cache_flush", Previous: revision, Revision: revision, Result: audit.ResultOK})
 	return nil
 }
 

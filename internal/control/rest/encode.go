@@ -95,9 +95,6 @@ func formatDuration(d time.Duration) string {
 	if d == 0 {
 		return "0s"
 	}
-	if d < 0 {
-		return "-" + formatDuration(-d)
-	}
 	if d%time.Hour == 0 {
 		return strconv.FormatInt(int64(d/time.Hour), 10) + "h"
 	}
