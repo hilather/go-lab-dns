@@ -10,7 +10,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 - REST/MCP plans and mutations accept documented duration strings for DNS editor records and chaos designer policies; authorization no longer mistakes valid TTL/delay strings for protected-object or invalid-policy errors.
 
-- DNS semantics and chaos safety documentation are embedded in the binary so REST/MCP documentation endpoints and the operator console work in production containers without a source checkout.
+- DNS semantics and chaos safety documentation are embedded in the binary so REST/MCP documentation endpoints and the operator console work in production containers without a source checkout. Docker build context includes only the documentation Go package and its two canonical embed inputs; automated packaging and in-container endpoint checks guard against missing embed sources.
 
 - Atomic plan/apply/validate batches now authorize each operation against preceding candidate changes. This prevents low-privilege actors from activating a newly added high-impact chaos policy or adding a relative protected owner through a newly added zone. REST and MCP share the fix and report complete required permissions.
 
