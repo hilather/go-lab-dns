@@ -2,7 +2,7 @@
 
 Status: Implemented (SEC-001)
 Owners: Security, DNS, Control Plane
-Last reviewed: 2026-10-03 (browser cookie mutation races and fail-closed recovery)
+Last reviewed: 2026-10-03 (browser cookie mutation races, fail-closed recovery, upstream reply correlation and cancellation)
 Related ADRs: 0003, 0004, 0005, 0007
 
 ## Goals
@@ -32,6 +32,7 @@ Related ADRs: 0003, 0004, 0005, 0007
 - UDP response size controls and minimal responses.
 - TCP read/write/idle/total deadlines and per-source connection caps.
 - Self-forwarding and loop validation.
+- Upstream reply ID, QR, opcode, and full question correlation; incomplete truncated replies fail closed when a complete TCP retry is unavailable. Cancellation closes upstream sockets to release resources promptly.
 - No automatic use of host `/etc/resolv.conf` unless explicitly configured and documented.
 
 ### First-GA DNS listener defaults

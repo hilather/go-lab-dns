@@ -11,6 +11,10 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Shell revision uses the shared status query and refreshes after mutations, promptly discarding stale plans. Changes permits forwarder and chaos mutation scopes and built-in editor/operator roles while REST still authorizes each operation.
 - Chaos activation retries reuse idempotency keys only for the same request; edits to reason, expiry, policy, or revision get a new key.
 - Web development dependency `undici` updates from 7.29.0 to 7.29.1; required web CI now audits the complete dependency lockfile for high and critical vulnerabilities.
+- DNS admission preserves reserved QCLASS zero and returns NOTIMP over UDP and TCP instead of treating it as IN.
+- Forwarding rejects upstream packets whose QR, opcode, question count, name, type, or class does not match the request. Invalid and incomplete truncated replies follow transport-error failover and otherwise return SERVFAIL; disabling TCP retry no longer turns a partial reply into a complete cacheable answer.
+- Canceling an in-flight upstream exchange now closes its socket immediately instead of waiting for the attempt deadline.
+- Negative caching requires an SOA and respects SOA MINIMUM (including zero) and detects CNAME chains ending in NXDOMAIN or SOA-backed NODATA, including management resolve cache writes.
 
 ## v1.3.2 — 2026-09-21
 

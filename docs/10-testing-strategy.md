@@ -15,6 +15,8 @@ Last reviewed: 2026-08-15 (REL-001 release-diff and required CI)
 Last reviewed: 2026-08-15 (PERF-001 benches, soak, interop)
 Last reviewed: 2026-08-15 (GIT-001 deployment template probes)
 
+Last reviewed: 2026-10-03 (upstream reply correlation, cancellation, and SOA MINIMUM regressions)
+
 ## Policy
 
 Every area must have regression tests. No feature, bug fix, protocol behavior, configuration rule, operational script, or release process change is complete without automated coverage appropriate to its risk.
@@ -27,7 +29,7 @@ Every area must have regression tests. No feature, bug fix, protocol behavior, c
 - Zone and forwarding selection.
 - Wildcard closest-encloser behavior.
 - CNAME and negative answer logic.
-- Cache TTL and key behavior. Management resolve `useCache` must not store overlay Fallthrough; DNS lookup ignores a poisoned fallthrough local entry. Refuse-forward overlay CNAME must not occupy the shared local key so a later AllowForward client still exchanges.
+- Cache TTL and key behavior, including SOA MINIMUM zero/nonzero and CNAME-terminal negative lifetimes. Management resolve `useCache` must not store overlay Fallthrough; DNS lookup ignores a poisoned fallthrough local entry. Refuse-forward overlay CNAME must not occupy the shared local key so a later AllowForward client still exchanges.
 - Chaos selectors, outcome selection, actions, and safety clamping.
 - Authorization decisions.
 - Error mappings.
@@ -61,8 +63,8 @@ DNS-001 lands independent localhost UDP/TCP client tests in `internal/dnsserver`
 - Authoritative NXDOMAIN and NODATA.
 - Overlay fallthrough.
 - CNAME chains and loops.
-- Forwarding and TCP retry after truncation.
-- EDNS handling.
+- Forwarding and TCP retry after truncation; fail-closed incomplete replies when retry is disabled or TCP stays truncated; QR/opcode/question correlation over UDP and TCP; in-flight upstream cancellation.
+- EDNS handling and NOTIMP for unsupported classes, including reserved QCLASS zero over UDP and TCP.
 - Chaos delay, drop, truncation, RCODE, TTL, alternate answer, and TCP close/reset.
 
 ### REST tests
