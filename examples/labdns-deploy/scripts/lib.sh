@@ -62,6 +62,11 @@ rotate_deploy_snapshot() {
 	if [ -f "${dir}/.last/dns.yaml" ] && [ -f "${dir}/.last/image.env" ]; then
 		mkdir -p "${dir}/.previous"
 		cp -f "${dir}/.last/dns.yaml" "${dir}/.last/image.env" "${dir}/.previous/"
+		if [ -f "${dir}/.last/kustomization.yaml" ]; then
+			cp -f "${dir}/.last/kustomization.yaml" "${dir}/.previous/kustomization.yaml"
+		else
+			rm -f "${dir}/.previous/kustomization.yaml"
+		fi
 	fi
 }
 
@@ -69,4 +74,9 @@ record_deploy_snapshot() {
 	local dir="$1"
 	mkdir -p "${dir}/.last"
 	cp -f "${dir}/dns.yaml" "${dir}/image.env" "${dir}/.last/"
+	if [ -f "${dir}/k8s/kustomization.yaml" ]; then
+		cp -f "${dir}/k8s/kustomization.yaml" "${dir}/.last/kustomization.yaml"
+	else
+		rm -f "${dir}/.last/kustomization.yaml"
+	fi
 }

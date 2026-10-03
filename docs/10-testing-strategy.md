@@ -14,6 +14,8 @@ Last reviewed: 2026-08-15 (REL-001 release-diff and required CI)
 Last reviewed: 2026-08-15 (PERF-001 benches, soak, interop)
 Last reviewed: 2026-08-15 (GIT-001 deployment template probes)
 
+Last reviewed: 2026-10-03 (fake Kubernetes redeploy and exact-commit release-gate regressions)
+
 ## Policy
 
 Every area must have regression tests. No feature, bug fix, protocol behavior, configuration rule, operational script, or release process change is complete without automated coverage appropriate to its risk.
@@ -152,7 +154,7 @@ Soak assertions: every wire answer is a complete old or new RRset (never mixed/p
 - GitOps template (`examples/labdns-deploy`): digest pin, policy rejection
   (broad CIDRs, unapproved upstreams, unsafe chaos), probe suite (exact,
   wildcard, authoritative miss, overlay, unknown-client RA=0 / REFUSED,
-  chaos simulation), rollback, and script fail-closed checks.
+  chaos simulation), rollback, and script fail-closed checks. Fake-kubectl regressions verify apply/restart/status ordering for unchanged desired state and failure before successful snapshot recording, plus restoration of matching Kubernetes/image.env pins on rollback.
 
 ### Documentation tests
 

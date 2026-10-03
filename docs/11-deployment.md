@@ -6,6 +6,7 @@ Last reviewed: 2026-08-19 (operator console on :8080, ui.enabled, allowedOrigins
 Last reviewed: 2026-08-19 (Dockerfile Node 22.14.0 stage for operator console)
 Last reviewed: 2026-08-15 (PERF-001 capacity notes)
 Last reviewed: 2026-08-15 (DEP-001 CLI; GIT-001 GitOps template)
+Last reviewed: 2026-10-03 (Kubernetes redeploy explicitly recreates pods)
 Related ADRs: 0003, 0008
 
 ## Goals
@@ -127,7 +128,7 @@ services:
 
 ## Kubernetes guidance
 
-- Use a ConfigMap or equivalent for non-secret bootstrap YAML.
+- Use a ConfigMap or equivalent for non-secret bootstrap YAML. The deployment template runs `kubectl apply -k`, then `kubectl rollout restart`, then bounded `rollout status`; even unchanged desired state recreates the process, reloads bootstrap, and discards runtime drift. Failed restart or rollout never records a successful deployment snapshot. Snapshot and rollback include the Kustomize image digest alongside `image.env` and bootstrap YAML.
 - Use a Secret or workload identity for credentials.
 - Run one replica for runtime mutation semantics in the initial release.
 - Expose UDP and TCP port 53 through a Service with `externalTrafficPolicy: Local` (or a node-local DaemonSet / hostNetwork path) so refuse-forward classifies the real client IP. Default Cluster SNAT makes every query look like a node address.

@@ -3,9 +3,11 @@ package deploytest
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -417,5 +419,130 @@ func repoRoot(t *testing.T) string {
 			t.Fatal("go.mod not found")
 		}
 		dir = parent
+	}
+}
+
+func TestKubernetesDeployRestartsUnchangedDesiredState(t *testing.T) {
+	for _, failRestart := range []bool{false, true} {
+		t.Run(fmt.Sprint(failRestart), func(t *testing.T) {
+			root := repoRoot(t)
+			tmp := t.TempDir()
+			scripts := filepath.Join(tmp, "scripts")
+			envDir := filepath.Join(tmp, "environments", "main-lab")
+			bin := filepath.Join(tmp, "bin")
+			for _, dir := range []string{scripts, filepath.Join(envDir, "k8s"), bin} {
+				if err := os.MkdirAll(dir, 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			write := func(path, body string) {
+				t.Helper()
+				if err := os.WriteFile(path, []byte(body), 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for _, name := range []string{"deploy.sh", "lib.sh"} {
+				write(filepath.Join(scripts, name), read(t, filepath.Join(root, "examples", "labdns-deploy", "scripts", name)))
+			}
+			write(filepath.Join(scripts, "validate.sh"), "#!/bin/sh\nexit 0\n")
+			write(filepath.Join(envDir, "dns.yaml"), "same desired state\n")
+			write(filepath.Join(envDir, "image.env"), "LABDNS_IMAGE=ghcr.io/hilather/labdns@sha256:abc\n")
+			log := filepath.Join(tmp, "kubectl.log")
+			write(filepath.Join(bin, "kubectl"), `#!/bin/sh
+printf '%s\n' "$*" >> "$KUBECTL_LOG"
+if [ "$FAIL_RESTART" = true ] && [ "$1 $2" = "rollout restart" ]; then exit 1; fi
+`)
+			run := func() ([]byte, error) {
+				cmd := exec.Command(filepath.Join(scripts, "deploy.sh"), "main-lab", "k8s")
+				cmd.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"), "KUBECTL_LOG="+log, "FAIL_RESTART="+fmt.Sprint(failRestart))
+				return cmd.CombinedOutput()
+			}
+			attempts := 2
+			if failRestart {
+				attempts = 1
+			}
+			for i := 0; i < attempts; i++ {
+				out, err := run()
+				if failRestart {
+					if err == nil {
+						t.Fatalf("failed restart reported success: %s", out)
+					}
+				} else if err != nil {
+					t.Fatalf("deploy: %v %s", err, out)
+				}
+			}
+			calls := strings.Split(strings.TrimSpace(read(t, log)), "\n")
+			want := []string{"apply -k " + filepath.Join(envDir, "k8s"), "rollout restart deployment/labdns -n labdns-main-lab"}
+			if !failRestart {
+				want = append(want, "rollout status deployment/labdns -n labdns-main-lab --timeout=120s")
+				want = append(want, want...)
+			}
+			if !reflect.DeepEqual(calls, want) {
+				t.Fatalf("calls=%q want=%q", calls, want)
+			}
+			_, err := os.Stat(filepath.Join(envDir, ".last", "dns.yaml"))
+			if failRestart && !os.IsNotExist(err) {
+				t.Fatal("failed deployment recorded success snapshot")
+			}
+			if !failRestart && err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestKubernetesRollbackRestoresImagePinAndKustomization(t *testing.T) {
+	root := repoRoot(t)
+	tmp := t.TempDir()
+	scripts := filepath.Join(tmp, "scripts")
+	envDir := filepath.Join(tmp, "environments", "main-lab")
+	bin := filepath.Join(tmp, "bin")
+	for _, dir := range []string{scripts, filepath.Join(envDir, "k8s"), bin} {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write := func(path, body string) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte(body), 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, name := range []string{"deploy.sh", "lib.sh", "rollback.sh"} {
+		write(filepath.Join(scripts, name), read(t, filepath.Join(root, "examples", "labdns-deploy", "scripts", name)))
+	}
+	write(filepath.Join(scripts, "validate.sh"), `#!/bin/sh
+set -eu
+root=$(dirname "$0")/..
+pin=$(cat "$root/environments/main-lab/image.env")
+kustomization=$(cat "$root/environments/main-lab/k8s/kustomization.yaml")
+[ "$pin" = "$kustomization" ]
+`)
+	write(filepath.Join(bin, "kubectl"), "#!/bin/sh\nexit 0\n")
+	write(filepath.Join(envDir, "dns.yaml"), "desired state\n")
+	image := filepath.Join(envDir, "image.env")
+	kustomization := filepath.Join(envDir, "k8s", "kustomization.yaml")
+	run := func(script string) {
+		t.Helper()
+		cmd := exec.Command(filepath.Join(scripts, script), "main-lab", "k8s")
+		cmd.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("%s: %v %s", script, err, out)
+		}
+	}
+	oldPin := "LABDNS_IMAGE=ghcr.io/hilather/labdns@sha256:old\n"
+	newPin := "LABDNS_IMAGE=ghcr.io/hilather/labdns@sha256:new\n"
+	write(image, oldPin)
+	write(kustomization, oldPin)
+	run("deploy.sh")
+	write(image, newPin)
+	write(kustomization, newPin)
+	run("deploy.sh")
+	run("rollback.sh")
+	if got := read(t, image); got != oldPin {
+		t.Fatalf("image pin=%s want=%s", got, oldPin)
+	}
+	if got := read(t, kustomization); got != oldPin {
+		t.Fatalf("kustomization pin=%s want=%s", got, oldPin)
 	}
 }

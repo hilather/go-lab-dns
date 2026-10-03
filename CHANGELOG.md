@@ -4,6 +4,14 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+### Fixed
+
+- Kubernetes rollback restores the snapshotted Kustomize image digest alongside bootstrap YAML and image.env, so image-pin rollback validates and deploys the previous image.
+- Kubernetes deployment scripts explicitly restart pods after applying manifests so unchanged desired state reloads bootstrap and discards runtime drift; failed restarts stop before recording a successful deployment.
+- Release CI verification rejects missing commit SHAs and pending reruns instead of reusing an older successful check. GitHub check-run IDs identify the current attempt.
+- Changelog enforcement covers operator web application changes and Go/frontend dependency manifests and locks while excluding test-only files and build output.
+- Architecture documentation now describes the implemented operator console and the current DNS wire adapter dependency.
+
 ## v1.3.2 — 2026-09-21
 
 Curated notes: [docs/releases/v1.3.2.md](https://github.com/hilather/go-lab-dns/blob/v1.3.2/docs/releases/v1.3.2.md).
