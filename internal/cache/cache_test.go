@@ -233,3 +233,36 @@ func TestPolicyFromSpec(t *testing.T) {
 		t.Fatalf("%+v", p)
 	}
 }
+
+func TestNegativeLifetimeUsesSOAMinimumIncludingCNAME(t *testing.T) {
+	for _, code := range []model.RCode{model.RCodeNXDomain, model.RCodeNoError} {
+		for _, minimum := range []string{"2", "0"} {
+			t.Run(string(code)+"/"+minimum, func(t *testing.T) {
+				clk := testutil.NewFakeClock(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+				c := New(Policy{Enabled: true, MaxEntries: 4, MaximumNegativeTTL: 3 * time.Second}, clk)
+				key := Key{Name: "alias.example.", Type: model.TypeA}
+				c.Put(key, Entry{Result: model.Result{RCode: code,
+					Answers:   []model.RR{{Type: model.TypeCNAME, TTL: time.Minute, Data: "missing.example."}},
+					Authority: []model.RR{{Type: model.TypeSOA, TTL: time.Minute, Data: "ns.example. admin.example. 1 2 3 4 " + minimum}},
+				}}, PutOpts{})
+				if minimum == "0" {
+					if c.Stats().Entries != 0 {
+						t.Fatal("cached zero SOA MINIMUM")
+					}
+					return
+				}
+				ent, ok := c.Get(key, GetOpts{})
+				if !ok || !ent.Negative {
+					t.Fatalf("not identified as negative: %+v", ent)
+				}
+				if ent.Result.Authority[0].TTL != 2*time.Second {
+					t.Fatalf("TTL exceeds SOA MINIMUM: %v", ent.Result.Authority[0].TTL)
+				}
+				clk.Advance(2 * time.Second)
+				if _, ok := c.Get(key, GetOpts{}); ok {
+					t.Fatal("negative outlived SOA MINIMUM")
+				}
+			})
+		}
+	}
+}

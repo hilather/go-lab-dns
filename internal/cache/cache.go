@@ -1,6 +1,8 @@
 package cache
 
 import (
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -182,6 +184,7 @@ func (c *Cache) Put(key Key, ent Entry, opts PutOpts) {
 	if c == nil || !c.Enabled() || opts.Skip {
 		return
 	}
+	ent.Negative = ent.Negative || negativeResult(ent.Result)
 	ttl := clampTTL(ent, c.policy)
 	if ttl <= 0 {
 		return
@@ -251,6 +254,28 @@ func PolicyFromSpec(s model.CacheSpec) Policy {
 	}
 }
 
+// negativeResult includes CNAME chains whose terminal target is negative.
+// Callers need not independently classify responses before storing them.
+func negativeResult(res model.Result) bool {
+	if res.RCode == model.RCodeNXDomain {
+		return true
+	}
+	if res.RCode != model.RCodeNoError {
+		return false
+	}
+	for _, rr := range res.Answers {
+		if rr.Type != model.TypeCNAME {
+			return false
+		}
+	}
+	for _, rr := range res.Authority {
+		if rr.Type == model.TypeSOA {
+			return true
+		}
+	}
+	return false
+}
+
 func clampTTL(ent Entry, p Policy) time.Duration {
 	ttl := entryTTL(ent)
 	if ent.Negative {
@@ -285,8 +310,20 @@ func entryTTL(ent Entry) time.Duration {
 	found := false
 	consider := func(rrs []model.RR) {
 		for _, rr := range rrs {
-			if !found || rr.TTL < min {
-				min = rr.TTL
+			ttl := rr.TTL
+			if ent.Negative && rr.Type == model.TypeSOA {
+				fields := strings.Fields(rr.Data)
+				if len(fields) == 7 {
+					if seconds, err := strconv.ParseUint(fields[6], 10, 32); err == nil {
+						minimum := time.Duration(seconds) * time.Second
+						if minimum < ttl {
+							ttl = minimum
+						}
+					}
+				}
+			}
+			if !found || ttl < min {
+				min = ttl
 				found = true
 			}
 		}

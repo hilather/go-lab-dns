@@ -4,6 +4,12 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+### Fixed
+
+- Forwarding rejects upstream packets whose QR, opcode, question count, name, type, or class does not match the request. Invalid and incomplete truncated replies follow transport-error failover and otherwise return SERVFAIL; disabling TCP retry no longer turns a partial reply into a complete cacheable answer.
+- Canceling an in-flight upstream exchange now closes its socket immediately instead of waiting for the attempt deadline.
+- Negative caching respects SOA MINIMUM (including zero) and detects CNAME chains ending in NXDOMAIN or SOA-backed NODATA, including management resolve cache writes.
+
 ## v1.3.2 — 2026-09-21
 
 Curated notes: [docs/releases/v1.3.2.md](https://github.com/hilather/go-lab-dns/blob/v1.3.2/docs/releases/v1.3.2.md).

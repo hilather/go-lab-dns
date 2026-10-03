@@ -12,6 +12,8 @@ import (
 // UpstreamMsg is a parsed upstream response. No library types escape.
 type UpstreamMsg struct {
 	ID                         uint16
+	Opcode                     Opcode
+	Questions                  []model.Query
 	QR, AA, TC, RD, RA, AD, CD bool
 	RCode                      model.RCode
 	Answers                    []model.RR
@@ -34,15 +36,23 @@ func UnpackUpstream(msg []byte) (*UpstreamMsg, error) {
 		return nil, fmt.Errorf("%w: %v", ErrMalformed, err)
 	}
 	u := &UpstreamMsg{
-		ID:    m.Id,
-		QR:    m.Response,
-		AA:    m.Authoritative,
-		TC:    m.Truncated,
-		RD:    m.RecursionDesired,
-		RA:    m.RecursionAvailable,
-		AD:    m.AuthenticatedData,
-		CD:    m.CheckingDisabled,
-		RCode: modelRcode(m.Rcode),
+		ID:     m.Id,
+		Opcode: Opcode(m.Opcode),
+		QR:     m.Response,
+		AA:     m.Authoritative,
+		TC:     m.Truncated,
+		RD:     m.RecursionDesired,
+		RA:     m.RecursionAvailable,
+		AD:     m.AuthenticatedData,
+		CD:     m.CheckingDisabled,
+		RCode:  modelRcode(m.Rcode),
+	}
+	for _, q := range m.Question {
+		class := modelClass(q.Qclass)
+		if q.Qclass == 0 {
+			class = "CLASS0"
+		}
+		u.Questions = append(u.Questions, model.Query{Name: model.Name(canonicalName(q.Name)), Type: modelType(q.Qtype), Class: class})
 	}
 	u.Answers = fromWireRRs(m.Answer)
 	u.Authority = fromWireRRs(m.Ns)
