@@ -54,6 +54,7 @@ func (s *App) Reset(ctx context.Context, actor Actor, in ResetIn) (*ApplyResult,
 	// succeeds so a bad file cannot replace Bootstrap.
 	s.store.SetBootstrap(next)
 	s.idemp.clear()
+	s.engine.CancelDelays()
 
 	cand := &candidate{
 		prev:   displaced,

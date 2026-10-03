@@ -4,6 +4,10 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+- REST mutations with optional bodies reject trailing JSON values and delimiters before invoking reset, cache flush, or emergency controls. REST/MCP duration formatting handles the minimum signed duration without recursion overflow.
+- Successful bootstrap reset cancels outstanding chaos delay reservations; failed reset leaves existing delays intact. Cache flush now enforces administrator authorization and records successful and denied calls in the shared audit ring.
+- Operation decoding preserves arbitrary chaos policy label values named `ttl`, `duration`, or other duration field names.
+
 - REST/MCP plans and mutations accept documented duration strings for DNS editor records and chaos designer policies; authorization no longer mistakes valid TTL/delay strings for protected-object or invalid-policy errors.
 
 - DNS semantics and chaos safety documentation are embedded in the binary so REST/MCP documentation endpoints and the operator console work in production containers without a source checkout.

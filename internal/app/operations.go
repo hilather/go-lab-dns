@@ -640,6 +640,9 @@ func coerceOpDurations(v any) error {
 	switch x := v.(type) {
 	case map[string]any:
 		for k, child := range x {
+			if k == "labels" {
+				continue // arbitrary string keys, not model duration fields
+			}
 			if opDurationFields[k] {
 				switch n := child.(type) {
 				case string:

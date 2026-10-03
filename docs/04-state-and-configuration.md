@@ -2,6 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Configuration, Application
+Last reviewed: 2026-10-03 (reset cancels delays; operation label preservation)
 Last reviewed: 2026-08-18 (plan idempotency rechecks expectedRevision; emergency cancel)
 Last reviewed: 2026-08-19 (spec.ui.enabled, TargetUI, management.allowedOrigins)
 Last reviewed: 2026-08-23 (over-length desired-state names; ADR 0009)
@@ -92,7 +93,7 @@ Requirements:
 
 ## Reset
 
-Reset rereads the mounted bootstrap file, validates and compiles it, and swaps only after success. A missing or invalid replacement file leaves the current runtime state active and does not clear the idempotency cache. Reset clears runtime idempotency entries after a successful swap. Runtime-only emergency inhibit (`Store` process bit + `Snapshot.EmergencyChaosOff`) is cleared on reset (YAML `emergencyDisabled` still compiles on). The service never writes the bootstrap file. When no mount path is configured, reset recompiles the last `Store.Bootstrap()` canonical state.
+Reset rereads the mounted bootstrap file, validates and compiles it, and swaps only after success. A missing or invalid replacement file leaves the current runtime state active and does not clear the idempotency cache. Reset clears runtime idempotency entries and cancels outstanding chaos delay reservations after a successful swap. A failed reset cancels no reservations. Runtime-only emergency inhibit (`Store` process bit + `Snapshot.EmergencyChaosOff`) is cleared on reset (YAML `emergencyDisabled` still compiles on). The service never writes the bootstrap file. When no mount path is configured, reset recompiles the last `Store.Bootstrap()` canonical state.
 
 `EmergencyDisableChaos` sets the store-level inhibit bit, CAS-stamps the current snapshot, and cancels outstanding delay reservations. `Store.Swap` copies that bit onto every installed snapshot, so apply cannot clear it and emergency cannot roll back a concurrent apply's Canonical. SIGUSR1 uses the same combined path.
 
@@ -365,3 +366,5 @@ Resolved for first GA:
 
 - Stable IDs are user-supplied only.
 - Canonical export does not preserve comments (no sidecar).
+
+Mutation operation decoding preserves arbitrary `labels` keys as strings, even when a key is also a duration field name such as `ttl` or `duration`.
