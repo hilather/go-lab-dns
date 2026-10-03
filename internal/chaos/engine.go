@@ -239,7 +239,7 @@ func (e *Engine) decide(snap *snapshot.Snapshot, in DecisionIn, filter []model.P
 		if cp.RequestedProbability > prob {
 			plan.Clamped = append(plan.Clamped, ClampRecord{PolicyID: p.ID, Action: "selector", Reason: "max_drop_probability", From: strconv.FormatFloat(cp.RequestedProbability, 'g', -1, 64), To: strconv.FormatFloat(prob, 'g', -1, 64)})
 		}
-		if pval >= prob {
+		if prob <= 0 || (prob < 1 && pval >= prob) {
 			plan.Decisions = append(plan.Decisions, PolicyDecision{
 				PolicyID: p.ID, Precedence: cp.Precedence, SkipReason: "probability", Hash: h,
 			})

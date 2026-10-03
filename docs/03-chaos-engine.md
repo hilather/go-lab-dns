@@ -2,7 +2,7 @@
 
 Status: Proposed normative behavior
 Owners: Chaos, DNS, Security
-Last reviewed: 2026-10-03 (aggregate drop selector allocation, composed delay caps and transport precedence)
+Last reviewed: 2026-10-03 (aggregate drop selector allocation and numeric mapping boundaries)
 Last reviewed: 2026-08-18 (exclusive-group spans Decide phases)
 Related ADRs: 0005, 0007
 
@@ -138,9 +138,9 @@ Digest use:
 - `d = SHA-256(encoding)`
 - `u0 = uint64(d[0:8])` big-endian; `u1 = uint64(d[8:16])` big-endian
 - Uniform `[0,1)`: `p = float64(u0) / 2^64`, `w = float64(u1) / 2^64` (never integer `u/2^64`)
-- Probability gate: trigger iff `p < probability` (1.0 always triggers)
-- Weighted outcome: ignore weight ≤ 0. `total = sum(weights)` as `float64`. `t = w * total`. Walk outcomes in configured order; select the first whose cumulative weight is `> t`. `total == 0` skips the policy
-- Uniform delay in `[min,max)`: use `u1` of a second `hash-v1` encoding identical except field 10 is the UTF-8 string `delay` concatenated with the original nonce. Map `float64(u1)/2^64` into `[min,max)` as `min + unit*(max-min)`
+- Probability gate: trigger iff `p < probability` (1.0 always triggers, including when floating-point conversion rounds an upper-edge draw to 1.0; zero never triggers)
+- Weighted outcome: ignore weight ≤ 0. `total = sum(weights)` as `float64`. `t = w * total`. Walk outcomes in configured order; select the first whose cumulative weight is `> t`. `total == 0` skips the policy. If summing finite weights overflows, divide weights by their maximum before mapping; ordinary finite sums retain their existing mapping
+- Uniform delay in `[min,max)`: use `u1` of a second `hash-v1` encoding identical except field 10 is the UTF-8 string `delay` concatenated with the original nonce. Map `float64(u1)/2^64` into `[min,max)` as `min + unit*(max-min)`. At the floating-point upper edge, clamp the mapped integer offset to `max-min-1` so rounding or conversion overflow cannot return `max` or a negative duration
 
 Not inputs: raw client IP (except the optional `client-bucket` hex), goroutine id, query id, wall time except the documented bucket.
 
@@ -211,7 +211,7 @@ An optional Extended DNS Error can explain an injected failure. EDE never change
 - Never retain an operation beyond the global request lifetime.
 - A global `maxDropProbability` between zero and one bounds aggregate drop probability across policies and execution phases. Compilation reserves a conservative snapshot-wide selector budget: sum each drop-capable policy’s requested probability once for each distinct execution group capable of dropping (pre-resolution and response). When this sum exceeds the cap, scale all those compiled selector probabilities proportionally so the sum stays within the cap. The same effective threshold is used in both phases. This union bound requires no independence between decisions and covers time-bucket transitions and callers without random sticky draws.
 - A positive-weight outcome containing silent drop or pressure-on-exceed drop reserves a share; outcome weights do not relax that share. Disabled, scheduled, expired, disjoint-scope, and exclusive policies also reserve shares, preserving the same bounded thresholds for simulation and activation. This conservative allocation can reduce fault frequency even when scopes cannot overlap, and mixed non-drop outcomes in a drop-capable policy become less frequent too. A policy that can drop in both execution groups reserves twice; a single policy dropping in one group retains its previous `min(probability, cap)` threshold. Zero retains unlimited selector semantics; one requires no clamping because aggregate probability cannot exceed one.
-- Allocation changes only immutable compiled policy copies. Canonical configuration and exports retain requested probabilities; decisions include `max_drop_probability` selector clamp evidence with requested and effective thresholds. The frozen hash encoding, weighted-outcome mapping, and random draw sequence remain unchanged. Existing experiments with composed or multi-phase drop policies can trigger fewer faults under a positive cap.
+- Allocation changes only immutable compiled policy copies. Canonical configuration and exports retain requested probabilities; action plans and simulation plans include `max_drop_probability` selector clamp evidence with requested and effective thresholds. The frozen hash encoding, weighted-outcome mapping, and random draw sequence remain unchanged. Existing experiments with composed or multi-phase drop policies can trigger fewer faults under a positive cap.
 
 ### 4. TCP close or reset
 
