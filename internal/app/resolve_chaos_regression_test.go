@@ -65,6 +65,7 @@ func TestCachedManagementResolutionUsesCurrentClientContext(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, current := range []ResolveIn{
+		{Name: first.Name, Type: first.Type, Client: netip.MustParseAddr("10.42.255.9"), Transport: model.TransportUDP, UseCache: true, ApplyChaos: true},
 		{Name: first.Name, Type: first.Type, Client: netip.MustParseAddr("10.42.255.9"), Transport: model.TransportTCP, UseCache: true, ApplyChaos: true},
 		{Name: first.Name, Type: first.Type, Transport: model.TransportTCP, UseCache: true, ApplyChaos: true},
 	} {
