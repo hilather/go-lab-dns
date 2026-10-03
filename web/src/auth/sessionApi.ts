@@ -8,6 +8,8 @@ let mutationTail: Promise<void> | null = null
 // Retain the known token for failed logout or superseded login cleanup.
 let pendingRevocation = ''
 let recoveryBlocked = false
+// CSRF of a cookie whose sign-in body was unreadable; used only so logout can revoke it.
+let orphanCsrf = ''
 
 function enqueueMutation<T>(run: () => Promise<T>): Promise<T> {
   const result = mutationTail ? mutationTail.then(run) : run()
@@ -23,6 +25,17 @@ async function deleteWithCsrf(csrf: string): Promise<void> {
   const res = await fetch('/v1/session', { method: 'DELETE', credentials: 'include', headers })
   if (res.status === 204 || res.status === 401) return
   if (!res.ok) throw await readProblem(res)
+}
+
+async function cookieCsrf(): Promise<string> {
+  try {
+    const res = await fetch('/v1/session', { method: 'GET', credentials: 'include' })
+    if (!res.ok) return ''
+    const body = (await res.json()) as { csrf?: unknown }
+    return typeof body.csrf === 'string' ? body.csrf : ''
+  } catch {
+    return ''
+  }
 }
 
 async function revokePendingSession(): Promise<void> {
@@ -140,7 +153,15 @@ export async function createSession(bearer?: string): Promise<SessionResponse> {
     if (!res.ok) throw await readProblem(res)
     recoveryBlocked = true
     clear()
-    const body = await parseSession(res)
+    let body: SessionResponse
+    try {
+      body = await parseSession(res)
+    } catch (err) {
+      // The cookie is set but its CSRF is only in the unreadable body; learn it
+      // from a cookie GET so logout can revoke that session.
+      orphanCsrf = await cookieCsrf()
+      throw err
+    }
     if (gen !== sessionGen) {
       pendingRevocation = body.csrf
       await revokePendingSession()
@@ -148,6 +169,7 @@ export async function createSession(bearer?: string): Promise<SessionResponse> {
     }
     pendingRevocation = ''
     recoveryBlocked = false
+    orphanCsrf = ''
     setCsrf(body.csrf)
     return body
   })
@@ -155,15 +177,18 @@ export async function createSession(bearer?: string): Promise<SessionResponse> {
 
 export async function deleteSession(): Promise<void> {
   ++sessionGen
-  const csrf = getCsrf()
+  const memoryCsrf = getCsrf()
   clear()
   return enqueueMutation(async () => {
     if (pendingRevocation) await revokePendingSession()
+    // Read late so a queued sign-in has finished learning an orphan cookie's CSRF.
+    const csrf = memoryCsrf || orphanCsrf
     pendingRevocation = csrf
     recoveryBlocked = true
     await deleteWithCsrf(csrf)
     pendingRevocation = ''
     recoveryBlocked = false
+    orphanCsrf = ''
   })
 }
 

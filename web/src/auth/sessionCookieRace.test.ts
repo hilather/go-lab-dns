@@ -9,7 +9,7 @@ function cookieServer() {
   let holdDelete = false
   let failureStatus: number | 'network' = 503
   let failures = 0
-  let invalidBody = false
+  let invalidBody: boolean | 'malformed' = false
   const deliveries: (() => void)[] = []
   const sessions = new Map<string, { csrf: string; actor: { id: string; class: string } }>()
   const methods: string[] = []
@@ -21,7 +21,7 @@ function cookieServer() {
       const body = { csrf: `csrf-${id}`, actor: { id, class: 'ui-session' } }
       sessions.set(id, body)
       return new Promise<Response>((resolve) => {
-        const deliver = () => { cookie = id; resolve(Response.json(invalidBody ? {} : body)) }
+        const deliver = () => { cookie = id; resolve(invalidBody === 'malformed' ? new Response('{', { status: 200 }) : Response.json(invalidBody ? {} : body)) }
         if (holdPost) deliveries.push(deliver)
         else deliver()
       })
@@ -41,7 +41,7 @@ function cookieServer() {
   }))
   return {
     methods, sessions,
-    invalidBody: (value: boolean) => { invalidBody = value },
+    invalidBody: (value: boolean | 'malformed') => { invalidBody = value },
     holdPost: () => { holdPost = true }, releasePosts: () => { holdPost = false },
     holdDelete: () => { holdDelete = true }, failDeletes: (count: number, status: number | 'network' = 503) => { failures = count; failureStatus = status },
     deliver: () => { const deliver = deliveries.shift(); expect(deliver).toBeDefined(); deliver!() },
@@ -161,8 +161,38 @@ it('blocks recovery after Set-Cookie with an invalid login body', async () => {
   server.invalidBody(true)
   await expect(createSession('old')).rejects.toMatchObject({ code: 'invalid_value' })
   expect(await getSession()).toBeNull()
-  expect(server.methods).toEqual(['POST'])
+  // The only request after the POST is the cookie GET that learns the CSRF for logout.
+  expect(server.methods).toEqual(['POST', 'GET'])
   server.invalidBody(false)
   const newer = await createSession('new')
   expect((await getSession())?.actor.id).toBe(newer.actor.id)
+})
+
+it.each([true, 'malformed'] as const)('logout revokes a cookie whose login body was unreadable (%s) and unblocks Continue', async (kind) => {
+  const server = cookieServer()
+  server.invalidBody(kind)
+  await expect(createSession()).rejects.toBeDefined()
+  expect(await getSession()).toBeNull()
+  await expect(deleteSession()).resolves.toBeUndefined()
+  expect(server.sessions.size).toBe(0)
+  server.invalidBody(false)
+  const next = await createSession()
+  expect((await getSession())?.actor.id).toBe(next.actor.id)
+})
+
+it('a logout queued behind an unreadable login still revokes its cookie', async () => {
+  const server = cookieServer()
+  server.invalidBody(true)
+  server.holdPost()
+  const login = createSession()
+  const rejected = expect(login).rejects.toBeDefined()
+  const logout = deleteSession()
+  server.deliver()
+  await rejected
+  await expect(logout).resolves.toBeUndefined()
+  expect(server.sessions.size).toBe(0)
+  server.invalidBody(false)
+  server.releasePosts()
+  const next = await createSession()
+  expect((await getSession())?.actor.id).toBe(next.actor.id)
 })
