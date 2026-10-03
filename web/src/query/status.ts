@@ -38,10 +38,11 @@ export async function fetchStatus(): Promise<unknown> {
   return throwOnError(await client.GET('/v1/status'))
 }
 
-export function useStatusQuery() {
+export function useStatusQuery(enabled = true) {
   const queryClient = useQueryClient()
   const visible = useDocumentVisible()
   const query = useQuery({
+    enabled,
     queryKey: queryKeys.status(),
     queryFn: fetchStatus,
     refetchInterval: pollInterval(visible, STATUS_POLL_MS),

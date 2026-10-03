@@ -19,3 +19,10 @@ export function createQueryClient(): QueryClient {
 }
 
 export const queryClient = createQueryClient()
+
+// Cancel before clearing so ignored AbortSignals cannot repopulate another identity's cache.
+export async function clearSessionQueries(client: QueryClient): Promise<void> {
+  const cancelled = client.cancelQueries()
+  client.clear()
+  await cancelled
+}

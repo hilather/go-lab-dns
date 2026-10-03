@@ -117,3 +117,13 @@ describe('hasWriteScope', () => {
     expect(hasWriteScope(null)).toBe(false)
   })
 })
+
+it.each(['dns.forwarders.write', 'dns.chaos.write', 'dns.chaos.activate'])('allows split mutation scope %s into changes workflow', (scope) => {
+  expect(hasWriteScope({ scopes: [scope] })).toBe(true)
+})
+it.each(['dns-editor', 'forwarder-operator', 'chaos-designer', 'chaos-operator', 'chaos-admin'])('allows role-only %s into changes workflow', (role) => {
+  expect(hasWriteScope({ role })).toBe(true)
+})
+it('keeps emergency-only actors out of regular changes', () => {
+  expect(hasWriteScope({ role: 'emergency-operator', scopes: ['dns.chaos.emergency'] })).toBe(false)
+})

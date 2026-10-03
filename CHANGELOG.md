@@ -45,6 +45,11 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Keep the displaced snapshot pointer monotonic under concurrent emergency and normal publications.
 - Snapshot publication keeps generation monotonic when emergency controls advance it during compilation; apply/reset results report the actual published generation.
 - Forwarding runtime health and round-robin counters discard removed topology IDs instead of retaining every historical deployment. Late old-snapshot exchanges cannot restore retired state; retargeting an upstream endpoint or transport clears its previous health. Caller cancellation and simulated upstream failures do not mark real upstreams unhealthy; expiring the total query deadline while waiting on an upstream still counts against it.
+- Operator console cancels and clears cached session, audit, and state data on identity transitions; late session responses cannot replace a newer CSRF secret or restore an old actor after logout.
+- Serialize browser session cookie mutations and revoke superseded logins before recovery; failed logout cleanup stays fail closed while explicit bearer sign-in can recover.
+- Shell revision uses the shared status query and refreshes after mutations, promptly discarding stale plans. Changes permits forwarder and chaos mutation scopes and built-in editor/operator roles while REST still authorizes each operation.
+- Chaos activation retries reuse idempotency keys only for the same request; edits to reason, expiry, policy, or revision get a new key.
+- Web development dependency `undici` updates from 7.29.0 to 7.29.1; required web CI now audits the complete dependency lockfile for high and critical vulnerabilities.
 
 ## v1.3.2 — 2026-09-21
 

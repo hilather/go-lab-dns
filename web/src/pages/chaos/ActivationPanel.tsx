@@ -60,7 +60,7 @@ export function ActivationPanel({
   const [problem, setProblem] = useState<unknown>(null)
   const [result, setResult] = useState<ApplyResultView | null>(null)
   const keyRef = useRef('')
-  const lastKind = useRef<MutationKind | null>(null)
+  const lastRequest = useRef('')
 
   const fieldsOn = sessionKnown && deactivateMissing === '' && busy === null
   const reasonOk = reason.trim() !== ''
@@ -70,10 +70,10 @@ export function ActivationPanel({
   const rfcExpiry = datetimeLocalToRFC3339(expiresAt)
   const canExpire = fieldsOn && reasonOk && revisionOk && rfcExpiry !== '' && expireMissing === ''
 
-  function keyFor(kind: MutationKind): string {
-    if (lastKind.current !== kind || keyRef.current === '') {
+  function keyFor(identity: string): string {
+    if (lastRequest.current !== identity || keyRef.current === '') {
       keyRef.current = newChaosIdempotencyKey()
-      lastKind.current = kind
+      lastRequest.current = identity
     }
     return keyRef.current
   }
@@ -88,11 +88,11 @@ export function ActivationPanel({
     const body: Record<string, string> = {
       expectedRevision,
       reason: reason.trim(),
-      idempotencyKey: keyFor(kind),
     }
     if (kind === 'expire' || rfcExpiry !== '') {
       body.expiresAt = rfcExpiry
     }
+    body.idempotencyKey = keyFor(JSON.stringify([kind, policyId, body]))
     const params = { path: { id: policyId } }
     try {
       const res =
@@ -107,7 +107,7 @@ export function ActivationPanel({
         return
       }
       keyRef.current = ''
-      lastKind.current = null
+      lastRequest.current = ''
       setResult(parseApplyResult(res.data))
       await Promise.all([
         invalidateSnapshotQueries(queryClient),

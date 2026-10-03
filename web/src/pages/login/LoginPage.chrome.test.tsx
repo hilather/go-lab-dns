@@ -3,6 +3,8 @@ import { createRoot, type Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as sessionApi from '../../auth/sessionApi'
+import { queryClient } from '../../query/client'
+import { queryKeys } from '../../query/keys'
 import { LoginPage } from './LoginPage'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -24,6 +26,8 @@ afterEach(async () => {
 
 describe('LoginPage chrome', () => {
   it('paints the charcoal login card with an accent Sign in button', async () => {
+    queryClient.setQueryData(queryKeys.audit(), ['previous identity'])
+    queryClient.setQueryData(queryKeys.session(), { scopes: ['dns.admin'] })
     vi.spyOn(sessionApi, 'getSession').mockResolvedValue(null)
     host = document.createElement('div')
     document.body.appendChild(host)
@@ -40,6 +44,7 @@ describe('LoginPage chrome', () => {
         expect(host?.querySelector('button.btn-accent')?.textContent).toBe('Sign in')
       })
     })
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
     expect(host?.querySelector('main.login')).not.toBeNull()
     expect(host?.querySelector('.login-card.surface')).not.toBeNull()
     expect(host?.querySelector('.page-lede')?.textContent).toBe('Sign in to the operator console.')
