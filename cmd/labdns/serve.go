@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hilather/go-lab-dns/internal/app"
@@ -23,6 +24,7 @@ import (
 	"github.com/hilather/go-lab-dns/internal/control/rest"
 	"github.com/hilather/go-lab-dns/internal/dnsquery"
 	"github.com/hilather/go-lab-dns/internal/dnsserver"
+	"github.com/hilather/go-lab-dns/internal/forwarder"
 	"github.com/hilather/go-lab-dns/internal/model"
 	"github.com/hilather/go-lab-dns/internal/observability"
 	"github.com/hilather/go-lab-dns/internal/snapshot"
@@ -52,6 +54,7 @@ type serveRuntime struct {
 	snap    *snapshot.Snapshot
 	stopSig func()
 	pidPath string
+	metrics *observability.Registry
 }
 
 func serve(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -125,10 +128,21 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 	}
 	store.InstallBootstrap(snap)
 
-	sigCh, stopSig := chaos.NotifyUSR1()
+	sigCtx, cancelSignals := context.WithCancel(ctx)
+	sigCh, unregisterSignals := chaos.NotifyUSR1()
+	signalDone := make(chan struct{})
 	go func() {
-		chaos.ServeSignals(ctx, sigCh, store, eng)
-		stopSig()
+		defer close(signalDone)
+		defer unregisterSignals()
+		chaos.ServeSignals(sigCtx, sigCh, store, eng)
+	}()
+	var stopOnce sync.Once
+	stopSig := func() { stopOnce.Do(func() { cancelSignals(); <-signalDone }) }
+	success := false
+	defer func() {
+		if !success {
+			stopSig()
+		}
 	}()
 
 	c := cache.New(cache.Policy{
@@ -140,12 +154,15 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 		StaleServing:       snap.CachePolicy.StaleServing,
 	}, nil)
 	reg := observability.NewRegistry()
-	h := dnsquery.NewOpts(dnsquery.Opts{Store: store, Engine: eng, Cache: c, Metrics: reg})
+	fwd := forwarder.NewRuntime(nil, nil, nil, nil)
+	h := dnsquery.NewOpts(dnsquery.Opts{Store: store, Engine: eng, Cache: c, Metrics: reg, Fwd: fwd})
 	svc := app.New(app.Options{
 		Store:         store,
 		Cache:         c,
 		Engine:        eng,
 		BootstrapPath: path,
+		Health:        fwd.Health,
+		Metrics:       reg,
 	})
 
 	udpAddr, tcpAddr := dnsListenAddrs(snap)
@@ -195,6 +212,7 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 		snap:    snap,
 		stopSig: stopSig,
 		pidPath: flags.PIDFile,
+		metrics: reg,
 	}
 
 	if !mgmtOff {
@@ -226,7 +244,7 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 			mcp := cur.Canonical.Spec.Management.MCP
 			return mcp != nil && mcp.AllowLegacyClients
 		}
-		mcpSrv, err := mcpctl.New(mcpctl.Config{Service: svc, Auth: authn, Origins: origins, LegacyClients: legacy})
+		mcpSrv, err := mcpctl.New(mcpctl.Config{Service: svc, Auth: authn, Metrics: reg, Origins: origins, LegacyClients: legacy})
 		if err != nil {
 			_ = rt.Shutdown(context.Background())
 			return nil, err
@@ -237,6 +255,7 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 		}
 		mgmt, err := rest.New(rest.Config{
 			Addr:      mgmtAddr,
+			Metrics:   reg,
 			Service:   svc,
 			Auth:      authn,
 			Sessions:  sessions,
@@ -264,6 +283,7 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 		_ = rt.Shutdown(context.Background())
 		return nil, fmt.Errorf("pid-file: %w", err)
 	}
+	success = true
 	return rt, nil
 }
 

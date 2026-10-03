@@ -177,7 +177,6 @@ func (rt *Runtime) ExchangeOpts(ctx context.Context, snap *snapshot.Snapshot, q 
 			continue
 		}
 		if opts.ForceTimeout {
-			rt.Health.RecordFailure(up.ID)
 			last = servfail(snap, q, policyID, up.ID)
 			if !fo.OnTimeout {
 				return last, nil
@@ -186,7 +185,6 @@ func (rt *Runtime) ExchangeOpts(ctx context.Context, snap *snapshot.Snapshot, q 
 			continue
 		}
 		if opts.ForceTransportError {
-			rt.Health.RecordFailure(up.ID)
 			last = servfail(snap, q, policyID, up.ID)
 			if !fo.OnTransportError {
 				return last, nil

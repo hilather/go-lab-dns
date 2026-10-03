@@ -16,6 +16,7 @@ import (
 	"github.com/hilather/go-lab-dns/internal/audit"
 	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/capabilities"
+	"github.com/hilather/go-lab-dns/internal/config"
 	"github.com/hilather/go-lab-dns/internal/domainerr"
 	"github.com/hilather/go-lab-dns/internal/observability"
 )
@@ -174,6 +175,9 @@ func New(cfg Config) (*Server, error) {
 	if len(cfg.Mounts) > 0 {
 		mux := http.NewServeMux()
 		for path, h := range cfg.Mounts {
+			if !config.ValidManagementMountPath(path) || h == nil {
+				return nil, errors.New("rest: mount must be a non-nil handler at a clean literal path outside /v1 and /")
+			}
 			mux.Handle(path, h)
 		}
 		mux.Handle("/", http.HandlerFunc(s.serveHTTP))
