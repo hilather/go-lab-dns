@@ -4,25 +4,32 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+## v1.4.0 — 2026-10-04
+
+Curated notes: [docs/releases/v1.4.0.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.4.0.md).
+
+### Added
+
+- Optional `baseAnswers` and `chaosDecisions` explanation fields in REST/MCP management resolve/explain results and the generated schemas (OpenAPI `ResolutionExplanation`, `ChaosDecision`); TTLs and decision delays remain duration strings.
+
+### Changed
+
+- Configuration validation now enforces positive `maxActiveHighImpactPolicies` against enabled high-impact policies and rejects negative delayed-concurrency, high-impact-count, and default-lifetime safety limits and negative policy budget limits. Positive `budget.maxFrequency` is rejected because the runtime does not implement that cap; omit it or set it to zero.
+- Enforce aggregate drop probability across composed policies and both execution groups by allocating an immutable snapshot-wide selector budget. Pressure drops and inactive policies reserve shares too; mixed outcomes, disjoint policies, and policies dropping in both phases may trigger less often under a positive cap. Canonical export, hash-v1 encoding, and random draw counts are unchanged; action-plan clamp evidence reports effective thresholds. Zero remains unlimited and cap one leaves selectors unchanged.
+- Deployment chaos verification now rejects unlimited zero delay/concurrency caps when delays are configured, checks actual drop-policy probabilities, and counts enabled high-impact policies directly against deployment ceilings.
+- Reject unsupported REST paths and MCP paths that collide with REST/operator-console routes or contain mux patterns. REST remains `/v1`; distinct MCP prefixes remain supported.
+- Changelog enforcement covers operator web application changes and Go/frontend dependency manifests and locks while excluding test-only files and build output.
+- Web development dependency `undici` updates from 7.29.0 to 7.29.1; required web CI now audits the complete dependency lockfile for high and critical vulnerabilities.
+
 ### Fixed
 
 - Correct numerical edge handling without changing hash-v1 inputs or draws: probability one always triggers, uniform delays remain inside their half-open range even at maximum 64-bit draws, and finite weighted outcomes remain correctly proportional when their sum overflows. Interior finite mappings are unchanged.
-
-- Enforce aggregate drop probability across composed policies and both execution groups by allocating an immutable snapshot-wide selector budget. Pressure drops and inactive policies reserve shares too; mixed outcomes, disjoint policies, and policies dropping in both phases may trigger less often under a positive cap. Canonical export, hash-v1 encoding, and random draw counts are unchanged; action-plan clamp evidence reports effective thresholds. Zero remains unlimited and cap one leaves selectors unchanged.
-
-- Deployment chaos verification now rejects unlimited zero delay/concurrency caps when delays are configured, checks actual drop-policy probabilities, and counts enabled high-impact policies directly against deployment ceilings.
-
 - Chaos delay and pressure bookkeeping now discards released or expired idle policy entries. Unlimited-rate pressure policies no longer retain unnecessary request timestamps.
-
 - Configuration JSON now rejects trailing closing delimiters, label keys named after duration fields round-trip unchanged, and duration formatting handles the minimum signed 64-bit duration without recursive overflow.
-
 - Configuration schema inspection now works in standalone binaries and the scratch container; the published schema is embedded directly in the executable.
-
 - Deployment verification now checks actual alternate IPv4/IPv6 action values against `AllowedAlternateAddresses`, including disabled policies. Emptying the desired-state address allowlist no longer bypasses deployment address policy.
-
 - Composed chaos delays now obey cumulative global and per-policy delay caps and every contributing policy's concurrency cap. Reservations still use one global slot per delayed query and release all policy slots on completion or cancellation.
 - Lower-precedence chaos outcomes can no longer replace a selected conflicting transport action within or across resolution phases. Within one decision phase, live evaluation and simulation report skipped conflicting outcomes as `transport_conflict`.
-- Configuration validation now enforces positive `maxActiveHighImpactPolicies` against enabled high-impact policies and rejects negative delayed-concurrency, high-impact-count, and default-lifetime safety limits and negative policy budget limits. Positive `budget.maxFrequency` is rejected because the runtime does not implement that cap; omit it or set it to zero.
 - DNS admission preserves reserved QCLASS zero and returns NOTIMP over UDP and TCP instead of treating it as IN.
 - Forwarding rejects upstream packets whose QR, opcode, question count, name, type, or class does not match the request. Invalid and incomplete truncated replies follow transport-error failover and otherwise return SERVFAIL; disabling TCP retry no longer turns a partial reply into a complete cacheable answer.
 - Canceling an in-flight upstream exchange now closes its socket immediately instead of waiting for the attempt deadline.
@@ -36,12 +43,10 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Kubernetes rollback restores the snapshotted Kustomize image digest alongside bootstrap YAML and image.env, so image-pin rollback validates and deploys the previous image.
 - Kubernetes deployment scripts explicitly restart pods after applying manifests so unchanged desired state reloads bootstrap and discards runtime drift; failed deployments preserve both successful snapshots, so rollback still restores the previous successful deployment after apply, restart, or rollout failure.
 - Release CI verification rejects missing commit SHAs and pending reruns instead of reusing an older successful check. GitHub check-run IDs identify the current attempt.
-- Changelog enforcement covers operator web application changes and Go/frontend dependency manifests and locks while excluding test-only files and build output.
 - Architecture documentation now describes the implemented operator console and the current DNS wire adapter dependency.
 - Wire shared upstream health and DNS/REST/MCP/application metrics in production; synthetic chaos faults no longer poison upstream health. Stop runtime signal workers on shutdown and failed startup.
-- Reject unsupported REST paths and MCP paths that collide with REST/operator-console routes or contain mux patterns. REST remains `/v1`; distinct MCP prefixes remain supported.
 - Apply cache policies immediately across DNS and management queries, clear disabled caches, and reject stale-generation cache writes. Reset restores bootstrap cache policy.
-- Management resolve with `applyChaos: true` and explain now model active chaos without executing delays, forwarding, or live chaos mutations. Add optional `baseAnswers` and `chaosDecisions` explanation fields to REST/MCP and generated schemas; TTLs and decision delays remain duration strings. Resolve may cache the base result, while explain bypasses the cache. Cached explanations use the current caller and transport.
+- Management resolve with `applyChaos: true` and explain now model active chaos without executing delays, forwarding, or live chaos mutations. Resolve may cache the base result, while explain bypasses the cache. Cached explanations use the current caller and transport.
 - Keep the displaced snapshot pointer monotonic under concurrent emergency and normal publications.
 - Snapshot publication keeps generation monotonic when emergency controls advance it during compilation; apply/reset results report the actual published generation.
 - Forwarding runtime health and round-robin counters discard removed topology IDs instead of retaining every historical deployment. Late old-snapshot exchanges cannot restore retired state; retargeting an upstream endpoint or transport clears its previous health. Caller cancellation and simulated upstream failures do not mark real upstreams unhealthy; expiring the total query deadline while waiting on an upstream still counts against it.
@@ -49,7 +54,6 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Serialize browser session cookie mutations and revoke superseded logins before recovery; failed logout cleanup stays fail closed while explicit bearer sign-in can recover.
 - Shell revision uses the shared status query and refreshes after mutations, promptly discarding stale plans. Changes permits forwarder and chaos mutation scopes and built-in editor/operator roles while REST still authorizes each operation.
 - Chaos activation retries reuse idempotency keys only for the same request; edits to reason, expiry, policy, or revision get a new key.
-- Web development dependency `undici` updates from 7.29.0 to 7.29.1; required web CI now audits the complete dependency lockfile for high and critical vulnerabilities.
 - Forwarder comments and DNS semantics documentation now state that an expired query deadline during an upstream exchange answers SERVFAIL; only cancellation (shutdown, TCP peer close) or a deadline that expired before handling sends no answer.
 
 ## v1.3.2 — 2026-09-21
