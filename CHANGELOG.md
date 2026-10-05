@@ -4,9 +4,17 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+## v1.4.1 — 2026-10-05
+
+Curated notes: [docs/releases/v1.4.1.md](https://github.com/hilather/go-lab-dns/blob/v1.4.1/docs/releases/v1.4.1.md).
+
+### Fixed
+
+- Notes-only patch: no code, API surface, or behaviour change from v1.4.0. The v1.4.0 Release `tag-gate` failed because `docs/releases/v1.4.0.md` was missing at that tag. v1.4.1 ships those curated notes and this frozen CHANGELOG for v1.4.0.
+
 ## v1.4.0 — 2026-10-04
 
-Curated notes: [docs/releases/v1.4.0.md](https://github.com/hilather/go-lab-dns/blob/main/docs/releases/v1.4.0.md).
+Curated notes: [docs/releases/v1.4.0.md](https://github.com/hilather/go-lab-dns/blob/v1.4.1/docs/releases/v1.4.0.md) (added after the v1.4.0 tag; first tagged in v1.4.1).
 
 ### Added
 
