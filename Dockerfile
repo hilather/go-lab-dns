@@ -12,7 +12,7 @@ RUN npm ci
 COPY web/ ./
 RUN npm run build && test -f dist/index.html
 
-FROM golang:1.26.6-alpine AS build
+FROM golang:1.26.8-alpine AS build
 WORKDIR /src
 
 RUN apk add --no-cache ca-certificates tzdata
