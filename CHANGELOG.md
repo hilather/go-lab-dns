@@ -4,6 +4,10 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+### Changed
+
+- Go toolchain pinned to go1.26.8 (go.mod `toolchain`, CI `GO_VERSION`, Dockerfile); 1.26.0–1.26.7 lack current stdlib security fixes.
+
 ## v1.4.1 — 2026-10-05
 
 Curated notes: [docs/releases/v1.4.1.md](https://github.com/hilather/go-lab-dns/blob/v1.4.1/docs/releases/v1.4.1.md).

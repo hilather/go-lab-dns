@@ -2,6 +2,8 @@ module github.com/hilather/go-lab-dns
 
 go 1.26
 
+toolchain go1.26.8
+
 require (
 	github.com/miekg/dns v1.1.73
 	github.com/modelcontextprotocol/go-sdk v1.8.0
