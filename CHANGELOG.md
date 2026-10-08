@@ -4,6 +4,10 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+### Changed
+
+- Web development dependency `source-map-js` updates from 1.2.1 to 1.2.2 (GHSA-68fv-2mgg-jv7q, high: event-loop denial of service through indexed source-map section offsets). Lockfile only; the `web/dist` build output is byte-identical, and the web CI `npm audit --audit-level=high` step passes again.
+
 ## v1.4.1 — 2026-10-05
 
 Curated notes: [docs/releases/v1.4.1.md](https://github.com/hilather/go-lab-dns/blob/v1.4.1/docs/releases/v1.4.1.md).
