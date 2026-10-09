@@ -2,6 +2,7 @@
 
 Status: Implemented (SEC-001)
 Owners: Security, DNS, Control Plane
+Last reviewed: 2026-10-09 (nil authenticator and missing auth profile fail closed)
 Last reviewed: 2026-10-08 (bearer profile has no loopback exception; ADR 0010)
 Last reviewed: 2026-10-03 (browser cookie mutation races, fail-closed recovery, upstream reply correlation and cancellation)
 Last reviewed: 2026-10-03 (safe management mounts and current caller protections on cached resolve)
@@ -63,6 +64,8 @@ First-GA DNS listener numeric defaults (DNS-001; YAML overrides land with CFG/ST
 | `bearer` | No exception: `Authorization: Bearer` or a live REST `labdns_session` cookie (MCP needs the header; [ADR 0010](adr/0010-bearer-profile-no-loopback-exception.md)) | Bearer token required; `secretRef` must resolve to at least one token |
 
 `bearer` tokens are loaded from `spec.management.auth.secretRef` (a file: one token, or JSON `{"tokens":[{"token","id","role","scopes"}]}`). Unknown tokens fail closed. Health live/ready stay unauthenticated in both profiles. MCP stdio (`LocalOrStdio`) has no network peer and is unchanged. `X-Forwarded-For` is not trusted.
+
+A nil management authenticator fails closed: every non-probe request is unauthenticated (`authentication required`), including loopback and including a presented bearer. An authenticator that does not report a profile, or that reports an empty or unknown profile, is not the `dev-loopback-unauth` exception. Only an explicit `dev-loopback-unauth` report keeps loopback-without-a-bearer as administrator. Configured `dev-loopback-unauth` and `bearer` profiles are unchanged. `labdns serve` passes the loaded `*auth.Policy` whenever management is bound, and does not construct REST or MCP when there is no canonical state to load a profile from.
 
 ### Browser session and CSRF
 
@@ -191,7 +194,7 @@ Security metrics include denied DNS clients, rate-limit events, management auth 
 
 ## Testing strategy
 
-- Auth and RBAC matrix tests.
+- Auth and RBAC matrix tests, including fail-closed nil authenticator and missing profile.
 - Network allowlist tests.
 - Origin and DNS rebinding defense tests.
 - Request limit and rate-limit tests.

@@ -37,7 +37,18 @@ func TestRemoteUnauthenticatedDenied(t *testing.T) {
 }
 
 func TestRemoteBearerAccepted(t *testing.T) {
-	s, _ := newTestServer(t)
+	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
+	pol, err := auth.NewPolicy(auth.PolicyConfig{
+		Profile: auth.ProfileBearer,
+		Tokens:  []auth.Token{{Token: "dev-token", Role: auth.RoleAdministrator}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := New(Config{Service: svc, Auth: pol, RatePerSec: -1})
+	if err != nil {
+		t.Fatal(err)
+	}
 	rec := doRaw(t, s.Handler(), rpcCall(1, "tools/call", map[string]any{
 		"_meta":     map[string]any{"io.modelcontextprotocol/protocolVersion": ProtocolVersion},
 		"name":      "dns_version_get",
@@ -51,6 +62,23 @@ func TestRemoteBearerAccepted(t *testing.T) {
 	if rec.Code == http.StatusUnauthorized {
 		t.Fatalf("bearer rejected: %s", rec.Body.String())
 	}
+}
+
+func TestNilAuthenticatorFailsClosed(t *testing.T) {
+	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
+	s, err := New(Config{Service: svc, RatePerSec: -1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := rpcCall(1, "tools/call", map[string]any{
+		"_meta":     map[string]any{"io.modelcontextprotocol/protocolVersion": ProtocolVersion},
+		"name":      "dns_version_get",
+		"arguments": map[string]any{},
+	})
+	loop := doRaw(t, s.Handler(), body, mcpAuthHdr("tools/call", "dns_version_get", ""), "127.0.0.1:9")
+	requireRPCError(t, loop, http.StatusUnauthorized, "unauthenticated")
+	bearer := doRaw(t, s.Handler(), body, mcpAuthHdr("tools/call", "dns_version_get", "dev-token"), "192.0.2.10:9")
+	requireRPCError(t, bearer, http.StatusUnauthorized, "unauthenticated")
 }
 
 func TestRemoteBearerRejectedByHook(t *testing.T) {

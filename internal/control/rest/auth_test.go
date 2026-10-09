@@ -28,9 +28,35 @@ func TestRemoteUnauthenticatedDenied(t *testing.T) {
 }
 
 func TestRemoteBearerAccepted(t *testing.T) {
-	s, _ := newTestServer(t)
+	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
+	pol, err := auth.NewPolicy(auth.PolicyConfig{
+		Profile: auth.ProfileBearer,
+		Tokens:  []auth.Token{{Token: "dev-token", Role: auth.RoleAdministrator}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := New(Config{Service: svc, Auth: pol, RatePerSec: -1})
+	if err != nil {
+		t.Fatal(err)
+	}
 	rec := doRemote(t, s.Handler(), http.MethodGet, "/v1/version", "", "192.0.2.10:9", "dev-token")
 	requireStatus(t, rec, http.StatusOK)
+}
+
+func TestNilAuthenticatorFailsClosed(t *testing.T) {
+	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
+	s, err := New(Config{Service: svc, RatePerSec: -1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := s.Handler()
+	loop := doRemote(t, h, http.MethodGet, "/v1/version", "", "127.0.0.1:9", "")
+	requireProblem(t, loop, http.StatusUnauthorized, "unauthenticated")
+	bearer := doRemote(t, h, http.MethodGet, "/v1/version", "", "192.0.2.10:9", "dev-token")
+	requireProblem(t, bearer, http.StatusUnauthorized, "unauthenticated")
+	live := doRemote(t, h, http.MethodGet, "/v1/health/live", "", "192.0.2.10:9", "")
+	requireStatus(t, live, http.StatusOK)
 }
 
 func TestRemoteBearerRejectedByHook(t *testing.T) {

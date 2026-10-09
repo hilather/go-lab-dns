@@ -94,7 +94,7 @@ func TestPacketChaosThenRESTEmergency(t *testing.T) {
 		t.Fatalf("pre-emergency rcode=%s", resp.Result().RCode)
 	}
 
-	rs, err := New(Config{Service: svc})
+	rs, err := New(Config{Service: svc, Auth: devLoopbackAuth(t)})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -26,11 +26,12 @@ func TestManagementChaosResolveExplainRESTMCPParity(t *testing.T) {
 	if _, err := svc.Apply(t.Context(), auth.Actor{Role: auth.RoleAdministrator}, app.ChangeIn{ExpectedRevision: svc.Store().Load().Revision, Operations: []model.Operation{{Op: model.OpUpdate, Target: model.Target{Kind: model.TargetChaosPolicy, ID: string(policy.ID)}, Value: raw}}}); err != nil {
 		t.Fatal(err)
 	}
-	rs, err := rest.New(rest.Config{Service: svc})
+	authn := devLoopbackAuth(t)
+	rs, err := rest.New(rest.Config{Service: svc, Auth: authn})
 	if err != nil {
 		t.Fatal(err)
 	}
-	ms, err := New(Config{Service: svc})
+	ms, err := New(Config{Service: svc, Auth: authn})
 	if err != nil {
 		t.Fatal(err)
 	}

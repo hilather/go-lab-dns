@@ -65,7 +65,8 @@ func (f AuthenticatorFunc) Authenticate(ctx context.Context, token string) (auth
 type Config struct {
 	// Service is required. Handlers call it and do not mutate snapshots.
 	Service app.Service
-	// Auth validates bearer tokens. Nil accepts any non-empty token as administrator.
+	// Auth validates bearer tokens. Nil fails closed: non-probe requests are
+	// unauthenticated. Pass *auth.Policy to select a profile.
 	Auth Authenticator
 	// AllowedOrigins are extra Origins accepted besides loopback. Empty denies
 	// every non-loopback Origin (DNS-rebinding default-deny). Used when Origins is nil.

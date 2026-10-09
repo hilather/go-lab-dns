@@ -2,6 +2,7 @@
 
 Status: Accepted
 Date: 2026-10-08
+Amended: 2026-10-09 (a nil authenticator or missing auth profile fails closed)
 
 ## Context
 
@@ -17,7 +18,7 @@ Matt Brewer, 2026-10-08: "require a token from local requests in dns bearer mode
 2. `dev-loopback-unauth` is unchanged: loopback without a bearer is administrator.
 3. Health live and ready stay unauthenticated in both profiles.
 4. MCP stdio `LocalOrStdio` is unchanged. It has no network peer.
-5. A nil authenticator, or one that does not report a profile, keeps the `dev-loopback-unauth` exception. Production `labdns serve` passes `*auth.Policy`, which reports the configured profile. A wrapper in front of that policy must forward `Profile`.
+5. A nil authenticator fails closed: every non-probe request is unauthenticated, including a presented bearer and including loopback. An authenticator that does not report a profile, or that reports an empty or unknown profile, is not the `dev-loopback-unauth` exception. Only an explicit `dev-loopback-unauth` report keeps loopback-without-a-bearer as administrator. Production `labdns serve` passes `*auth.Policy` when management is bound, and does not construct REST or MCP when there is no canonical state to load a profile from. A wrapper in front of that policy must forward `Profile`. MCP stdio `LocalOrStdio` does not call `Identify`.
 
 REST may still authenticate with a live `labdns_session` cookie created by a bearer (or by loopback under `dev-loopback-unauth`). MCP ignores cookies and needs `Authorization: Bearer`.
 
@@ -26,6 +27,7 @@ REST may still authenticate with a live `labdns_session` cookie created by a bea
 - Loopback scripts and `curl` against a `bearer` listener must send `Authorization: Bearer`.
 - The console button "Continue as local administrator" returns 401 `authentication required` under `bearer`. The operator pastes a token. The button still works under `dev-loopback-unauth`.
 - `dev-loopback-unauth` and unauthenticated health probes are unchanged.
+- An unconfigured authenticator or a missing auth profile does not grant administrator, on loopback or remotely. Configured `dev-loopback-unauth` and `bearer` are unchanged.
 
 ## Alternatives considered
 

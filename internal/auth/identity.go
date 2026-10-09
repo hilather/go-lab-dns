@@ -44,9 +44,10 @@ func (f AuthenticatorFunc) Authenticate(ctx context.Context, token string) (Acto
 
 // ProfileReporter reports the serve-time auth profile. *Policy implements it.
 // Identify uses the report to decide whether a loopback peer without a bearer
-// is administrator. A wrapper Authenticator in front of *Policy must forward
-// Profile. A wrapper that does not implement ProfileReporter is treated as
-// dev-loopback-unauth (the same path as a nil authenticator or AuthenticatorFunc).
+// is administrator. Only an explicit dev-loopback-unauth report keeps that
+// exception. A wrapper Authenticator in front of *Policy must forward Profile.
+// A wrapper that does not implement ProfileReporter, or that reports an empty
+// or unknown profile, fails closed (no loopback exception).
 type ProfileReporter interface {
 	Profile() string
 }
@@ -59,29 +60,29 @@ type IdentifyIn struct {
 	Probe bool
 }
 
-// Identify applies Q-AUTH (ADR 0010). Under dev-loopback-unauth, loopback
-// (127.0.0.1 / ::1, including IPv4-mapped) may omit a bearer and is
-// administrator. Under bearer, every peer including loopback must present
-// Authorization: Bearer; a missing token is Unauthenticated, the same error
-// as a remote peer. A nil Authenticator, or one that does not implement
-// ProfileReporter, keeps the dev-loopback-unauth exception (local-dev hooks
-// and AuthenticatorFunc tests). Probe requests skip auth so health live/ready
-// stay unauthenticated. X-Forwarded-For is not consulted (callers pass
-// RemoteAddr only). MCP stdio uses LocalOrStdio and does not call Identify.
+// Identify applies Q-AUTH (ADR 0010). Under an explicit dev-loopback-unauth
+// profile, loopback (127.0.0.1 / ::1, including IPv4-mapped) may omit a bearer
+// and is administrator. Under bearer, every peer including loopback must
+// present Authorization: Bearer. A nil Authenticator fails closed: every
+// non-probe request is Unauthenticated ("authentication required"), whether or
+// not a bearer is presented. An Authenticator that does not implement
+// ProfileReporter, or that reports an empty or unknown profile, is not the
+// dev exception. Probe requests skip auth so health live/ready stay
+// unauthenticated. X-Forwarded-For is not consulted (callers pass RemoteAddr
+// only). MCP stdio uses LocalOrStdio and does not call Identify.
 func Identify(ctx context.Context, in IdentifyIn, tokens Authenticator) (Actor, error) {
 	if in.Probe {
 		return Actor{ID: "probe", Class: ClassStartup, Role: RoleAdministrator}, nil
 	}
+	if tokens == nil {
+		return Actor{}, domainerr.Unauthenticated("authentication required")
+	}
 	if tok, ok := BearerToken(in.Authorization); ok {
-		if tokens != nil {
-			a, err := tokens.Authenticate(ctx, tok)
-			if err != nil {
-				return Actor{}, err
-			}
-			return completeActor(a), nil
+		a, err := tokens.Authenticate(ctx, tok)
+		if err != nil {
+			return Actor{}, err
 		}
-		// Unconfigured hook: a presented bearer is a local-dev administrator.
-		return Actor{ID: "bearer", Class: ClassToken, Role: RoleAdministrator}, nil
+		return completeActor(a), nil
 	}
 	if IsLoopback(in.RemoteAddr) && effectiveProfile(tokens) == ProfileDevLoopbackUnauth {
 		return Actor{ID: "loopback", Class: ClassLoopback, Role: RoleAdministrator}, nil
@@ -89,13 +90,15 @@ func Identify(ctx context.Context, in IdentifyIn, tokens Authenticator) (Actor, 
 	return Actor{}, domainerr.Unauthenticated("authentication required")
 }
 
-// effectiveProfile is dev-loopback-unauth unless tokens reports a profile.
-// An empty report is not the dev exception: unknown profiles fail closed.
-// A nil *Policy reports dev-loopback-unauth from Profile.
+// effectiveProfile is the profile tokens reports.
+// A nil Authenticator, a value that does not implement ProfileReporter, a nil
+// *Policy, and an empty or unknown report are not the dev exception. Only an
+// explicit ProfileDevLoopbackUnauth report keeps the loopback exception.
+// (*Policy).Profile on a nil receiver returns "" (no profile), not dev-loopback-unauth.
 func effectiveProfile(tokens Authenticator) string {
 	reporter, ok := tokens.(ProfileReporter)
 	if !ok {
-		return ProfileDevLoopbackUnauth
+		return ""
 	}
 	return reporter.Profile()
 }

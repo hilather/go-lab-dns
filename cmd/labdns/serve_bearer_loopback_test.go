@@ -11,6 +11,8 @@ import (
 
 	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/config"
+	"github.com/hilather/go-lab-dns/internal/model"
+	"github.com/hilather/go-lab-dns/internal/snapshot"
 )
 
 // TestServeBearerProfileLoopbackRequiresToken guards the production wiring:
@@ -60,6 +62,31 @@ func TestServeBearerProfileLoopbackRequiresToken(t *testing.T) {
 		if probe.StatusCode != http.StatusOK {
 			t.Fatalf("%s status=%d body=%s", path, probe.StatusCode, probe.Body)
 		}
+	}
+}
+
+func TestBindManagementAuth(t *testing.T) {
+	authn, pol, construct, err := bindManagementAuth(nil)
+	if err != nil || construct || authn != nil || pol != nil {
+		t.Fatalf("nil snap: authn=%v pol=%v construct=%v err=%v", authn, pol, construct, err)
+	}
+	authn, pol, construct, err = bindManagementAuth(&snapshot.Snapshot{})
+	if err != nil || construct || authn != nil || pol != nil {
+		t.Fatalf("nil canonical: authn=%v pol=%v construct=%v err=%v", authn, pol, construct, err)
+	}
+
+	snap := &snapshot.Snapshot{Canonical: &model.State{}}
+	authn, pol, construct, err = bindManagementAuth(snap)
+	if err != nil || !construct || pol == nil || authn != pol {
+		t.Fatalf("empty profile: authn=%v pol=%v construct=%v err=%v", authn, pol, construct, err)
+	}
+	if pol.Profile() != auth.ProfileDevLoopbackUnauth {
+		t.Fatalf("profile=%s", pol.Profile())
+	}
+
+	snap.Canonical.Spec.Management.Auth.Profile = auth.ProfileBearer
+	if _, _, _, err = bindManagementAuth(snap); err == nil {
+		t.Fatal("bearer without tokens constructed a listener authenticator")
 	}
 }
 

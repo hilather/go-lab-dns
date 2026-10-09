@@ -16,6 +16,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 ### Security
 
 - `profile: bearer` no longer treats loopback (`127.0.0.1`, `::1`) requests without a bearer as administrator; they get 401 like remote peers. Send `Authorization: Bearer` (or sign in to the console with a token). `dev-loopback-unauth` and unauthenticated health probes are unchanged. See [ADR 0010](docs/adr/0010-bearer-profile-no-loopback-exception.md).
+- The management authenticator now fails closed when no authenticator or no auth profile is configured (P5). A nil authenticator, an authenticator that does not report a profile, and an empty or unknown profile are unauthenticated for every non-probe request. Configured `dev-loopback-unauth` and bearer profiles are unchanged, and health probes stay unauthenticated.
 
 ### Compatibility and migration
 

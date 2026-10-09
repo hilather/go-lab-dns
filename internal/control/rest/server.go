@@ -62,7 +62,8 @@ type Config struct {
 	Addr string
 	// Service is required. Handlers call it and do not mutate snapshots.
 	Service app.Service
-	// Auth validates bearer tokens. Nil accepts any non-empty token as administrator.
+	// Auth validates bearer tokens. Nil fails closed: non-probe requests are
+	// unauthenticated. Pass *auth.Policy to select a profile.
 	Auth Authenticator
 	// Sessions is the in-process browser session table. Nil becomes an empty table.
 	Sessions *auth.SessionTable

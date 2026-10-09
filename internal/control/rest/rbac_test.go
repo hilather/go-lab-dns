@@ -59,7 +59,7 @@ func TestRESTOriginDeniedAndCORS(t *testing.T) {
 
 func TestRESTManagementRateLimit(t *testing.T) {
 	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
-	s, err := New(Config{Service: svc, RatePerSec: 1, RateBurst: 1})
+	s, err := New(Config{Service: svc, Auth: devLoopbackAuth(t), RatePerSec: 1, RateBurst: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
