@@ -2,12 +2,13 @@
 
 Status: Implemented (SEC-001)
 Owners: Security, DNS, Control Plane
+Last reviewed: 2026-10-08 (bearer profile has no loopback exception; ADR 0010)
 Last reviewed: 2026-10-03 (browser cookie mutation races, fail-closed recovery, upstream reply correlation and cancellation)
 Last reviewed: 2026-10-03 (safe management mounts and current caller protections on cached resolve)
 Last reviewed: 2026-10-03 (sequential authorization of atomic change sets)
 Last reviewed: 2026-08-31 (protected-name wildcard synthesis)
 Last reviewed: 2026-10-03 (upstream reply correlation and cancellation)
-Related ADRs: 0003, 0004, 0005, 0007
+Related ADRs: 0003, 0004, 0005, 0007, [0010](adr/0010-bearer-profile-no-loopback-exception.md)
 
 ## Goals
 
@@ -59,17 +60,17 @@ First-GA DNS listener numeric defaults (DNS-001; YAML overrides land with CFG/ST
 | Profile | Loopback (`127.0.0.1` / `::1`) | Non-loopback |
 |---|---|---|
 | `dev-loopback-unauth` (default) | Unauthenticated, treated as administrator | Bearer token required |
-| `bearer` | Same loopback exception (Q-AUTH) | Bearer token required; `secretRef` must resolve to at least one token |
+| `bearer` | No exception: `Authorization: Bearer` or a live REST `labdns_session` cookie (MCP needs the header; [ADR 0010](adr/0010-bearer-profile-no-loopback-exception.md)) | Bearer token required; `secretRef` must resolve to at least one token |
 
-`bearer` tokens are loaded from `spec.management.auth.secretRef` (a file: one token, or JSON `{"tokens":[{"token","id","role","scopes"}]}`). Unknown tokens fail closed. `X-Forwarded-For` is not trusted.
+`bearer` tokens are loaded from `spec.management.auth.secretRef` (a file: one token, or JSON `{"tokens":[{"token","id","role","scopes"}]}`). Unknown tokens fail closed. Health live/ready stay unauthenticated in both profiles. MCP stdio (`LocalOrStdio`) has no network peer and is unchanged. `X-Forwarded-For` is not trusted.
 
 ### Browser session and CSRF
 
 Browser session POST and DELETE operations are serialized within each page. A superseded successful login is revoked using only its response CSRF token before another cookie mutation can run. Session recovery waits for this queue. Failed revocation or logout retains its CSRF token and blocks recovery until cleanup succeeds; an explicit bearer login can replace the session and clear that pending state. A successful cookie response with an unreadable or invalid session body also blocks recovery until explicit bearer sign-in or confirmed logout. This ordering is page-local and does not coordinate other tabs.
 
-The operator console authenticates with an in-process session table (max 256, 12h sliding TTL) and cookie `labdns_session` (`HttpOnly`, `SameSite=Lax`, `Path=/`, host-only, `Secure` iff `r.TLS != nil`). CSRF secret is returned in JSON and required as `X-LabDNS-CSRF` on cookie-authenticated non-GET requests (`subtle.ConstantTimeCompare`). CSRF is omitted on `POST /v1/session` **only when no session cookie is sent**. A live-cookie POST without Bearer **rotates** ID/CSRF for the existing Actor (`class=ui-session`) and must not call loopback Identify (that would escalate a viewer to administrator). A present but unknown/expired cookie without Bearer is 401 (SPA clears it after GET `/v1/session` 401); first login omits the cookie. Identity switch requires `Authorization: Bearer`. `Authorization: Bearer` wins over cookie and CSRF for that request.
+The operator console authenticates with an in-process session table (max 256, 12h sliding TTL) and cookie `labdns_session` (`HttpOnly`, `SameSite=Lax`, `Path=/`, host-only, `Secure` iff `r.TLS != nil`). CSRF secret is returned in JSON and required as `X-LabDNS-CSRF` on cookie-authenticated non-GET requests (`subtle.ConstantTimeCompare`). CSRF is omitted on `POST /v1/session` **only when no session cookie is sent**. A live-cookie POST without Bearer **rotates** ID/CSRF for the existing Actor (`class=ui-session`) and must not call Identify (under `dev-loopback-unauth`, loopback Identify would escalate a viewer to administrator; under `bearer`, it would 401). A present but unknown/expired cookie without Bearer is 401 (SPA clears it after GET `/v1/session` 401); first login omits the cookie. Identity switch requires `Authorization: Bearer`. `Authorization: Bearer` wins over cookie and CSRF for that request.
 
-Session create copies Identify `id`/`role`/`scopes`/`groups`. `ClassUISession` plus `administrator` role still yields all scopes via role expansion. MCP ignores cookies (off-loopback cookie-only MCP is 401). Cookie value, CSRF, and bearer are never logged. Cap reject uses existing `rate_limited` (429, detail `session table full`); do not evict.
+Session create copies Identify `id`/`role`/`scopes`/`groups`. `ClassUISession` plus `administrator` role still yields all scopes via role expansion. MCP ignores cookies: cookie-only MCP is 401 for every peer under `bearer`, and off-loopback under `dev-loopback-unauth`. Cookie value, CSRF, and bearer are never logged. Cap reject uses existing `rate_limited` (429, detail `session table full`); do not evict.
 
 GET/HEAD outside `/v1` and `/mcp` is a pre-auth SPA branch and must not 401. Management JSON still gets nosniff / frame-deny / referrer-policy; CSP is applied on HTML/SPA.
 

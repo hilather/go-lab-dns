@@ -26,8 +26,9 @@ kubectl create secret generic labdns-token \
   --from-literal=token="$(cat ../../secrets/labdns-token)"
 ```
 
-Do not commit that file. Remote `/v1` and `/mcp` need
-`Authorization: Bearer`; loopback may omit it.
+Do not commit that file. This environment uses `profile: bearer`, so
+`/v1` and `/mcp` need `Authorization: Bearer` from loopback and remote
+peers. Health live/ready stay unauthenticated.
 
 Operator console: `http://127.0.0.1:8080/` after `compose up`. Paste the
 bearer token. Set `spec.ui.enabled: false` in `dns.yaml` to hide the SPA.

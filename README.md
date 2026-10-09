@@ -125,7 +125,7 @@ Useful flags: `--dns-listen`, `--management-listen ADDR|off`, `--chaos-disable`,
 
 ### 4. Operator console
 
-Open `http://127.0.0.1:8080/` after `serve` or Compose. Loopback `dev-loopback-unauth`: **Continue as local administrator**. Remote: paste a bearer token into the password field; the SPA discards it after login. CSRF stays in memory, never `localStorage`. `spec.ui.enabled: false` 404s the SPA only. A published management host needs `spec.management.allowedOrigins` (`http(s)://host[:port]`). Spec: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md).
+Open `http://127.0.0.1:8080/` after `serve` or Compose. `dev-loopback-unauth` (the default): **Continue as local administrator**. `profile: bearer`, including a browser on loopback: paste a bearer token into the password field; the continue button returns 401. The SPA discards the token after login. CSRF stays in memory, never `localStorage`. `spec.ui.enabled: false` 404s the SPA only. A published management host needs `spec.management.allowedOrigins` (`http(s)://host[:port]`). Spec: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md).
 
 ### 5. Compose
 
@@ -133,7 +133,7 @@ Open `http://127.0.0.1:8080/` after `serve` or Compose. Loopback `dev-loopback-u
 docker compose -f examples/compose.smoke.yaml up --build
 ```
 
-Host `:53` maps to container `:5353`. Management is bound to `127.0.0.1:8080` only. Open the operator console at `http://127.0.0.1:8080/` (loopback: Continue as local administrator). Production GitOps (digest pin, Kubernetes, policy allowlists, probes, token paste): [examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md).
+Host `:53` maps to container `:5353`. Management is bound to `127.0.0.1:8080` only. Open the operator console at `http://127.0.0.1:8080/` (this smoke image uses `dev-loopback-unauth`: Continue as local administrator). Production GitOps uses `profile: bearer` and requires the token even from loopback. Digest pin, Kubernetes, policy allowlists, probes, and token paste: [examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md).
 
 ---
 
@@ -164,7 +164,7 @@ read file
 
 ### REST (`/v1`)
 
-Loopback may omit a bearer token (`dev-loopback-unauth`). Remote peers need `Authorization: Bearer`. OpenAPI: [api/openapi/v1.json](api/openapi/v1.json).
+Under `dev-loopback-unauth`, loopback may omit a bearer token. Under `profile: bearer`, loopback and remote peers need `Authorization: Bearer` or a live session cookie. Health live/ready stay unauthenticated. The curls below match the default `dev-loopback-unauth` profile. OpenAPI: [api/openapi/v1.json](api/openapi/v1.json).
 
 **Inspect**
 
@@ -358,6 +358,7 @@ Full catalog: [docs/README.md](docs/README.md).
 - [0007 Defer unsafe wire chaos](docs/adr/0007-defer-unsafe-wire-chaos.md)
 - [0008 Embedded operator web UI](https://github.com/hilather/go-lab-dns/blob/main/docs/adr/0008-embedded-operator-web-ui.md)
 - [0009 Accept over-length desired-state names](docs/adr/0009-accept-overlength-desired-state-names.md)
+- [0010 Bearer profile has no loopback exception](docs/adr/0010-bearer-profile-no-loopback-exception.md)
 
 ### Task lists and program board
 

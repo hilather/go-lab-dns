@@ -9,6 +9,14 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Go toolchain pinned to go1.26.8 (go.mod `toolchain`, CI `GO_VERSION`, Dockerfile); 1.26.0–1.26.7 lack current stdlib security fixes.
 - Web development dependency `source-map-js` updates from 1.2.1 to 1.2.2 (GHSA-68fv-2mgg-jv7q, high: event-loop denial of service through indexed source-map section offsets). Lockfile only; the `web/dist` build output is byte-identical, and the web CI `npm audit --audit-level=high` step passes again.
 
+### Security
+
+- `profile: bearer` no longer treats loopback (`127.0.0.1`, `::1`) requests without a bearer as administrator; they get 401 like remote peers. Send `Authorization: Bearer` (or sign in to the console with a token). `dev-loopback-unauth` and unauthenticated health probes are unchanged. See [ADR 0010](docs/adr/0010-bearer-profile-no-loopback-exception.md).
+
+### Compatibility and migration
+
+- Under `profile: bearer`, loopback clients (curl, scripts, the console button) must now send `Authorization: Bearer` (or use a REST session cookie created with a bearer). MCP must send the header. `dev-loopback-unauth` is unchanged. See [ADR 0010](docs/adr/0010-bearer-profile-no-loopback-exception.md).
+
 ## v1.4.1 — 2026-10-05
 
 Curated notes: [docs/releases/v1.4.1.md](https://github.com/hilather/go-lab-dns/blob/v1.4.1/docs/releases/v1.4.1.md).

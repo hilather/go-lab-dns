@@ -7,6 +7,77 @@ import (
 	"github.com/hilather/go-lab-dns/internal/domainerr"
 )
 
+func TestIdentifyProfileControlsLoopback(t *testing.T) {
+	bearer, err := NewPolicy(PolicyConfig{
+		Profile: ProfileBearer,
+		Tokens:  []Token{{Token: "good", ID: "tok", Role: RoleAdministrator}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dev, err := NewPolicy(PolicyConfig{Profile: ProfileDevLoopbackUnauth})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hook := AuthenticatorFunc(func(ctx context.Context, token string) (Actor, error) {
+		_ = ctx
+		_ = token
+		return Actor{ID: "hook", Class: ClassToken}, nil
+	})
+
+	// These addresses are loopback peers. A future IsLoopback change that
+	// stops treating them as loopback would hide the bearer-profile denial.
+	for _, addr := range []string{"127.0.0.1:9", "[::1]:9", "::ffff:127.0.0.1", "[::ffff:127.0.0.1]:9"} {
+		if !IsLoopback(addr) {
+			t.Fatalf("%s is not loopback", addr)
+		}
+	}
+
+	type want struct {
+		class string
+		id    string
+	}
+	cases := []struct {
+		name   string
+		tokens Authenticator
+		in     IdentifyIn
+		ok     *want
+	}{
+		{"bearer loopback v4", bearer, IdentifyIn{RemoteAddr: "127.0.0.1:9"}, nil},
+		{"bearer loopback v6", bearer, IdentifyIn{RemoteAddr: "[::1]:9"}, nil},
+		{"bearer mapped v4", bearer, IdentifyIn{RemoteAddr: "::ffff:127.0.0.1"}, nil},
+		{"bearer mapped v4 port", bearer, IdentifyIn{RemoteAddr: "[::ffff:127.0.0.1]:9"}, nil},
+		{"bearer loopback token", bearer, IdentifyIn{RemoteAddr: "127.0.0.1:9", Authorization: "Bearer good"}, &want{ClassToken, "tok"}},
+		{"bearer remote", bearer, IdentifyIn{RemoteAddr: "192.0.2.10:9"}, nil},
+		{"dev loopback", dev, IdentifyIn{RemoteAddr: "127.0.0.1:9"}, &want{ClassLoopback, "loopback"}},
+		{"dev loopback v6", dev, IdentifyIn{RemoteAddr: "[::1]:9"}, &want{ClassLoopback, "loopback"}},
+		{"bearer probe", bearer, IdentifyIn{RemoteAddr: "192.0.2.10:9", Probe: true}, &want{ClassStartup, "probe"}},
+		{"nil loopback", nil, IdentifyIn{RemoteAddr: "127.0.0.1:9"}, &want{ClassLoopback, "loopback"}},
+		{"func loopback", hook, IdentifyIn{RemoteAddr: "127.0.0.1:9"}, &want{ClassLoopback, "loopback"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			a, err := Identify(context.Background(), tc.in, tc.tokens)
+			if tc.ok == nil {
+				de, ok := domainerr.As(err)
+				if !ok || de.Code != domainerr.CodeUnauthenticated || de.Message != "authentication required" {
+					t.Fatalf("actor=%+v err=%v", a, err)
+				}
+				return
+			}
+			if err != nil || a.Class != tc.ok.class || a.ID != tc.ok.id {
+				t.Fatalf("actor=%+v err=%v", a, err)
+			}
+			if tc.ok.class == ClassLoopback && !a.HasScope(ScopeDNSAdmin) {
+				t.Fatalf("loopback missing admin scope: %+v", a)
+			}
+			if tc.ok.class == ClassToken && !a.HasScope(ScopeDNSAdmin) {
+				t.Fatalf("token missing admin scope: %+v", a)
+			}
+		})
+	}
+}
+
 func TestIdentifyLoopback(t *testing.T) {
 	a, err := Identify(context.Background(), IdentifyIn{RemoteAddr: "127.0.0.1:9"}, nil)
 	if err != nil {

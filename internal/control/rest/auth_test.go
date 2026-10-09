@@ -73,6 +73,45 @@ func TestRemoteXForwardedForNotTrusted(t *testing.T) {
 	requireProblem(t, rec, http.StatusUnauthorized, "unauthenticated")
 }
 
+func TestBearerProfileLoopbackRequiresToken(t *testing.T) {
+	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
+	bearer, err := auth.NewPolicy(auth.PolicyConfig{
+		Profile: auth.ProfileBearer,
+		Tokens:  []auth.Token{{Token: "good", Role: auth.RoleAdministrator}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := New(Config{Service: svc, Auth: bearer, RatePerSec: -1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := s.Handler()
+	for _, remote := range []string{"127.0.0.1:9", "[::1]:9", "[::ffff:127.0.0.1]:9"} {
+		rec := doRemote(t, h, http.MethodGet, "/v1/state", "", remote, "")
+		requireProblem(t, rec, http.StatusUnauthorized, "unauthenticated")
+	}
+	ok := doRemote(t, h, http.MethodGet, "/v1/state", "", "127.0.0.1:9", "good")
+	requireStatus(t, ok, http.StatusOK)
+	live := doRemote(t, h, http.MethodGet, "/v1/health/live", "", "127.0.0.1:9", "")
+	requireStatus(t, live, http.StatusOK)
+	ready := doRemote(t, h, http.MethodGet, "/v1/health/ready", "", "127.0.0.1:9", "")
+	requireStatus(t, ready, http.StatusOK)
+	sess := doRemote(t, h, http.MethodPost, "/v1/session", "", "127.0.0.1:9", "")
+	requireProblem(t, sess, http.StatusUnauthorized, "unauthenticated")
+
+	dev, err := auth.NewPolicy(auth.PolicyConfig{Profile: auth.ProfileDevLoopbackUnauth})
+	if err != nil {
+		t.Fatal(err)
+	}
+	devSrv, err := New(Config{Service: svc, Auth: dev, RatePerSec: -1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	devRec := doRemote(t, devSrv.Handler(), http.MethodGet, "/v1/state", "", "127.0.0.1:9", "")
+	requireStatus(t, devRec, http.StatusOK)
+}
+
 func TestIsLoopback(t *testing.T) {
 	if !isLoopback("127.0.0.1:1") || !isLoopback("[::1]:80") {
 		t.Fatal("loopback not detected")

@@ -6,7 +6,7 @@ change here survives recreate or `state:reset`.
 
 Application: LabDNS `labdns.dev/v1alpha1`  
 Image: `ghcr.io/hilather/labdns` **pinned by digest**  
-Auth: remote **bearer** via secret file / Secret ref; loopback may omit a token  
+Auth: **bearer** via secret file / Secret ref; loopback and remote peers both send the token ([ADR 0010](https://github.com/hilather/go-lab-dns/blob/main/docs/adr/0010-bearer-profile-no-loopback-exception.md)). Health live/ready stay unauthenticated.  
 Probes: `labdns.dev/probes/v1alpha1`
 
 ## Layout
@@ -69,7 +69,7 @@ file, not a Git field.
 
 Operator console (1.1.0, default `spec.ui.enabled: true`): after
 `deploy.sh … compose`, open `http://127.0.0.1:8080/` and paste the bearer
-token. Loopback Origin is allowed without `allowedOrigins`. If you publish
+token (required on loopback under `profile: bearer`). Loopback Origin is allowed without `allowedOrigins`. If you publish
 management as `https://dns-mgmt.lab.example`, add that exact Origin under
 `spec.management.allowedOrigins`. `spec.ui.enabled: false` 404s the SPA
 and keeps REST `/v1` and MCP `/mcp`.
