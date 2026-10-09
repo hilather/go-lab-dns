@@ -70,7 +70,7 @@ management 8080 only from namespaces labeled `labdns.dev/management=true`.
 file, not a Git field.
 
 Operator console (1.1.0, default `spec.ui.enabled: true`): after
-`deploy.sh … compose`, open `http://127.0.0.1:8080/` and paste the bearer
+`deploy.sh … compose`, open `http://127.0.0.1:8080/` (test-lab: `http://127.0.0.1:18080/`) and paste the bearer
 token (required on loopback under `profile: bearer`). Loopback Origin is allowed without `allowedOrigins`. If you publish
 management as `https://dns-mgmt.lab.example`, add that exact Origin under
 `spec.management.allowedOrigins`. `spec.ui.enabled: false` 404s the SPA

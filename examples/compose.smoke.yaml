@@ -6,7 +6,8 @@
 # non-loopback peer: with this config (profile omitted = dev-loopback-unauth,
 # no token) http://127.0.0.1:8080/v1/... and "Continue as local administrator"
 # return 401; under /v1 only /v1/health/live and /v1/health/ready succeed. The
-# container log prints the dev-loopback-unauth non-loopback bind warning for [::]:8080.
+# container log prints the dev-loopback-unauth non-loopback bind warning,
+# quoting the bound wildcard ([::]:8080 dual-stack, 0.0.0.0:8080 IPv4-only).
 # For a usable console set spec.management.auth.profile: bearer with a
 # secretRef token file and paste the token.
 services:
