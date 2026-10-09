@@ -8,7 +8,7 @@ the image digest, then run `../../scripts/validate.sh main-lab`.
 | `dns.yaml` | Desired DNS/chaos/management state (read-only mount) |
 | `probes.yaml` | Offline + live verification probes |
 | `image.env` | Digest-pinned `ghcr.io/hilather/labdns` |
-| `compose.yaml` | Docker Compose: port 53, process binds `:8080` / Compose publishes on host loopback (main-lab `127.0.0.1:8080:8080`, test-lab `127.0.0.1:18080:8080/tcp`), token file |
+| `compose.yaml` | Docker Compose: port 53, process binds `:8080` / Compose publishes on host loopback `127.0.0.1:8080:8080/tcp`, token file |
 | `k8s/` | Kubernetes: one replica, NetworkPolicy, Secret ref |
 
 Create the bearer token before `compose up`:

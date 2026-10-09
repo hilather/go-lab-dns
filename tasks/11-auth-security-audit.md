@@ -54,4 +54,4 @@ Enforce secure DNS and management defaults, shared RBAC, protected objects, abus
 
 ## Handoff
 
-Policy configuration: `spec.management.auth.profile` (`dev-loopback-unauth` | `bearer`) and `secretRef`. Scope matrix and roles: [docs/08-security-architecture.md](https://github.com/hilather/go-lab-dns/blob/main/docs/08-security-architecture.md). Audit schema: `internal/audit.Event` (ring default 128; hook is best-effort, Q-AUDIT no fail-closed). Deployment still binds management to loopback or a dedicated network (DEP-001 / GIT-001).
+Policy configuration: `spec.management.auth.profile` (`dev-loopback-unauth` | `bearer`) and `secretRef`. Scope matrix and roles: [docs/08-security-architecture.md](https://github.com/hilather/go-lab-dns/blob/main/docs/08-security-architecture.md). Audit schema: `internal/audit.Event` (ring default 128; hook is best-effort, Q-AUDIT no fail-closed). Deployment keeps management reachable only via host loopback publish or a dedicated network (the process itself binds `:8080`; DEP-001 / GIT-001).

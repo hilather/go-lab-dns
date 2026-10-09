@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: MCP, Application
-Last reviewed: 2026-10-08 (bearer profile has no loopback exception; ADR 0010)
+Last reviewed: 2026-10-09 (process bind vs host publish; loopback is 127.0.0.0/8, ::1, IPv4-mapped 127/8; ADR 0011 proposed)
 Last reviewed: 2026-10-03 (active-chaos resolve/explain output and duration strings)
 Last reviewed: 2026-09-01 (dns_resolve useCache does not store Fallthrough)
 Last reviewed: 2026-08-23 (allowLegacyClients overlay knob)
