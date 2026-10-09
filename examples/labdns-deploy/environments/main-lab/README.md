@@ -15,8 +15,12 @@ Create the bearer token before `compose up`:
 
 ```text
 umask 077
-printf 'dev-only-token\n' > ../../secrets/labdns-token
+openssl rand -hex 32 > ../../secrets/labdns-token
 ```
+
+Generate at least 32 bytes. Shorter tokens are deprecated: they still load
+in this release and the next minor release refuses them (see the
+[labdns CHANGELOG](https://github.com/hilather/go-lab-dns/blob/main/CHANGELOG.md)).
 
 Kubernetes:
 

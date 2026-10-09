@@ -30,7 +30,8 @@ labdns-deploy/
 2. Edit `environments/main-lab/dns.yaml` (zones, CIDRs, upstreams).
 3. Replace the all-zero digest in `image.env` **and** the same digest in
    `k8s/kustomization.yaml` `images[].digest`. `validate.sh` fails if they differ.
-4. Write `secrets/labdns-token` (never commit it).
+4. Write `secrets/labdns-token` with `umask 077` and
+   `openssl rand -hex 32 > secrets/labdns-token` (see `secrets/README.md`; never commit it).
 5. From the application repo, or with `labdns` on `PATH`:
 
 ```text
