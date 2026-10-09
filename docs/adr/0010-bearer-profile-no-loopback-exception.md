@@ -25,7 +25,7 @@ REST may still authenticate with a live `labdns_session` cookie created by a bea
 ## Consequences
 
 - Loopback scripts and `curl` against a `bearer` listener must send `Authorization: Bearer`.
-- The console button "Continue as local administrator" returns 401 `authentication required` under `bearer`. The operator pastes a token. The button still works under `dev-loopback-unauth`.
+- The console button "Continue as local administrator" returns 401 `authentication required` under `bearer`. The operator pastes a token. The button still works under `dev-loopback-unauth` when the TCP peer is loopback; through a Docker port publish the peer is the bridge address and it returns 401.
 - `dev-loopback-unauth` and unauthenticated health probes are unchanged.
 - A nil authenticator rejects every non-probe request, bearer or not. An authenticator that does not report a profile, or that reports an empty or unknown profile, loses only the loopback-without-a-bearer administrator exception; a presented bearer is still checked by that authenticator. An omitted YAML profile still normalizes to `dev-loopback-unauth` (`config.Normalize`, `NewPolicy`), so configured deployments are unchanged.
 
