@@ -473,7 +473,7 @@ func printListen(w io.Writer, rt *serveRuntime) {
 	// Classification uses the bound address because Listen rewrites
 	// localhost, 0.0.0.0, and IPv4-mapped forms.
 	if rt != nil && rt.mgmtLn != nil && rt.mgmtProfile == auth.ProfileDevLoopbackUnauth && !auth.IsLoopback(mgmt) {
-		_, _ = fmt.Fprintf(w, "labdns: warning: dev-loopback-unauth bind %s is not loopback; a same-host reverse proxy or SSH tunnel can make every client administrator\n", mgmt)
+		_, _ = fmt.Fprintf(w, "labdns: warning: dev-loopback-unauth management bound to %s (not loopback); any loopback peer, including a same-host reverse proxy or SSH tunnel, is administrator; set profile: bearer\n", mgmt)
 	}
 }
 

@@ -2,9 +2,13 @@
 # Management (REST /v1, MCP /mcp, operator console GET /): the process binds
 # :8080 (every interface in the container). Compose publishes that port on the
 # host loopback only (127.0.0.1:8080:8080).
-# Open http://127.0.0.1:8080/ — loopback Continue as local administrator, or
-# paste a bearer when the image is configured with spec.management.auth.profile
-# (profile: bearer).
+# The publish forwards from the Docker bridge, so the process sees a
+# non-loopback peer: with this config (profile omitted = dev-loopback-unauth,
+# no token) http://127.0.0.1:8080/v1/... and "Continue as local administrator"
+# return 401; under /v1 only /v1/health/live and /v1/health/ready succeed. The
+# container log prints the dev-loopback-unauth non-loopback bind warning for [::]:8080.
+# For a usable console set spec.management.auth.profile: bearer with a
+# secretRef token file and paste the token.
 services:
   labdns:
     image: ghcr.io/hilather/labdns:test
