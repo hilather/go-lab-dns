@@ -1484,7 +1484,7 @@ Do not publish an unauthenticated management port or an open recursive listener 
 | Make targets | Fail-closed placeholders | `AGENTS.md` |
 | License | **Apache-2.0** | User decision 2026-08-15 (pack recommendation) |
 | Module path | **`github.com/hilather/go-lab-dns`** | User decision 2026-08-15; remote unchanged |
-| Go toolchain | language `go 1.26`; toolchain / CI `GO_VERSION` / image patch 1.26.8 (must match each other) | User decision 2026-08-15 |
+| Go toolchain | language `go 1.26.0`; toolchain / CI `GO_VERSION` / image patch 1.26.9 (must match each other) | User decision 2026-08-15 |
 | Overlay CNAME → forward | **Allow**, bounded by global CNAME depth cap | User decision 2026-08-15 |
 | Auth | Loopback (`127.0.0.1` / `::1`): unauthenticated. Remote: **bearer token**. GitOps examples: bearer token. Superseded for `bearer` on 2026-10-08 by [ADR 0010](adr/0010-bearer-profile-no-loopback-exception.md) | User decision 2026-08-15 |
 | Container image | **`ghcr.io/hilather/labdns`** | User decision 2026-08-15 |

@@ -398,7 +398,7 @@ Dockerfile already has a Node stage **before** the Go build:
 2. Copy `web/dist` into `internal/web/dist` **after** `COPY . .`.
 3. Existing Go static build embeds dist. Image build fails if `index.html` or hashed `assets/` are missing.
 
-Pin the Node base image by digest in the release Dockerfile, same policy as `golang:1.26.8-alpine`.
+Pin the Node base image by digest in the release Dockerfile, same policy as `golang:1.26.9-alpine`.
 
 ## Compatibility implications
 

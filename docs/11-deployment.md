@@ -23,7 +23,7 @@ Related ADRs: 0003, 0008, [0010](adr/0010-bearer-profile-no-loopback-exception.m
 
 ## Container image
 
-Image: **`ghcr.io/hilather/labdns`** (pin by digest in GitOps). The root `Dockerfile` is a multi-stage build (`node:22.14.0-alpine` digest-pinned → `golang:1.26.8-alpine` → `scratch`) that ships:
+Image: **`ghcr.io/hilather/labdns`** (pin by digest in GitOps). The root `Dockerfile` is a multi-stage build (`node:22.14.0-alpine` digest-pinned → `golang:1.26.9-alpine` → `scratch`) that ships:
 
 - One static `labdns` binary at `/labdns`.
 - CA certificates for optional TLS upstreams.
