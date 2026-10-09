@@ -125,7 +125,7 @@ Useful flags: `--dns-listen`, `--management-listen ADDR|off`, `--chaos-disable`,
 
 ### 4. Operator console
 
-Open `http://127.0.0.1:8080/` after `serve` or Compose. `dev-loopback-unauth` (the default): **Continue as local administrator**. `profile: bearer`, including a browser on loopback: paste a bearer token into the password field; the continue button returns 401. The SPA discards the token after login. CSRF stays in memory, never `localStorage`. `spec.ui.enabled: false` 404s the SPA only. A published management host needs `spec.management.allowedOrigins` (`http(s)://host[:port]`). Spec: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md).
+Open `http://127.0.0.1:8080/` after `serve`. `dev-loopback-unauth` (the default) with `serve` on the host: **Continue as local administrator**. Through a Compose port publish the peer is the Docker bridge, not loopback, so that button returns 401 (section 5). `profile: bearer`, including a browser on loopback: paste a bearer token into the password field; the continue button returns 401. The SPA discards the token after login. CSRF stays in memory, never `localStorage`. `spec.ui.enabled: false` 404s the SPA only. A published management host needs `spec.management.allowedOrigins` (`http(s)://host[:port]`). Spec: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md).
 
 ### 5. Compose
 

@@ -231,22 +231,24 @@ func TestServeExposureWarnBoundAddress(t *testing.T) {
 	const dns = "127.0.0.1:0"
 
 	t.Run("non-loopback local address", func(t *testing.T) {
-		ip := nonLoopbackLocalIP(t)
-		if ip == "" {
-			t.Skip("no bindable non-loopback unicast address on this host")
+		ips := nonLoopbackLocalIPs(t)
+		for _, ip := range ips {
+			addr := net.JoinHostPort(ip, "0")
+			stdout, stderr, code := runServeExposure(t, writeLocalConfig(t, dns, addr))
+			if code != 0 && strings.Contains(stderr, "management listen") {
+				t.Logf("cannot listen on %s: %s", addr, strings.TrimSpace(stderr))
+				continue
+			}
+			t.Logf("non-loopback local address %s", ip)
+			assertExposureWarn(t, stdout, stderr, code)
+			mgmt := parseListenField(t, exposureListenLine(t, stdout), "management")
+			host, _, err := net.SplitHostPort(mgmt)
+			if err != nil || host != ip {
+				t.Fatalf("bound %q, want host %s", mgmt, ip)
+			}
+			return
 		}
-		t.Logf("non-loopback local address %s", ip)
-		addr := net.JoinHostPort(ip, "0")
-		stdout, stderr, code := runServeExposure(t, writeLocalConfig(t, dns, addr))
-		if code != 0 && strings.Contains(stderr, "management listen") {
-			t.Skipf("cannot listen on %s: %s", addr, strings.TrimSpace(stderr))
-		}
-		assertExposureWarn(t, stdout, stderr, code)
-		mgmt := parseListenField(t, exposureListenLine(t, stdout), "management")
-		host, _, err := net.SplitHostPort(mgmt)
-		if err != nil || host != ip {
-			t.Fatalf("bound %q, want host %s", mgmt, ip)
-		}
+		t.Skipf("no bindable non-loopback unicast address on this host (candidates %v)", ips)
 	})
 
 	t.Run("ipv6 wildcard [::]:0", func(t *testing.T) {
@@ -262,30 +264,35 @@ func TestServeExposureWarnBoundAddress(t *testing.T) {
 	})
 
 	t.Run("hostname resolving to loopback", func(t *testing.T) {
-		name := loopbackHostname(t)
-		if name == "" {
-			t.Skip("no hostname other than localhost resolves only to loopback here")
+		names := loopbackHostnames(t)
+		for _, name := range names {
+			addr := net.JoinHostPort(name, "0")
+			stdout, stderr, code := runServeExposure(t, writeLocalConfig(t, dns, addr))
+			if code != 0 && strings.Contains(stderr, "management listen") {
+				t.Logf("cannot listen on %s: %s", addr, strings.TrimSpace(stderr))
+				continue
+			}
+			t.Logf("loopback hostname %s", name)
+			assertExposureQuiet(t, stdout, stderr, code)
+			mgmt := parseListenField(t, exposureListenLine(t, stdout), "management")
+			if !auth.IsLoopback(mgmt) {
+				t.Fatalf("%s bound %q, not loopback", name, mgmt)
+			}
+			return
 		}
-		t.Logf("loopback hostname %s", name)
-		addr := net.JoinHostPort(name, "0")
-		stdout, stderr, code := runServeExposure(t, writeLocalConfig(t, dns, addr))
-		assertExposureQuiet(t, stdout, stderr, code)
-		mgmt := parseListenField(t, exposureListenLine(t, stdout), "management")
-		if !auth.IsLoopback(mgmt) {
-			t.Fatalf("%s bound %q, not loopback", name, mgmt)
-		}
+		t.Skipf("no bindable hostname other than localhost resolves only to loopback here (candidates %v)", names)
 	})
 }
 
-// nonLoopbackLocalIP returns a non-loopback, non-link-local unicast address
-// of this host, or "" when there is none. IPv4 is preferred.
-func nonLoopbackLocalIP(t *testing.T) string {
+// nonLoopbackLocalIPs returns this host's non-loopback, non-link-local
+// unicast addresses, IPv4 first.
+func nonLoopbackLocalIPs(t *testing.T) []string {
 	t.Helper()
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		return ""
+		return nil
 	}
-	var v6 string
+	var v4, v6 []string
 	for _, a := range addrs {
 		pfx, err := netip.ParsePrefix(a.String())
 		if err != nil {
@@ -296,19 +303,19 @@ func nonLoopbackLocalIP(t *testing.T) string {
 			continue
 		}
 		if ip.Is4() {
-			return ip.String()
-		}
-		if v6 == "" {
-			v6 = ip.String()
+			v4 = append(v4, ip.String())
+		} else {
+			v6 = append(v6, ip.String())
 		}
 	}
-	return v6
+	return append(v4, v6...)
 }
 
-// loopbackHostname returns a name, not "localhost" itself, whose every
-// resolved address is loopback, or "" when none of the candidates does.
-func loopbackHostname(t *testing.T) string {
+// loopbackHostnames returns the candidate names, not "localhost" itself,
+// whose every resolved address is loopback.
+func loopbackHostnames(t *testing.T) []string {
 	t.Helper()
+	var out []string
 	for _, name := range []string{"labdns-test.localhost", "ip6-localhost", "ip6-loopback", "localhost.localdomain", "localhost."} {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		ips, err := net.DefaultResolver.LookupHost(ctx, name)
@@ -324,8 +331,8 @@ func loopbackHostname(t *testing.T) string {
 			}
 		}
 		if ok {
-			return name
+			out = append(out, name)
 		}
 	}
-	return ""
+	return out
 }

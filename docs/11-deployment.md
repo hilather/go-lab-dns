@@ -85,10 +85,10 @@ behavior: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/d
    test-lab publishes `127.0.0.1:18080:8080/tcp`). Set
    `spec.listeners.management.address` to `127.0.0.1:8080` or `[::1]:8080`
    to bind the process itself to loopback.
-2. Open `http://127.0.0.1:8080/` in a browser. Off-loopback peers can load
+2. Open `http://127.0.0.1:8080/` (test-lab: `http://127.0.0.1:18080/`) in a browser. Off-loopback peers can load
    login HTML without a bearer; `/v1` still requires a session cookie or
    `Authorization: Bearer`.
-3. Loopback `dev-loopback-unauth`: **Continue as local administrator**.
+3. Loopback `dev-loopback-unauth` (`serve` on the host): **Continue as local administrator**. Through a Compose publish the peer is the Docker bridge, so the button returns 401.
    `profile: bearer` (GitOps `secretRef`), including a browser on loopback:
    paste the token into the password field. The continue button returns 401
    `authentication required`. The SPA discards the token after
