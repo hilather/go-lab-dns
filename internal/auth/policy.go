@@ -74,10 +74,11 @@ func NewPolicy(cfg PolicyConfig) (*Policy, error) {
 	return &Policy{profile: profile, tokens: toks}, nil
 }
 
-// Profile is the configured auth profile. A nil Policy has no profile and
-// returns "" so Identify fails closed instead of assuming dev-loopback-unauth.
-// NewPolicy stores dev-loopback-unauth when PolicyConfig.Profile is empty, so
-// a constructed policy does not report "".
+// Profile is the configured auth profile. A nil Policy returns "" and is not
+// the dev-loopback-unauth exception. Authenticate on a nil receiver returns
+// unauthenticated, including when a bearer is presented. NewPolicy stores
+// dev-loopback-unauth when PolicyConfig.Profile is empty, so a constructed
+// policy does not report "".
 func (p *Policy) Profile() string {
 	if p == nil {
 		return ""

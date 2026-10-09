@@ -3,7 +3,12 @@
 //
 // Frozen first-GA profiles: dev-loopback-unauth (unauthenticated only from
 // 127.0.0.1/::1) and bearer (token required for every peer, including
-// loopback; ADR 0010). A nil Authenticator, or one that does not report
-// dev-loopback-unauth, fails closed for every non-probe request. Health
-// live/ready stay unauthenticated in both profiles.
+// loopback; ADR 0010). A nil Authenticator rejects every non-probe request,
+// bearer or not. An Authenticator that does not report a profile, or that
+// reports an empty or unknown one, loses only the loopback-without-a-bearer
+// administrator exception; a presented bearer is still checked by that
+// Authenticator. An omitted YAML profile still normalizes to
+// dev-loopback-unauth (config.Normalize, NewPolicy), so configured
+// deployments are unchanged. Health live/ready stay unauthenticated in both
+// profiles.
 package auth

@@ -47,7 +47,8 @@ func (f AuthenticatorFunc) Authenticate(ctx context.Context, token string) (Acto
 // is administrator. Only an explicit dev-loopback-unauth report keeps that
 // exception. A wrapper Authenticator in front of *Policy must forward Profile.
 // A wrapper that does not implement ProfileReporter, or that reports an empty
-// or unknown profile, fails closed (no loopback exception).
+// or unknown profile, loses that exception. A presented bearer is still
+// passed to Authenticate.
 type ProfileReporter interface {
 	Profile() string
 }
@@ -67,9 +68,10 @@ type IdentifyIn struct {
 // non-probe request is Unauthenticated ("authentication required"), whether or
 // not a bearer is presented. An Authenticator that does not implement
 // ProfileReporter, or that reports an empty or unknown profile, is not the
-// dev exception. Probe requests skip auth so health live/ready stay
-// unauthenticated. X-Forwarded-For is not consulted (callers pass RemoteAddr
-// only). MCP stdio uses LocalOrStdio and does not call Identify.
+// dev exception; a presented bearer is still passed to Authenticate. Probe
+// requests skip auth so health live/ready stay unauthenticated.
+// X-Forwarded-For is not consulted (callers pass RemoteAddr only). MCP stdio
+// uses LocalOrStdio and does not call Identify.
 func Identify(ctx context.Context, in IdentifyIn, tokens Authenticator) (Actor, error) {
 	if in.Probe {
 		return Actor{ID: "probe", Class: ClassStartup, Role: RoleAdministrator}, nil

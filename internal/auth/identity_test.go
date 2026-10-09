@@ -165,6 +165,17 @@ func TestIdentifyNilAuthenticatorFailsClosed(t *testing.T) {
 	}
 }
 
+func TestIdentifyTypedNilPolicyBearerUnauthenticated(t *testing.T) {
+	var pol *Policy
+	a, err := Identify(context.Background(), IdentifyIn{
+		RemoteAddr:    "127.0.0.1:9",
+		Authorization: "Bearer dev-token",
+	}, pol)
+	if de, ok := domainerr.As(err); !ok || de.Code != domainerr.CodeUnauthenticated || de.Message != "authentication required" || a.ID != "" {
+		t.Fatalf("actor=%+v err=%v", a, err)
+	}
+}
+
 func TestIdentifyMissingProfileFailsClosed(t *testing.T) {
 	hook := AuthenticatorFunc(func(ctx context.Context, token string) (Actor, error) {
 		_ = ctx
