@@ -63,6 +63,7 @@
 - `docs/adr/0008-embedded-operator-web-ui.md`
 - `docs/adr/0009-accept-overlength-desired-state-names.md`
 - `docs/adr/0010-bearer-profile-no-loopback-exception.md`
+- `docs/adr/0011-propose-bearer-default-profile.md`
 
 ## Generated contracts
 

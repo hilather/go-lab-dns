@@ -11,8 +11,9 @@
 6. Run `scripts/test-config.sh <env>` until it is green.
 7. Open a PR. CODEOWNERS must review `dns.yaml`, `image.env`, and `policies/`.
 8. Merge and `scripts/deploy.sh <env> compose` (or `k8s`).
-9. Open the operator console at `http://127.0.0.1:8080/` (Compose publishes
-   management on loopback). Paste the bearer token from
+9. Open the operator console at `http://127.0.0.1:8080/` (test-lab:
+   `http://127.0.0.1:18080/`). The process binds `:8080`; Compose publishes it
+   on host loopback only. Paste the bearer token from
    `secrets/labdns-token`. Loopback Origin is allowed without
    `spec.management.allowedOrigins`. A published management host must list
    the exact browser Origin (`http(s)://host[:port]`) in
