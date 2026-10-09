@@ -28,7 +28,7 @@ Use semantic versioning for the application. Separately version:
 
 ## Required CI (no optional jobs)
 
-Every job in [`.github/workflows/ci.yml`](https://github.com/hilather/go-lab-dns/blob/main/.github/workflows/ci.yml) is required. There is no bypass, skip, `continue-on-error`, or unbounded retry. Third-party actions are pinned by full commit SHA (version noted in a comment), and each workflow reads the Go toolchain from a single `GO_VERSION` env var: language `go 1.26`; toolchain / CI `GO_VERSION` / image patch 1.26.8 (must match each other). Local equivalents:
+Every job in [`.github/workflows/ci.yml`](https://github.com/hilather/go-lab-dns/blob/main/.github/workflows/ci.yml) is required. There is no bypass, skip, `continue-on-error`, or unbounded retry. Third-party actions are pinned by full commit SHA (version noted in a comment), and each workflow reads the Go toolchain from a single `GO_VERSION` env var: language `go 1.26.0`; toolchain / CI `GO_VERSION` / image patch 1.26.9 (must match each other). Local equivalents:
 
 ```text
 make format
