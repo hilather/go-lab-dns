@@ -121,7 +121,8 @@ func BearerToken(h string) (string, bool) {
 	return tok, true
 }
 
-// IsLoopback reports whether remoteAddr is 127.0.0.1 or ::1 (with or without a port).
+// IsLoopback reports whether remoteAddr is 127.0.0.0/8, ::1, or IPv4-mapped
+// 127/8 (with or without a port).
 func IsLoopback(remoteAddr string) bool {
 	host := remoteAddr
 	if h, _, err := net.SplitHostPort(remoteAddr); err == nil {

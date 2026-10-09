@@ -133,7 +133,7 @@ Open `http://127.0.0.1:8080/` after `serve` or Compose. `dev-loopback-unauth` (t
 docker compose -f examples/compose.smoke.yaml up --build
 ```
 
-Host `:53` maps to container `:5353`. Management is bound to `127.0.0.1:8080` only. Open the operator console at `http://127.0.0.1:8080/` (this smoke image uses `dev-loopback-unauth`: Continue as local administrator). Production GitOps uses `profile: bearer` and requires the token even from loopback. Digest pin, Kubernetes, policy allowlists, probes, and token paste: [examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md).
+Host `:53` maps to container `:5353`. The process binds management on `:8080` (every interface). Compose publishes that port on the host loopback only (`127.0.0.1:8080:8080`). Open the operator console at `http://127.0.0.1:8080/` (this smoke image uses `dev-loopback-unauth`: Continue as local administrator). Production GitOps uses `profile: bearer` and requires the token even from loopback. Digest pin, Kubernetes, policy allowlists, probes, and token paste: [examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md).
 
 ---
 
@@ -359,6 +359,7 @@ Full catalog: [docs/README.md](docs/README.md).
 - [0008 Embedded operator web UI](https://github.com/hilather/go-lab-dns/blob/main/docs/adr/0008-embedded-operator-web-ui.md)
 - [0009 Accept over-length desired-state names](docs/adr/0009-accept-overlength-desired-state-names.md)
 - [0010 Bearer profile has no loopback exception](docs/adr/0010-bearer-profile-no-loopback-exception.md)
+- [0011 Propose bearer as the default auth profile](docs/adr/0011-propose-bearer-default-profile.md)
 
 ### Task lists and program board
 

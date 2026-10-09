@@ -17,10 +17,12 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 - `profile: bearer` no longer treats loopback (`127.0.0.1`, `::1`) requests without a bearer as administrator; they get 401 like remote peers. Send `Authorization: Bearer` (or sign in to the console with a token). `dev-loopback-unauth` and unauthenticated health probes are unchanged. See [ADR 0010](docs/adr/0010-bearer-profile-no-loopback-exception.md).
 - A nil management authenticator rejects every non-probe request (`authentication required`), whether or not a bearer is presented. An authenticator that does not report a profile, or that reports an empty or unknown profile, loses only the loopback-without-a-bearer administrator exception; a presented bearer is still checked by that authenticator. An omitted `spec.management.auth.profile` still normalizes to `dev-loopback-unauth` (`config.Normalize`, `NewPolicy`), so configured deployments are unchanged. Health probes stay unauthenticated. See [ADR 0010](docs/adr/0010-bearer-profile-no-loopback-exception.md).
+- `labdns serve` prints one stdout warning after the listening line when the auth profile is `dev-loopback-unauth` (including when `spec.management.auth.profile` is omitted) and the bound management address is not loopback. The line quotes that bound address. A same-host reverse proxy or SSH tunnel that connects from loopback is administrator. `--management-listen=off`, a loopback bind, and `profile: bearer` do not warn. Reset and apply do not rebind management or reload the authenticator, so they do not warn again. The omitted-profile default is unchanged. Proposed follow-up: [ADR 0011](docs/adr/0011-propose-bearer-default-profile.md).
 
 ### Compatibility and migration
 
 - Under `profile: bearer`, loopback clients (curl, scripts, the console button) must now send `Authorization: Bearer` (or use a REST session cookie created with a bearer). MCP must send the header. `dev-loopback-unauth` is unchanged. See [ADR 0010](docs/adr/0010-bearer-profile-no-loopback-exception.md).
+- No auth, schema, listener-default, or client-header change. An omitted `spec.management.auth.profile` remains `dev-loopback-unauth`. Operators who read `labdns serve` stdout see a second line when the warning applies. See proposed [ADR 0011](docs/adr/0011-propose-bearer-default-profile.md).
 
 ## v1.4.1 — 2026-10-05
 

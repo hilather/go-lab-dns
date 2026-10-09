@@ -2,6 +2,7 @@
 
 Honest residual last reviewed against **1.1.0** (console shipped) and the **1.0.0-rc.2** candidate. These are not defects hidden from the notes; they are out of scope, operator steps that a given change does not perform, or documented bounds. See [docs/18-roadmap-and-non-goals.md](https://github.com/hilather/go-lab-dns/blob/main/docs/18-roadmap-and-non-goals.md) for deferred product work. The embedded operator console is **implemented** in 1.1.0 ([docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md)); it is no longer a residual non-goal. 1.0.0-rc.1 / rc.2 remain UI-less — those notes were not rewritten.
 
+Last reviewed: 2026-10-09 (dev-loopback-unauth non-loopback bind warning; ADR 0011 proposed)
 Last reviewed: 2026-08-19
 Last reviewed: 2026-10-08 (bearer profile has no loopback exception; ADR 0010)
 Last reviewed: 2026-08-23 (over-length desired-state names; ADR 0009)
@@ -23,7 +24,7 @@ Last reviewed: 2026-08-23 (over-length desired-state names; ADR 0009)
 ## Security and audit
 
 - Durable audit is an in-process ring plus an optional best-effort external hook. The hook is **not** fail-closed. Loss of the process loses the ring.
-- `dev-loopback-unauth` is a development profile: loopback is an unauthenticated administrator. Under `profile: bearer`, loopback management requests also require a bearer or a REST session cookie ([ADR 0010](adr/0010-bearer-profile-no-loopback-exception.md)). Health live/ready stay unauthenticated. Do not expose the management listener on a public path.
+- `dev-loopback-unauth` is a development profile: loopback is an unauthenticated administrator. Under `profile: bearer`, loopback management requests also require a bearer or a REST session cookie ([ADR 0010](adr/0010-bearer-profile-no-loopback-exception.md)). Health live/ready stay unauthenticated. Do not expose the management listener on a public path. A same-host reverse proxy or SSH tunnel is that loopback peer, so every client behind it is administrator. The default management bind is all interfaces (`:8080`). `labdns serve` warns at startup when this profile is bound beyond loopback. Making `bearer` the default is proposed ([ADR 0011](adr/0011-propose-bearer-default-profile.md)) and is not this release.
 - Query names and client addresses are redacted by default. `spec.observability.logQNAME` is a debug gate.
 - Vulnerability reporting is GitHub private advisories only ([SECURITY.md](https://github.com/hilather/go-lab-dns/blob/main/SECURITY.md)).
 

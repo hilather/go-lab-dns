@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Deployment, Operations, Security
+Last reviewed: 2026-10-09 (process bind :8080 is every interface; Compose publishes host loopback)
 Last reviewed: 2026-10-08 (bearer profile has no loopback exception; ADR 0010)
 Last reviewed: 2026-10-03 (runtime signal lifecycle and configuration update boundaries)
 Last reviewed: 2026-10-03 (failed deployments preserve successful rollback snapshots)
@@ -66,8 +67,12 @@ labdns version
 
 Copyable Compose, Kubernetes, policy, and probe files live in
 [examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md)
-(GIT-001). Those examples use **bearer** `secretRef` (no token in Git) and
-bind management to loopback or a NetworkPolicy-isolated ClusterIP.
+(GIT-001). Those examples use **bearer** `secretRef` (no token in Git).
+The process address is `:8080` (every interface). Compose publishes that
+port on the host loopback (`127.0.0.1:8080:8080` in main-lab and
+`examples/compose.smoke.yaml`; test-lab publishes
+`127.0.0.1:18080:8080/tcp`). Kubernetes uses a NetworkPolicy-isolated
+ClusterIP.
 
 ## Operator console
 
@@ -75,7 +80,10 @@ The embedded SPA is served on the management listener (`GET /`) when
 `spec.ui.enabled` is true (the default when omitted). Spec and session
 behavior: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md).
 
-1. Bind management on loopback. Compose already maps `127.0.0.1:8080:8080`.
+1. The default process bind is `:8080` (every interface). Compose publishes
+   that port on the host loopback (`127.0.0.1:8080:8080`). Set
+   `spec.listeners.management.address` to `127.0.0.1:8080` or `[::1]:8080`
+   to bind the process itself to loopback.
 2. Open `http://127.0.0.1:8080/` in a browser. Off-loopback peers can load
    login HTML without a bearer; `/v1` still requires a session cookie or
    `Authorization: Bearer`.

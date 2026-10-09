@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Operations
+Last reviewed: 2026-10-09 (process bind :8080 is every interface; Compose publishes host loopback)
 Last reviewed: 2026-10-08 (bearer profile has no loopback exception; ADR 0010)
 Last reviewed: 2026-10-03 (signal cleanup, live cache updates, management mounts, and real upstream status)
 Last reviewed: 2026-08-19 (operator console :8080, token paste, ui.enabled, allowedOrigins)
@@ -155,7 +156,7 @@ The embedded operator UI is served on the management listener (`GET /`) when `sp
 
 ### Production / `labdns serve`
 
-1. Bind management on loopback (YAML `spec.listeners.management.address`, default `:8080`; GitOps compose maps `127.0.0.1:8080:8080`).
+1. The default process bind is `:8080`, every interface (YAML `spec.listeners.management.address`). GitOps Compose publishes that port on the host loopback (`127.0.0.1:8080:8080` in main-lab; test-lab publishes `127.0.0.1:18080:8080/tcp`). That publish is not a loopback process bind. Set the YAML address to `127.0.0.1:8080` or `[::1]:8080` to bind the process to loopback.
 2. Open `http://127.0.0.1:8080/` in a browser. Off-loopback clients can load the login HTML without a bearer; `/v1` APIs still require a live `labdns_session` cookie or `Authorization: Bearer`.
 3. On loopback `dev-loopback-unauth`, choose **Continue as local administrator** (`POST /v1/session` with no `Authorization`). Under `profile: bearer`, including loopback, paste a bearer token into the password field; that continue button returns 401 `authentication required`. The SPA discards the token after login. CSRF stays in module memory, never `localStorage`, `sessionStorage`, IndexedDB, or the URL.
 4. The overview dashboard shows `GET /v1/status` (revision, ready/degraded) and `GET /v1/version`.

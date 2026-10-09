@@ -2,6 +2,7 @@
 
 Status: Implemented (SEC-001)
 Owners: Security, DNS, Control Plane
+Last reviewed: 2026-10-09 (startup warning when dev-loopback-unauth binds management beyond loopback; ADR 0011 proposed)
 Last reviewed: 2026-10-09 (nil authenticator fails closed; an unreported profile loses only the loopback exception)
 Last reviewed: 2026-10-08 (bearer profile has no loopback exception; ADR 0010)
 Last reviewed: 2026-10-03 (browser cookie mutation races, fail-closed recovery, upstream reply correlation and cancellation)
@@ -9,7 +10,7 @@ Last reviewed: 2026-10-03 (safe management mounts and current caller protections
 Last reviewed: 2026-10-03 (sequential authorization of atomic change sets)
 Last reviewed: 2026-08-31 (protected-name wildcard synthesis)
 Last reviewed: 2026-10-03 (upstream reply correlation and cancellation)
-Related ADRs: 0003, 0004, 0005, 0007, [0010](adr/0010-bearer-profile-no-loopback-exception.md)
+Related ADRs: 0003, 0004, 0005, 0007, [0010](adr/0010-bearer-profile-no-loopback-exception.md), [0011](adr/0011-propose-bearer-default-profile.md)
 
 ## Goals
 
@@ -58,12 +59,14 @@ First-GA DNS listener numeric defaults (DNS-001; YAML overrides land with CFG/ST
 
 ### First-GA auth profiles
 
-| Profile | Loopback (`127.0.0.1` / `::1`) | Non-loopback |
+| Profile | Loopback (`127.0.0.0/8`, `::1`, IPv4-mapped `127/8`) | Non-loopback |
 |---|---|---|
 | `dev-loopback-unauth` (default) | Unauthenticated, treated as administrator | Bearer token required |
 | `bearer` | No exception: `Authorization: Bearer` or a live REST `labdns_session` cookie (MCP needs the header; [ADR 0010](adr/0010-bearer-profile-no-loopback-exception.md)) | Bearer token required; `secretRef` must resolve to at least one token |
 
 `bearer` tokens are loaded from `spec.management.auth.secretRef` (a file: one token, or JSON `{"tokens":[{"token","id","role","scopes"}]}`). Unknown tokens fail closed. Health live/ready stay unauthenticated in both profiles. MCP stdio (`LocalOrStdio`) has no network peer and is unchanged. `X-Forwarded-For` is not trusted.
+
+`dev-loopback-unauth` treats the TCP peer as administrator when that peer is loopback (`127.0.0.0/8`, `::1`, or IPv4-mapped loopback). `X-Forwarded-For` is not a peer. The default management address is `:8080`, which listens on every interface. A same-host reverse proxy or SSH tunnel that dials this process from loopback is the peer, so every client behind it is administrator. That remains true when the socket is bound only to loopback: the proxy is local. It is also true of the default all-interfaces bind, which accepts that loopback dial and every other interface. Publishing the port on the host loopback (Compose `127.0.0.1:8080:8080`) does not change the address the process bound inside its network namespace; `examples/labdns-deploy` still sets the in-container address to `:8080`. `labdns serve` prints one stdout warning after the listening line when this profile is active and the bound management address is not loopback. The warning quotes that bound address (after `--management-listen`, and after `Listen` resolves `localhost` or rewrites `0.0.0.0`). It is not printed for `--management-listen=off` (also `none`, `-`, `unbound`), for a loopback bind (`127.0.0.1`, another `127.0.0.0/8` address, `::1`, or IPv4-mapped loopback, including `localhost` when it resolves there), or for `profile: bearer`. Reset and apply do not rebind the listener or reload the authenticator, so they do not print it again. Bind management to `127.0.0.1` or `[::1]`, or set `profile: bearer`. Changing the omitted-profile default to `bearer` is proposed and is not this release ([ADR 0011](adr/0011-propose-bearer-default-profile.md)).
 
 A nil management authenticator fails closed: every non-probe request is unauthenticated (`authentication required`), including loopback and including a presented bearer. An authenticator that does not report a profile, or that reports an empty or unknown profile, is not the `dev-loopback-unauth` exception. Only an explicit `dev-loopback-unauth` report keeps loopback-without-a-bearer as administrator; a presented bearer is still checked by that authenticator. An omitted YAML profile still normalizes to `dev-loopback-unauth` (`config.Normalize`, `NewPolicy`), so configured deployments are unchanged. `labdns serve` passes the loaded `*auth.Policy` whenever management is bound, and does not construct REST or MCP when there is no canonical state to load a profile from.
 
