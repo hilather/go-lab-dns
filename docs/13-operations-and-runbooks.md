@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Operations
+Last reviewed: 2026-10-08 (bearer profile has no loopback exception; ADR 0010)
 Last reviewed: 2026-10-03 (signal cleanup, live cache updates, management mounts, and real upstream status)
 Last reviewed: 2026-08-19 (operator console :8080, token paste, ui.enabled, allowedOrigins)
 Last reviewed: 2026-08-19 (operator console GET / and Vite proxy)
@@ -156,7 +157,7 @@ The embedded operator UI is served on the management listener (`GET /`) when `sp
 
 1. Bind management on loopback (YAML `spec.listeners.management.address`, default `:8080`; GitOps compose maps `127.0.0.1:8080:8080`).
 2. Open `http://127.0.0.1:8080/` in a browser. Off-loopback clients can load the login HTML without a bearer; `/v1` APIs still require a live `labdns_session` cookie or `Authorization: Bearer`.
-3. On loopback `dev-loopback-unauth`, choose **Continue as local administrator** (`POST /v1/session` with no `Authorization`). Off-loopback, paste a bearer token into the password field; the SPA discards the token after login. CSRF stays in module memory, never `localStorage`, `sessionStorage`, IndexedDB, or the URL.
+3. On loopback `dev-loopback-unauth`, choose **Continue as local administrator** (`POST /v1/session` with no `Authorization`). Under `profile: bearer`, including loopback, paste a bearer token into the password field; that continue button returns 401 `authentication required`. The SPA discards the token after login. CSRF stays in module memory, never `localStorage`, `sessionStorage`, IndexedDB, or the URL.
 4. The overview dashboard shows `GET /v1/status` (revision, ready/degraded) and `GET /v1/version`.
 5. `spec.ui.enabled: false` 404s SPA paths only; REST and MCP remain. `--management-listen=off` unbinds REST, MCP, and the UI together.
 6. Published management hosts (not loopback) must set `spec.management.allowedOrigins` to the exact browser Origin (`http(s)://host[:port]`, no path). Omitted is empty; loopback Origin stays allowed. Invalid entries fail config validation. Plan/apply of `allowedOrigins` and `spec.ui.enabled` takes effect on the next request. `spec.management.auth` remains serve-time and needs a restart (in-process sessions are dropped).

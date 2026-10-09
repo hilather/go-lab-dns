@@ -1356,6 +1356,7 @@ Roles (viewer, DNS editor, forwarder operator, chaos designer, chaos operator, c
 
 - **Dev / loopback:** unauthenticated management is allowed **only** from `127.0.0.1` and `::1`. Profile name: `dev-loopback-unauth`.
 - **Remote / non-loopback:** **bearer token** required. Unauthenticated remote management is forbidden.
+- **Superseded for `profile: bearer` on 2026-10-08** ([ADR 0010](adr/0010-bearer-profile-no-loopback-exception.md)): under `bearer`, loopback peers also need a token. `dev-loopback-unauth` and unauthenticated health probes are unchanged. MCP stdio is unchanged.
 - GitOps / Compose / Kubernetes examples use bearer token (secret reference, never inline).
 - Management still binds to loopback or a dedicated management network by default. No permissive CORS.
 - Auth provider unavailable: fail closed for writes (loopback unauth path is local-only and does not depend on an external provider).
@@ -1485,7 +1486,7 @@ Do not publish an unauthenticated management port or an open recursive listener 
 | Module path | **`github.com/hilather/go-lab-dns`** | User decision 2026-08-15; remote unchanged |
 | Go toolchain | language `go 1.26.0`; toolchain / CI `GO_VERSION` / image patch 1.26.9 (must match each other) | User decision 2026-08-15 |
 | Overlay CNAME → forward | **Allow**, bounded by global CNAME depth cap | User decision 2026-08-15 |
-| Auth | Loopback (`127.0.0.1` / `::1`): unauthenticated. Remote: **bearer token**. GitOps examples: bearer token | User decision 2026-08-15 |
+| Auth | Loopback (`127.0.0.1` / `::1`): unauthenticated. Remote: **bearer token**. GitOps examples: bearer token. Superseded for `bearer` on 2026-10-08 by [ADR 0010](adr/0010-bearer-profile-no-loopback-exception.md) | User decision 2026-08-15 |
 | Container image | **`ghcr.io/hilather/labdns`** | User decision 2026-08-15 |
 | Security reporting | GitHub private advisories on `hilather/go-lab-dns`; `SECURITY.md` points there | User decision 2026-08-15 |
 | OpenAPI toolchain | `go generate` from the capability registry + `Spec` | User 2026-08-15 accepted leftover default |
@@ -1528,7 +1529,7 @@ All first-GA Open Questions are **resolved** (user 2026-08-15). Implementers do 
 | Q-MOD | Module path `github.com/hilather/go-lab-dns` (remote `https://github.com/hilather/go-lab-dns.git`) |
 | Q-GO | Go 1.26 (`go 1.26` in go.mod; CI latest 1.26.x; 1.27 deferred until stable — 2026-08-16 check found only RCs) |
 | Q-CNAME | Allow overlay CNAME → forwarded name, global depth cap |
-| Q-AUTH | Unauthenticated loopback only (`127.0.0.1` / `::1`); remote bearer token; GitOps uses bearer |
+| Q-AUTH | Unauthenticated loopback only (`127.0.0.1` / `::1`); remote bearer token; GitOps uses bearer. Superseded for `profile: bearer` on 2026-10-08 by [ADR 0010](adr/0010-bearer-profile-no-loopback-exception.md): loopback has no exception under bearer |
 | Q-IMG | `ghcr.io/hilather/labdns` |
 | Q-SEC | GitHub private vulnerability reporting on `hilather/go-lab-dns`; `SECURITY.md` points at that |
 | Q-OAPI | `go generate` from the capability registry |
@@ -1757,7 +1758,7 @@ flowchart TD
   1. Health, version, capabilities, status, schema, docs, GET state/zones/records, resolve/explain
   2. Validate/plan/apply/export/reset
   3. Forwarding/cache/chaos/audit (including `:expire` and emergency)
-- `application/problem+json`, pagination, body/timeout limits, idempotency/revision mapping. Auth hook compatible with PR-14 (unauthenticated **loopback only**; bearer required off-loopback). Handlers contain no domain mutation logic. Chaos contract tests **include packet-level effects**.
+- `application/problem+json`, pagination, body/timeout limits, idempotency/revision mapping. Auth hook compatible with PR-14 (unauthenticated **loopback only**; bearer required off-loopback) (superseded for `bearer` by ADR 0010). Handlers contain no domain mutation logic. Chaos contract tests **include packet-level effects**.
 
 ### PR-13 — MCP control plane (MCP-001)
 
@@ -1771,7 +1772,7 @@ flowchart TD
 - **PR title:** `feat(security): shared RBAC, abuse limits, and audit`
 - **Files/components:** `internal/auth/**`, `internal/audit/**`, REST/MCP middleware, threat-model tests
 - **Dependencies:** PR-12, PR-13, PR-04 admission hooks
-- **Description:** Identity interface implementation, capability/resource scopes, separate chaos privileges, management rate/concurrency limits, DNS query/connection limits (on top of M1 refuse-forward), protected objects, secret redaction, audit events, Origin/CORS deny-all default. **Auth profiles:** `dev-loopback-unauth` (unauthenticated only from `127.0.0.1`/`::1`); bearer token required for every non-loopback peer. Full role×capability matrix. **Does not introduce refuse-forward** — that already shipped in PR-03/PR-06. No fail-closed on an external audit sink.
+- **Description:** Identity interface implementation, capability/resource scopes, separate chaos privileges, management rate/concurrency limits, DNS query/connection limits (on top of M1 refuse-forward), protected objects, secret redaction, audit events, Origin/CORS deny-all default. **Auth profiles:** `dev-loopback-unauth` (unauthenticated only from `127.0.0.1`/`::1`); bearer token required for every non-loopback peer (superseded for `bearer` by ADR 0010). Full role×capability matrix. **Does not introduce refuse-forward** — that already shipped in PR-03/PR-06. No fail-closed on an external audit sink.
 
 ### PR-15 — Observability and health (OBS-001)
 

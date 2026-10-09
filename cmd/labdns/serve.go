@@ -174,20 +174,28 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 		return nil, fmt.Errorf("compile: no DNS protocol enabled")
 	}
 	mgmtAddr, mgmtOff := managementListenAddr(snap, flags.ManagementListen)
+	// authn and pol are consumed only while management is bound: REST, MCP
+	// HTTP, and the session digest. Management-off does not construct those
+	// servers, so the authenticator is unused. When management is on,
+	// bindManagementAuth returns the loaded *Policy or an error (a missing
+	// bearer file fails before listeners bind). A nil Canonical is not a
+	// real compile result; management stays unbound instead of receiving a
+	// nil authenticator.
 	var (
 		authn auth.Authenticator
 		pol   *auth.Policy
 	)
-	if !mgmtOff && snap.Canonical != nil {
-		// Resolve tokens before binding so a missing bearer file cannot
-		// publish DNS while management fails closed.
-		var err error
-		pol, err = auth.FromSpec(snap.Canonical.Spec.Management.Auth)
-		if err != nil {
+	if !mgmtOff {
+		var construct bool
+		var aerr error
+		authn, pol, construct, aerr = bindManagementAuth(snap)
+		if aerr != nil {
 			stopSig()
-			return nil, fmt.Errorf("management auth: %w", err)
+			return nil, fmt.Errorf("management auth: %w", aerr)
 		}
-		authn = pol
+		if !construct {
+			mgmtOff = true
+		}
 	}
 	srv, err := dnsserver.New(dnsserver.Config{
 		UDPAddr: udpAddr,
@@ -394,6 +402,28 @@ func overrideDNSListen(addr string, snap *snapshot.Snapshot) (udpAddr, tcpAddr s
 		}
 	}
 	return udpAddr, tcpAddr
+}
+
+// bindManagementAuth loads the authenticator for a bound management listener.
+//
+// compiler.Compile sets Canonical or returns an error, and config.Normalize
+// fills an empty profile with dev-loopback-unauth, so every real serve config
+// gets a *Policy here. Bearer with no tokens errors. The returned authenticator
+// is that *Policy (never nil when construct is true).
+//
+// A nil snapshot or nil Canonical has no profile. construct is false: the
+// caller does not build REST, MCP HTTP, or the session table. That used to
+// pass a nil authenticator, which Identify treated as local-dev administrator.
+// DNS binding is left to the caller and is unchanged.
+func bindManagementAuth(snap *snapshot.Snapshot) (authn auth.Authenticator, pol *auth.Policy, construct bool, err error) {
+	if snap == nil || snap.Canonical == nil {
+		return nil, nil, false, nil
+	}
+	pol, err = auth.FromSpec(snap.Canonical.Spec.Management.Auth)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	return pol, pol, true, nil
 }
 
 func managementListenAddr(snap *snapshot.Snapshot, override string) (addr string, off bool) {

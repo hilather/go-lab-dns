@@ -77,7 +77,7 @@ func TestDiscoverAdvertisesOnlyPinnedVersion(t *testing.T) {
 
 func TestAllowLegacyClientsNegotiatesViaSDK(t *testing.T) {
 	_, svc := newTestServer(t)
-	s, err := New(Config{Service: svc, RatePerSec: -1, AllowLegacyClients: true})
+	s, err := New(Config{Service: svc, Auth: devLoopbackAuth(t), RatePerSec: -1, AllowLegacyClients: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestAllowLegacyClientsNegotiatesViaSDK(t *testing.T) {
 func TestAllowLegacyClientsLiveSnapshot(t *testing.T) {
 	_, svc := newTestServer(t)
 	on := false
-	s, err := New(Config{Service: svc, RatePerSec: -1, LegacyClients: func() bool { return on }})
+	s, err := New(Config{Service: svc, Auth: devLoopbackAuth(t), RatePerSec: -1, LegacyClients: func() bool { return on }})
 	if err != nil {
 		t.Fatal(err)
 	}
