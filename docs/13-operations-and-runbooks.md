@@ -163,7 +163,7 @@ The embedded operator UI is served on the management listener (`GET /`) when `sp
 5. `spec.ui.enabled: false` 404s SPA paths only; REST and MCP remain. `--management-listen=off` unbinds REST, MCP, and the UI together.
 6. Published management hosts (not loopback) must set `spec.management.allowedOrigins` to the exact browser Origin (`http(s)://host[:port]`, no path). Omitted is empty; loopback Origin stays allowed. Invalid entries fail config validation. Plan/apply of `allowedOrigins` and `spec.ui.enabled` takes effect on the next request. `spec.management.auth` remains serve-time and needs a restart (in-process sessions are dropped).
 
-Local `go test` / `go run` embed the committed stub at `internal/web/dist/index.html`, not a production Vite bundle. Production images copy `web/dist` in Docker. GitOps Compose maps `127.0.0.1:8080:8080` and uses bearer `secretRef` — paste that token on `/login`.
+Local `go test` / `go run` embed the committed stub at `internal/web/dist/index.html`, not a production Vite bundle. Production images copy `web/dist` in Docker. GitOps Compose publishes management on the host loopback: main-lab publishes `127.0.0.1:8080:8080` and test-lab publishes `127.0.0.1:18080:8080/tcp`. Both use bearer `secretRef` — paste that token on `/login`.
 
 ### Local SPA development (Vite proxy)
 

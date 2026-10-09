@@ -81,7 +81,8 @@ The embedded SPA is served on the management listener (`GET /`) when
 behavior: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md).
 
 1. The default process bind is `:8080` (every interface). Compose publishes
-   that port on the host loopback (`127.0.0.1:8080:8080`). Set
+   that port on the host loopback (main-lab publishes `127.0.0.1:8080:8080`;
+   test-lab publishes `127.0.0.1:18080:8080/tcp`). Set
    `spec.listeners.management.address` to `127.0.0.1:8080` or `[::1]:8080`
    to bind the process itself to loopback.
 2. Open `http://127.0.0.1:8080/` in a browser. Off-loopback peers can load
