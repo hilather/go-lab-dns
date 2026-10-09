@@ -6,7 +6,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Changed
 
-- Go toolchain pinned to go1.26.9 (go.mod `toolchain`, CI and release `GO_VERSION`, Dockerfile); 1.26.0–1.26.8 lack current stdlib security fixes, most recently the Go 1.26.9 fixes (GO-2026-6603, -6605, -6607 to -6613, -6617 in `net/http`, `mime/multipart` and `crypto/tls`). `golang.org/x/net` moves from v0.58.0 to v0.60.0 (fixes the x/net side of GO-2026-6603, -6610, -6611, -6612 and -6617), which also pulls `golang.org/x/sys` v0.48.0; the go.mod language line is written as `go 1.26.0`.
+- Go toolchain pinned to go1.26.9 (go.mod `toolchain`, CI and release `GO_VERSION`, Dockerfile); 1.26.0–1.26.8 lack current stdlib security fixes, most recently the Go 1.26.9 fixes (GO-2026-6603 to -6605, -6607 to -6613 and -6617 in `net/http`, `net/textproto`, `mime/multipart`, `crypto/tls` and `os`). `golang.org/x/net` moves from v0.58.0 to v0.60.0 (fixes the x/net side of GO-2026-6603, -6610, -6611, -6612 and -6617), which also pulls `golang.org/x/sys` v0.48.0; the go.mod language line is written as `go 1.26.0`.
 - Web development dependency `source-map-js` updates from 1.2.1 to 1.2.2 (GHSA-68fv-2mgg-jv7q, high: event-loop denial of service through indexed source-map section offsets). Lockfile only; the `web/dist` build output is byte-identical, and the web CI `npm audit --audit-level=high` step passes again.
 
 ## v1.4.1 — 2026-10-05
