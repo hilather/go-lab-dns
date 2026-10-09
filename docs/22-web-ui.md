@@ -390,7 +390,7 @@ Work packages (task IDs UI-001–UI-004; all **done** — [tasks/18-web-ui.md](h
 
 Do not mark a later DNS/REST/MCP task complete if it adds a public operator capability without a UI action and a Playwright case.
 
-Operator onboarding (loopback `:8080`, bearer paste, `spec.ui.enabled`, `spec.management.allowedOrigins`) lives in [docs/11-deployment.md](https://github.com/hilather/go-lab-dns/blob/main/docs/11-deployment.md), [docs/13-operations-and-runbooks.md](https://github.com/hilather/go-lab-dns/blob/main/docs/13-operations-and-runbooks.md), and [examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md).
+Operator onboarding (process binds `:8080` / Compose publishes on host loopback (main-lab `127.0.0.1:8080:8080`, test-lab `127.0.0.1:18080:8080/tcp`), bearer paste, `spec.ui.enabled`, `spec.management.allowedOrigins`) lives in [docs/11-deployment.md](https://github.com/hilather/go-lab-dns/blob/main/docs/11-deployment.md), [docs/13-operations-and-runbooks.md](https://github.com/hilather/go-lab-dns/blob/main/docs/13-operations-and-runbooks.md), and [examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md).
 
 Dockerfile already has a Node stage **before** the Go build:
 

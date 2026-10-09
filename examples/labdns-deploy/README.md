@@ -60,9 +60,10 @@ runtime (with expiry) when you want the live impairment.
 
 ## Isolated management
 
-Compose publishes `:8080` on `127.0.0.1` only. Kubernetes uses a ClusterIP
-Service plus NetworkPolicy: DNS 5353 from the lab CIDR, management 8080
-only from namespaces labeled `labdns.dev/management=true`.
+The process binds `:8080`. Compose publishes on host loopback (main-lab
+`127.0.0.1:8080:8080`, test-lab `127.0.0.1:18080:8080/tcp`). Kubernetes
+uses a ClusterIP Service plus NetworkPolicy: DNS 5353 from the lab CIDR,
+management 8080 only from namespaces labeled `labdns.dev/management=true`.
 
 `spec.management.auth.profile` is `bearer` with
 `secretRef: /run/secrets/labdns-token`. The token is a mounted Secret /

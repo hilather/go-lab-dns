@@ -3,7 +3,8 @@
 # :8080 (every interface in the container). Compose publishes that port on the
 # host loopback only (127.0.0.1:8080:8080).
 # Open http://127.0.0.1:8080/ — loopback Continue as local administrator, or
-# paste a bearer when the image is configured with spec.management.auth.bearer.
+# paste a bearer when the image is configured with spec.management.auth.profile
+# (profile: bearer).
 services:
   labdns:
     image: ghcr.io/hilather/labdns:test
