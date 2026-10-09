@@ -7,8 +7,11 @@ Create a local token file for Compose:
 
 ```text
 umask 077
-printf 'replace-me-with-a-long-random-token\n' > secrets/labdns-token
+openssl rand -hex 32 > secrets/labdns-token
 ```
+
+Generate at least 32 bytes. Shorter tokens are deprecated: they still load
+in this release and the next minor release refuses them.
 
 Kubernetes: create an opaque Secret in the cluster and reference it from
 the Deployment. Do not put the token in `dns.yaml` or `image.env`.

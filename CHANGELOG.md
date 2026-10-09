@@ -9,6 +9,10 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 - Go toolchain pinned to go1.26.8 (go.mod `toolchain`, CI `GO_VERSION`, Dockerfile); 1.26.0–1.26.7 lack current stdlib security fixes.
 - Web development dependency `source-map-js` updates from 1.2.1 to 1.2.2 (GHSA-68fv-2mgg-jv7q, high: event-loop denial of service through indexed source-map section offsets). Lockfile only; the `web/dist` build output is byte-identical, and the web CI `npm audit --audit-level=high` step passes again.
 
+### Deprecated
+
+- Management bearer tokens shorter than 32 bytes are deprecated. This release does not check plain-token length when `labdns serve` reads `spec.management.auth.secretRef` at process start (auth is serve-time; reset does not reread tokens). The next minor release refuses a token shorter than 32 bytes at that same load. Replacement: generate tokens with `openssl rand -hex 32` (the `examples/labdns-deploy` instructions now do). This release has no short-token log line or metric; the shared-auth (controlkit) migration adds a load-time warning (token id only) and the `labdns_auth_short_tokens_total` counter before enforcement.
+
 ## v1.4.1 — 2026-10-05
 
 Curated notes: [docs/releases/v1.4.1.md](https://github.com/hilather/go-lab-dns/blob/v1.4.1/docs/releases/v1.4.1.md).

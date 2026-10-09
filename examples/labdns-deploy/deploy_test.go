@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -635,4 +637,177 @@ exit 0
 			}
 		})
 	}
+}
+
+// TestTokenInstructionsGenerateAtLeast32Bytes locks the operator token
+// examples to `openssl rand -hex N` with N >= 32. A fenced `$(cat …)` read
+// (the kubectl Secret creation) is not a generator.
+func TestTokenInstructionsGenerateAtLeast32Bytes(t *testing.T) {
+	root := repoRoot(t)
+	deploy := filepath.Join(root, "examples", "labdns-deploy")
+	paths := []string{
+		filepath.Join(deploy, "environments", "main-lab", "README.md"),
+		filepath.Join(deploy, "secrets", "README.md"),
+	}
+	printfLiteral := regexp.MustCompile(`printf\s+'[^']*'\s*>\s*\S*labdns-token`)
+	for _, path := range paths {
+		body := read(t, path)
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if printfLiteral.MatchString(body) {
+			t.Errorf("%s generates labdns-token with a printf literal", rel)
+		}
+		generators := 0
+		for _, block := range markdownFences(body) {
+			scanned := stripCommandSubstitutions(block)
+			for _, line := range shellLines(scanned) {
+				left, ok := redirectOntoLabdnsToken(line)
+				if !ok {
+					continue
+				}
+				n, ok := opensslRandHexBytes(left)
+				if !ok || n < 32 {
+					t.Errorf("%s: redirection onto labdns-token is %q; want openssl rand -hex N with N >= 32", rel, left)
+					continue
+				}
+				generators++
+			}
+		}
+		if generators == 0 {
+			t.Errorf("%s: no openssl rand -hex N>=32 write of labdns-token", rel)
+		}
+	}
+}
+
+func markdownFences(md string) []string {
+	var blocks []string
+	var b strings.Builder
+	open := false
+	for _, line := range strings.Split(md, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "```") {
+			if open {
+				blocks = append(blocks, b.String())
+				b.Reset()
+				open = false
+				continue
+			}
+			open = true
+			continue
+		}
+		if open {
+			b.WriteString(line)
+			b.WriteByte('\n')
+		}
+	}
+	if open {
+		blocks = append(blocks, b.String())
+	}
+	return blocks
+}
+
+func shellLines(block string) []string {
+	var lines []string
+	var b strings.Builder
+	for _, line := range strings.Split(block, "\n") {
+		trimmed := strings.TrimRight(line, " \t")
+		if strings.HasSuffix(trimmed, "\\") {
+			b.WriteString(strings.TrimSpace(strings.TrimSuffix(trimmed, "\\")))
+			b.WriteByte(' ')
+			continue
+		}
+		b.WriteString(line)
+		lines = append(lines, b.String())
+		b.Reset()
+	}
+	if strings.TrimSpace(b.String()) != "" {
+		lines = append(lines, b.String())
+	}
+	return lines
+}
+
+// stripCommandSubstitutions removes $(...) so a read such as
+// $(cat ../../secrets/labdns-token) is not treated as a generator.
+func stripCommandSubstitutions(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '$' && i+1 < len(s) && s[i+1] == '(' {
+			end := matchingParen(s, i+1)
+			if end < 0 {
+				b.WriteByte(s[i])
+				continue
+			}
+			i = end
+			continue
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
+}
+
+func matchingParen(s string, open int) int {
+	depth := 0
+	for i := open; i < len(s); i++ {
+		switch s[i] {
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
+func redirectOntoLabdnsToken(line string) (string, bool) {
+	inSingle, inDouble := false, false
+	for i := 0; i < len(line); i++ {
+		switch line[i] {
+		case '\\':
+			if inDouble && i+1 < len(line) {
+				i++
+			}
+		case '\'':
+			if !inDouble {
+				inSingle = !inSingle
+			}
+		case '"':
+			if !inSingle {
+				inDouble = !inDouble
+			}
+		case '>':
+			if inSingle || inDouble {
+				continue
+			}
+			j := i + 1
+			if j < len(line) && line[j] == '>' {
+				j++
+			}
+			rest := strings.TrimSpace(line[j:])
+			if rest == "" {
+				continue
+			}
+			target := strings.Trim(strings.Fields(rest)[0], `"'`)
+			if !strings.HasSuffix(target, "labdns-token") {
+				continue
+			}
+			return strings.TrimSpace(line[:i]), true
+		}
+	}
+	return "", false
+}
+
+func opensslRandHexBytes(cmd string) (int, bool) {
+	m := regexp.MustCompile(`^openssl\s+rand\s+-hex\s+(\d+)$`).FindStringSubmatch(strings.TrimSpace(cmd))
+	if m == nil {
+		return 0, false
+	}
+	n, err := strconv.Atoi(m[1])
+	if err != nil {
+		return 0, false
+	}
+	return n, true
 }
