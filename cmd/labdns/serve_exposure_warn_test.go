@@ -101,10 +101,17 @@ func TestServeExposureWarn(t *testing.T) {
 	}
 }
 
+// TestServeOmittedProfileMissingToken: an omitted profile with no secretRef
+// fails before any listener binds. Ephemeral ports keep the base run (which
+// starts and exits 0) from colliding with a real :8080.
 func TestServeOmittedProfileMissingToken(t *testing.T) {
-	path := writeLocalConfig(t, "127.0.0.1:0", ":8080")
-	stdout, stderr, code := runServeExposure(t, path)
-	assertExposureTokenError(t, stdout, stderr, code)
+	for _, mgmt := range []string{":0", "127.0.0.1:0"} {
+		t.Run(mgmt, func(t *testing.T) {
+			path := writeLocalConfig(t, "127.0.0.1:0", mgmt)
+			stdout, stderr, code := runServeExposure(t, path)
+			assertExposureTokenError(t, stdout, stderr, code)
+		})
+	}
 }
 
 func TestServeBearerTokenFileUnusable(t *testing.T) {
