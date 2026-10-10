@@ -109,7 +109,10 @@ behavior: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/d
    in-process sessions (`ResetIfDigestChanged` is unused in 1.1.0). Since v1.5.0 a `management`
    replace that omits `auth.profile` stores `bearer` in the live canonical
    state while the running listener keeps its start-time profile; restate
-   `profile: dev-loopback-unauth` in such updates if you rely on it.
+   `profile: dev-loopback-unauth` in such updates if you rely on it. A
+   restart reloads the bootstrap file (runtime drift is discarded); exporting
+   that live state back into the bootstrap file makes it `bearer`, which then
+   needs a usable `secretRef` or `labdns serve` exits 1 with the token sentence.
 
 Local `go test` / `go run` embed the committed stub, not the production Vite
 bundle. Production images copy `web/dist` in Docker.
