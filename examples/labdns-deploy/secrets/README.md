@@ -17,7 +17,8 @@ Kubernetes: create an opaque Secret in the cluster and reference it from
 the Deployment. Do not put the token in `dns.yaml` or `image.env`.
 
 `labdns serve` with `auth.profile: bearer` fails closed if the file is
-missing or empty. Under `bearer`, loopback (`127.0.0.1` / `::1`) and
+missing or empty. An omitted profile is `bearer` and fails the same way
+when management is bound. Under `bearer`, loopback (`127.0.0.1` / `::1`) and
 remote management peers need `Authorization: Bearer` (MCP must send the
 header; REST may use a session cookie created with a bearer). Health
 live/ready stay unauthenticated. `dev-loopback-unauth` still lets

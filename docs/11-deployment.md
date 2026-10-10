@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Deployment, Operations, Security
+Last reviewed: 2026-10-09 (omitted auth profile is bearer; upgrade to v1.5.0; ADR 0011 accepted)
 Last reviewed: 2026-10-09 (process bind :8080 is every interface; Compose publishes host loopback)
 Last reviewed: 2026-10-08 (bearer profile has no loopback exception; ADR 0010)
 Last reviewed: 2026-10-03 (runtime signal lifecycle and configuration update boundaries)
@@ -88,12 +89,14 @@ behavior: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/d
 2. Open `http://127.0.0.1:8080/` (test-lab: `http://127.0.0.1:18080/`) in a browser. Off-loopback peers can load
    login HTML without a bearer; `/v1` still requires a session cookie or
    `Authorization: Bearer`.
-3. Loopback `dev-loopback-unauth` (`serve` on the host): **Continue as local administrator**. Through a Compose publish the peer is the Docker bridge, so the button returns 401.
-   `profile: bearer` (GitOps `secretRef`), including a browser on loopback:
-   paste the token into the password field. The continue button returns 401
-   `authentication required`. The SPA discards the token after
-   `POST /v1/session`. Never store the bearer in `localStorage`,
-   `sessionStorage`, IndexedDB, or the URL.
+3. **Continue as local administrator** works only for explicit
+   `profile: dev-loopback-unauth` when the TCP peer is loopback (`serve` on
+   the host). The omitted default is `bearer` and needs a token file
+   (`spec.management.auth.secretRef`); paste that token, including from
+   loopback. Through a Compose publish the peer is the Docker bridge, so
+   the button returns 401 under `dev-loopback-unauth` as well.
+   The SPA discards the token after `POST /v1/session`. Never store the
+   bearer in `localStorage`, `sessionStorage`, IndexedDB, or the URL.
 4. `spec.ui.enabled: false` 404s SPA paths only; REST and MCP remain.
    `--management-listen=off` unbinds REST, MCP, and the UI together.
 5. Same-origin UI on a **published** management host needs
@@ -103,10 +106,27 @@ behavior: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/d
    `spec.management.allowedOrigins` takes effect on the next request without
    restart. `spec.management.auth` is serve-time (`auth.FromSpec` at process
    start): changing profile or tokens requires a restart, which drops
-   in-process sessions (`ResetIfDigestChanged` is unused in 1.1.0).
+   in-process sessions (`ResetIfDigestChanged` is unused in 1.1.0). Since v1.5.0 a `management`
+   replace that omits `auth.profile` stores `bearer` in the live canonical
+   state while the running listener keeps its start-time profile; restate
+   `profile: dev-loopback-unauth` in such updates if you rely on it. A
+   restart reloads the bootstrap file (runtime drift is discarded); exporting
+   that live state back into the bootstrap file makes it `bearer`, which then
+   needs a usable `secretRef` or `labdns serve` exits 1 with the token sentence.
 
 Local `go test` / `go run` embed the committed stub, not the production Vite
 bundle. Production images copy `web/dist` in Docker.
+
+### Upgrade to v1.5.0
+
+Omitted `spec.management.auth.profile` normalizes to `bearer` ([ADR 0011](adr/0011-propose-bearer-default-profile.md)).
+
+- No `profile` and no token file: `labdns serve` exits 1 before it listens: `validation_failed: bearer profile has no usable token; set spec.management.auth.secretRef to a token file, or set profile: dev-loopback-unauth`. `labdns validate` reports the same sentence when `secretRef` is empty. `labdns validate` does not open the file.
+- Loopback scripts, curls, and the console Continue button need `Authorization: Bearer` (or a session cookie created with a bearer) unless the file sets `profile: dev-loopback-unauth`.
+- `secretRef` set and `profile` omitted: loopback is no longer administrator. Send the bearer. The startup warning does not fire.
+- Opt back in: `spec.management.auth.profile: dev-loopback-unauth`. The non-loopback bind warning still prints.
+- `--management-listen=off` still starts with no token. Health live/ready stay open. MCP stdio is unchanged.
+- Canonical revisions change for documents that omitted `profile`. Re-GET state before plan/apply that sends `expectedRevision`. `hash-v1` is unchanged.
 
 ## Compose example
 

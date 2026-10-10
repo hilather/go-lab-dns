@@ -126,9 +126,12 @@ func TestSessionLoopbackCreate(t *testing.T) {
 
 func TestSessionStaleCookiePostDoesNotEscalate(t *testing.T) {
 	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
-	pol, err := auth.NewPolicy(auth.PolicyConfig{Tokens: []auth.Token{
-		{Token: "view", ID: "viewer", Role: auth.RoleViewer},
-	}})
+	pol, err := auth.NewPolicy(auth.PolicyConfig{
+		Profile: auth.ProfileDevLoopbackUnauth,
+		Tokens: []auth.Token{
+			{Token: "view", ID: "viewer", Role: auth.RoleViewer},
+		},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

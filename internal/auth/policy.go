@@ -27,11 +27,41 @@ type Policy struct {
 	tokens  []Token
 }
 
+// bearerNoUsableTokenMessage is the operator sentence when the effective
+// profile is bearer and no token is available. domainerr.Error prints
+// code + ": " + Message, so this string is the Message.
+const bearerNoUsableTokenMessage = "bearer profile has no usable token; set spec.management.auth.secretRef to a token file, or set profile: dev-loopback-unauth"
+
+// NoUsableBearerToken is that startup and validate error. The field
+// violation stays on spec.management.auth.secretRef for API callers;
+// Error() does not print it.
+func NoUsableBearerToken() *domainerr.Error {
+	return domainerr.ValidationFailed(bearerNoUsableTokenMessage,
+		domainerr.FieldViolation{Path: "spec.management.auth.secretRef", Code: "required", Message: "bearer profile requires at least one token"})
+}
+
+// bearerLoadIsNoToken reports LoadTokens/ParseTokens failures that mean the
+// file is missing or empty. Invalid JSON is not this case.
+func bearerLoadIsNoToken(err error) bool {
+	e, ok := domainerr.As(err)
+	if !ok || e == nil {
+		return false
+	}
+	switch {
+	case e.Code == domainerr.CodeUnauthenticated && e.Message == "token secret is unavailable":
+		return true
+	case e.Code == domainerr.CodeValidationFailed && e.Message == "empty token secret":
+		return true
+	default:
+		return false
+	}
+}
+
 // PolicyConfig constructs a Policy.
 type PolicyConfig struct {
-	// Profile is dev-loopback-unauth or bearer. Empty is dev-loopback-unauth.
+	// Profile is dev-loopback-unauth or bearer. Empty is bearer (ADR 0011).
 	Profile string
-	// SecretRef is a file of tokens. Required when Profile is bearer.
+	// SecretRef is a file of tokens. A bound bearer listener needs a usable file.
 	SecretRef string
 	// Tokens are in-process bindings. Merged with SecretRef when both are set.
 	Tokens []Token
@@ -41,7 +71,7 @@ type PolicyConfig struct {
 func NewPolicy(cfg PolicyConfig) (*Policy, error) {
 	profile := cfg.Profile
 	if profile == "" {
-		profile = ProfileDevLoopbackUnauth
+		profile = model.DefaultAuthProfile
 	}
 	switch profile {
 	case ProfileDevLoopbackUnauth, ProfileBearer:
@@ -53,16 +83,21 @@ func NewPolicy(cfg PolicyConfig) (*Policy, error) {
 	if ref := strings.TrimSpace(cfg.SecretRef); ref != "" {
 		loaded, err := LoadTokens(ref)
 		if err != nil {
+			if profile == ProfileBearer && bearerLoadIsNoToken(err) {
+				return nil, NoUsableBearerToken()
+			}
 			return nil, err
 		}
 		toks = append(toks, loaded...)
 	}
 	if profile == ProfileBearer && len(toks) == 0 {
-		return nil, domainerr.ValidationFailed("bearer profile requires tokens",
-			domainerr.FieldViolation{Path: "spec.management.auth.secretRef", Code: "required", Message: "bearer profile requires at least one token"})
+		return nil, NoUsableBearerToken()
 	}
 	for i := range toks {
 		if strings.TrimSpace(toks[i].Token) == "" {
+			if profile == ProfileBearer {
+				return nil, NoUsableBearerToken()
+			}
 			return nil, domainerr.ValidationFailed("empty token",
 				domainerr.FieldViolation{Path: "tokens", Code: "required", Message: "token value is required"})
 		}
@@ -77,8 +112,8 @@ func NewPolicy(cfg PolicyConfig) (*Policy, error) {
 // Profile is the configured auth profile. A nil Policy returns "" and is not
 // the dev-loopback-unauth exception. Authenticate on a nil receiver returns
 // unauthenticated, including when a bearer is presented. NewPolicy stores
-// dev-loopback-unauth when PolicyConfig.Profile is empty, so a constructed
-// policy does not report "".
+// bearer when PolicyConfig.Profile is empty, so a constructed policy does
+// not report "".
 func (p *Policy) Profile() string {
 	if p == nil {
 		return ""

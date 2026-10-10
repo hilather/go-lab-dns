@@ -81,7 +81,16 @@ func TestServeRequiresConfig(t *testing.T) {
 
 func TestValidateSuccessAndFailure(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	path := filepath.Join(repoRoot(t), "testdata/config/valid/empty-client-groups.yaml")
+	src := filepath.Join(repoRoot(t), "testdata/config/valid/empty-client-groups.yaml")
+	raw, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := strings.Replace(string(raw), "spec:\n", "spec:\n  management:\n    auth:\n      profile: dev-loopback-unauth\n", 1)
+	path := filepath.Join(t.TempDir(), "explicit.yaml")
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	code := runContext(context.Background(), []string{"labdns", "validate", "--config", path}, &stdout, &stderr)
 	if code != 0 {
 		t.Fatalf("exit %d stderr=%q", code, stderr.String())
@@ -103,6 +112,40 @@ func TestValidateSuccessAndFailure(t *testing.T) {
 	code = runContext(context.Background(), []string{"labdns", "validate"}, &stdout, &stderr)
 	if code != 2 {
 		t.Fatalf("missing --config exit %d", code)
+	}
+}
+
+func TestValidateOmittedProfileReportsToken(t *testing.T) {
+	cases := []string{
+		filepath.Join(repoRoot(t), "testdata/config/valid/empty-client-groups.yaml"),
+		writeLocalConfig(t, "127.0.0.1:0", ":8080"),
+	}
+	for _, path := range cases {
+		t.Run(path, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			code := runContext(context.Background(), []string{"labdns", "validate", "--config", path}, &stdout, &stderr)
+			if code != 1 {
+				t.Fatalf("exit %d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+			}
+			if stderr.String() != validateBearerNoTokenStderr {
+				t.Fatalf("stderr=%q", stderr.String())
+			}
+			if strings.Contains(stdout.String(), "ok revision=") || stdout.Len() != 0 {
+				t.Fatalf("stdout=%q", stdout.String())
+			}
+		})
+	}
+}
+
+func TestValidateBearerSecretRefDoesNotReadFile(t *testing.T) {
+	path := filepath.Join(repoRoot(t), "examples/labdns-deploy/environments/main-lab/dns.yaml")
+	var stdout, stderr bytes.Buffer
+	code := runContext(context.Background(), []string{"labdns", "validate", "--config", path}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit %d stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "ok revision=") {
+		t.Fatalf("stdout=%q", stdout.String())
 	}
 }
 

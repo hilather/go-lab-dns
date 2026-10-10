@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/hilather/go-lab-dns/internal/app"
+	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/compiler"
 	"github.com/hilather/go-lab-dns/internal/config"
 	"github.com/hilather/go-lab-dns/internal/deploypolicy"
@@ -44,6 +45,9 @@ func validateCmd(args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "labdns validate: %v\n", err)
 		return 1
 	}
+	if st.Spec.Management.Auth.Profile == model.AuthProfileBearer && strings.TrimSpace(st.Spec.Management.Auth.SecretRef) == "" {
+		return reportBearerWithoutToken(stderr)
+	}
 	rev, err := config.Revision(st)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "labdns validate: %v\n", err)
@@ -51,6 +55,13 @@ func validateCmd(args []string, stdout, stderr io.Writer) int {
 	}
 	_, _ = fmt.Fprintf(stdout, "ok revision=%s\n", rev)
 	return 0
+}
+
+// reportBearerWithoutToken prints the operator sentence when the effective
+// profile is bearer and secretRef is empty. It does not open a token file.
+func reportBearerWithoutToken(stderr io.Writer) int {
+	_, _ = fmt.Fprintf(stderr, "labdns validate: %v\n", auth.NoUsableBearerToken())
+	return 1
 }
 
 func canonicalizeCmd(args []string, stdout, stderr io.Writer) int {

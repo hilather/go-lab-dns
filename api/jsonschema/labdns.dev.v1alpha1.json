@@ -411,7 +411,10 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "profile": { "enum": ["dev-loopback-unauth", "bearer"] },
+        "profile": {
+          "enum": ["dev-loopback-unauth", "bearer"],
+          "description": "Omitted normalizes to bearer (ADR 0011). Explicit dev-loopback-unauth keeps loopback-admin. A bound management listener needs a secretRef token file under bearer."
+        },
         "secretRef": { "type": "string" }
       }
     }
