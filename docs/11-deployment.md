@@ -106,7 +106,10 @@ behavior: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/d
    `spec.management.allowedOrigins` takes effect on the next request without
    restart. `spec.management.auth` is serve-time (`auth.FromSpec` at process
    start): changing profile or tokens requires a restart, which drops
-   in-process sessions (`ResetIfDigestChanged` is unused in 1.1.0).
+   in-process sessions (`ResetIfDigestChanged` is unused in 1.1.0). Since v1.5.0 a `management`
+   replace that omits `auth.profile` stores `bearer` in the live canonical
+   state while the running listener keeps its start-time profile; restate
+   `profile: dev-loopback-unauth` in such updates if you rely on it.
 
 Local `go test` / `go run` embed the committed stub, not the production Vite
 bundle. Production images copy `web/dist` in Docker.

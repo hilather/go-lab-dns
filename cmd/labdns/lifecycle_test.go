@@ -418,7 +418,9 @@ func writeLocalConfig(t *testing.T, dnsAddr, mgmtAddr string) string {
 }
 
 // writeLocalConfigAuth is writeLocalConfig plus spec.management.auth.
-// An empty profile omits that block, so the document matches writeLocalConfig.
+// An empty profile and an empty secretRef together omit that block, so the
+// document matches writeLocalConfig; an empty profile with a secretRef writes
+// secretRef and no profile key (the omitted-profile-with-token case).
 // An omitted profile is the startup-error fixture when management is bound.
 // A non-empty profile is part of the full document.
 func writeLocalConfigAuth(t *testing.T, dnsAddr, mgmtAddr, profile, secretRef string) string {

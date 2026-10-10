@@ -276,7 +276,7 @@ spec:
     enabled: true          # default true when omitted
   management:
     auth:
-      profile: dev-loopback-unauth
+      profile: dev-loopback-unauth   # explicit opt-in; omitted = bearer (ADR 0011)
     allowedOrigins:        # exact http(s)://host[:port] Origin strings
       - https://dns-mgmt.lab.example
 ```

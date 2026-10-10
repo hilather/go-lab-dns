@@ -5,7 +5,7 @@ Date: 2026-10-09
 
 ## Context
 
-`config.Normalize` and `auth.NewPolicy` fill an empty `spec.management.auth.profile` (`normalize.go:87-89`, `policy.go:42-44`). `Identify` makes a loopback peer administrator only when the report is explicit `dev-loopback-unauth` (`identity.go:89-90`). The default listen is `:8080` on every interface (`defaults.go:11`). A same-host reverse proxy or SSH tunnel that dials the process from loopback in its network namespace arrives as that loopback peer (a Docker port publish does not: the peer is the bridge address). ADR 0010 removed the loopback exception for `bearer` only.
+`config.Normalize` and `auth.NewPolicy` fill an empty `spec.management.auth.profile` (`normalize.go:87-89`, `policy.go:72-75`). `Identify` makes a loopback peer administrator only when the report is explicit `dev-loopback-unauth` (`identity.go:89-90`). The default listen is `:8080` on every interface (`defaults.go:11`). A same-host reverse proxy or SSH tunnel that dials the process from loopback in its network namespace arrives as that loopback peer (a Docker port publish does not: the peer is the bridge address). ADR 0010 removed the loopback exception for `bearer` only.
 
 PR #60 (`muse/dns-loopback-exposure-warn`) left the omitted default as `dev-loopback-unauth` and shipped the startup warning. Acceptance is Matt Brewer, 2026-10-09 19:36 ET, relayed by Keystone: the next minor makes `bearer` the default.
 

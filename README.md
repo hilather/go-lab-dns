@@ -162,8 +162,8 @@ read file
 | Command | What it loads |
 |---|---|
 | `labdns validate --config PATH` | Decode, normalize, validate. Prints `sha256:` revision. An effective `bearer` profile with an empty `secretRef` exits 1 with the token sentence and does not read a token file. |
-| `labdns canonicalize --config PATH [--format yaml\|json]` | Same, then emit canonical export (defaults materialized). |
-| `labdns serve --config PATH` | Compile, `Store.InstallBootstrap`, bind DNS + management. |
+| `labdns canonicalize --config PATH [--format yaml\|json]` | Decode, normalize, validate, then emit canonical export (defaults materialized; an omitted profile emits `profile: bearer`). Does not apply the token check. |
+| `labdns serve --config PATH` | Compile, `Store.InstallBootstrap`, bind DNS + management. With management bound and no usable token under `bearer` (including an omitted profile), exits 1 with the token sentence before any listener binds. |
 | `labdns verify --config PATH --probes PATH` | Compile and run probe fixtures (optional `--policies`, `--image`, `--server`). |
 | `labdns query --name NAME` | Live DNS query (not a state mutation). |
 
