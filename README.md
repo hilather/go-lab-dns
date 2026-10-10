@@ -69,6 +69,9 @@ spec:
       address: ":8080"
       restPath: /v1
       mcpPath: /mcp
+  management:
+    auth:
+      profile: dev-loopback-unauth
   defaults:
     ttl: 30s
     negativeTTL: 10s
@@ -97,7 +100,9 @@ spec:
     clientGroups: []
 ```
 
-Copy [testdata/container/config.yaml](testdata/container/config.yaml) for this minimal local-only file, or [testdata/config/valid/pack-sample.yaml](testdata/config/valid/pack-sample.yaml) for forwarding, client groups, and a chaos policy.
+The sample sets `profile: dev-loopback-unauth` so this quick start still serves. The omitted default is `bearer`: a config with no profile and no token file fails `labdns serve` until `spec.management.auth.secretRef` is a token file.
+
+Copy [testdata/container/config.yaml](testdata/container/config.yaml) for this minimal local-only file (it sets explicit `dev-loopback-unauth`). [testdata/config/valid/pack-sample.yaml](testdata/config/valid/pack-sample.yaml) adds forwarding, client groups, and a chaos policy, and omits the profile: set `secretRef` or `profile: dev-loopback-unauth` before `serve`.
 
 Schema: [api/jsonschema/labdns.dev.v1alpha1.json](api/jsonschema/labdns.dev.v1alpha1.json). Full field rules: [docs/04-state-and-configuration.md](docs/04-state-and-configuration.md).
 
@@ -125,7 +130,7 @@ Useful flags: `--dns-listen`, `--management-listen ADDR|off`, `--chaos-disable`,
 
 ### 4. Operator console
 
-Open `http://127.0.0.1:8080/` after `serve`. `dev-loopback-unauth` (the default) with `serve` on the host: **Continue as local administrator**. Through a Compose port publish the peer is the Docker bridge, not loopback, so that button returns 401 (section 5). `profile: bearer`, including a browser on loopback: paste a bearer token into the password field; the continue button returns 401. The SPA discards the token after login. CSRF stays in memory, never `localStorage`. `spec.ui.enabled: false` 404s the SPA only. A published management host needs `spec.management.allowedOrigins` (`http(s)://host[:port]`). Spec: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md).
+Open `http://127.0.0.1:8080/` after `serve`. The omitted default is `bearer`. This quick start sets `profile: dev-loopback-unauth`, so `serve` on the host: **Continue as local administrator**. Through a Compose port publish the peer is the Docker bridge, not loopback, so that button returns 401 (section 5). `profile: bearer`, including a browser on loopback: paste a bearer token into the password field; the continue button returns 401. The SPA discards the token after login. CSRF stays in memory, never `localStorage`. `spec.ui.enabled: false` 404s the SPA only. A published management host needs `spec.management.allowedOrigins` (`http(s)://host[:port]`). Spec: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md).
 
 ### 5. Compose
 
@@ -133,7 +138,7 @@ Open `http://127.0.0.1:8080/` after `serve`. `dev-loopback-unauth` (the default)
 docker compose -f examples/compose.smoke.yaml up --build
 ```
 
-Host `:53` maps to container `:5353`. The process binds management on `:8080` (every interface). Compose publishes that port on the host loopback only (`127.0.0.1:8080:8080`). The published port does not make the client a loopback peer: Docker forwards it from the bridge network, so the process sees a non-loopback peer. This smoke config omits the profile (`dev-loopback-unauth`) and loads no token, so from the host `http://127.0.0.1:8080/v1/...` and the console's Continue as local administrator return 401 `authentication required`; under `/v1` only `/v1/health/live` and `/v1/health/ready` succeed. The container log also prints the startup warning; it quotes the bound wildcard (`[::]:8080` on a dual-stack host, `0.0.0.0:8080` on IPv4-only). To use the console or REST from the host, set `profile: bearer` with a `spec.management.auth.secretRef` token file and paste that token. Production GitOps uses `profile: bearer` and requires the token even from loopback. Digest pin, Kubernetes, policy allowlists, probes, and token paste: [examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md).
+Host `:53` maps to container `:5353`. The process binds management on `:8080` (every interface). Compose publishes that port on the host loopback only (`127.0.0.1:8080:8080`). The published port does not make the client a loopback peer: Docker forwards it from the bridge network, so the process sees a non-loopback peer. This smoke config sets explicit `profile: dev-loopback-unauth` (the omitted default is `bearer` and would refuse to start) and loads no token, so from the host `http://127.0.0.1:8080/v1/...` and the console's Continue as local administrator return 401 `authentication required`; under `/v1` only `/v1/health/live` and `/v1/health/ready` succeed. The container log also prints the startup warning; it quotes the bound wildcard (`[::]:8080` on a dual-stack host, `0.0.0.0:8080` on IPv4-only). To use the console or REST from the host, set `profile: bearer` with a `spec.management.auth.secretRef` token file and paste that token. Production GitOps uses `profile: bearer` and requires the token even from loopback. Digest pin, Kubernetes, policy allowlists, probes, and token paste: [examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md).
 
 ---
 
@@ -156,7 +161,7 @@ read file
 
 | Command | What it loads |
 |---|---|
-| `labdns validate --config PATH` | Decode, normalize, validate. Prints `sha256:` revision. |
+| `labdns validate --config PATH` | Decode, normalize, validate. Prints `sha256:` revision. An effective `bearer` profile with an empty `secretRef` exits 1 with the token sentence and does not read a token file. |
 | `labdns canonicalize --config PATH [--format yaml\|json]` | Same, then emit canonical export (defaults materialized). |
 | `labdns serve --config PATH` | Compile, `Store.InstallBootstrap`, bind DNS + management. |
 | `labdns verify --config PATH --probes PATH` | Compile and run probe fixtures (optional `--policies`, `--image`, `--server`). |
@@ -164,7 +169,7 @@ read file
 
 ### REST (`/v1`)
 
-Under `dev-loopback-unauth`, loopback may omit a bearer token. Under `profile: bearer`, loopback and remote peers need `Authorization: Bearer` or a live session cookie. Health live/ready stay unauthenticated. The curls below match the default `dev-loopback-unauth` profile. OpenAPI: [api/openapi/v1.json](api/openapi/v1.json).
+The omitted profile is `bearer`. Under `dev-loopback-unauth`, loopback may omit a bearer token. Under `profile: bearer`, loopback and remote peers need `Authorization: Bearer` or a live session cookie. Health live/ready stay unauthenticated. The curls below match the quick-start sample, which sets explicit `profile: dev-loopback-unauth`, not the omitted default. OpenAPI: [api/openapi/v1.json](api/openapi/v1.json).
 
 **Inspect**
 
@@ -359,7 +364,7 @@ Full catalog: [docs/README.md](docs/README.md).
 - [0008 Embedded operator web UI](https://github.com/hilather/go-lab-dns/blob/main/docs/adr/0008-embedded-operator-web-ui.md)
 - [0009 Accept over-length desired-state names](docs/adr/0009-accept-overlength-desired-state-names.md)
 - [0010 Bearer profile has no loopback exception](docs/adr/0010-bearer-profile-no-loopback-exception.md)
-- [0011 Propose bearer as the default auth profile](docs/adr/0011-propose-bearer-default-profile.md)
+- [0011 Bearer is the default auth profile](docs/adr/0011-propose-bearer-default-profile.md)
 
 ### Task lists and program board
 

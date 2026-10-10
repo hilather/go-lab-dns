@@ -2,7 +2,7 @@
 
 Status: Implemented
 Owners: Control Plane, REST, Security, UI
-Last reviewed: 2026-10-09 (process bind vs host publish; loopback is 127.0.0.0/8, ::1, IPv4-mapped 127/8; ADR 0011 proposed)
+Last reviewed: 2026-10-09 (process bind vs host publish; loopback is 127.0.0.0/8, ::1, IPv4-mapped 127/8; ADR 0011 accepted)
 Last reviewed: 2026-10-03 (cookie mutation ordering, session isolation, mutation workflows, dependency audit)
 Last reviewed: 2026-09-01 (resolve useCache does not store Fallthrough)
 Last reviewed: 2026-08-29 (unknown /zones/:zoneId shows one not_found)
@@ -172,7 +172,7 @@ Shell (authenticated):
 
 - Same charcoal/amber tokens as the authenticated shell (`#0d0d0c` / `#161614` / `#f2efe6`, accent `#e09a3e`). Login is outside `.shell`; tokens are declared on both `.login` and `.shell`.
 - Paste bearer token when the peer is not loopback-unauth.
-- Loopback `dev-loopback-unauth`: “Continue as local administrator” `POST /v1/session` with no bearer (same principal as REST loopback). The button works only under that profile and only when the TCP peer is loopback: the SPA shows it from `window.location.hostname`, so a browser on `http://127.0.0.1:8080/` through a Compose publish still sees it, but that peer is the Docker bridge address and the POST returns 401. Under `profile: bearer` the same POST returns 401 `authentication required`; paste a token. The SPA shows that error (`APIError.detail`) and does not hide the button. Hiding it would need a profile discovery endpoint, which is out of scope.
+- The omitted profile is `bearer` ([ADR 0011](adr/0011-propose-bearer-default-profile.md), accepted). Loopback `dev-loopback-unauth`: “Continue as local administrator” `POST /v1/session` with no bearer (same principal as REST loopback). The button works only under that explicit profile and only when the TCP peer is loopback: the SPA shows it from `window.location.hostname`, so a browser on `http://127.0.0.1:8080/` through a Compose publish still sees it, but that peer is the Docker bridge address and the POST returns 401. Under `profile: bearer` the same POST returns 401 `authentication required`; paste a token. The SPA shows that error (`APIError.detail`) and does not hide the button. Hiding it would need a profile discovery endpoint, which is out of scope.
 - No HTTP Basic (LabDNS has no maildev Basic compat).
 - After success, keep only the CSRF secret in process memory.
 

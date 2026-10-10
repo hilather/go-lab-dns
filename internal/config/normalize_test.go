@@ -66,6 +66,22 @@ func TestNormalizeMaterializesListenerAndCNAMEDefaults(t *testing.T) {
 	if got.Spec.Access.ClientGroups == nil {
 		t.Fatal("clientGroups is nil; want empty slice")
 	}
+	if got.Spec.Management.Auth.Profile != model.AuthProfileBearer {
+		t.Fatalf("auth.profile=%q", got.Spec.Management.Auth.Profile)
+	}
+}
+
+func TestNormalizeExplicitDevLoopbackUnauth(t *testing.T) {
+	in := &model.State{
+		APIVersion: model.APIVersionV1Alpha1,
+		Kind:       model.KindLabDNS,
+		Metadata:   model.Metadata{Name: "x"},
+	}
+	in.Spec.Management.Auth.Profile = model.AuthProfileDevLoopbackUnauth
+	got, err := Normalize(in)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.Spec.Management.Auth.Profile != model.AuthProfileDevLoopbackUnauth {
 		t.Fatalf("auth.profile=%q", got.Spec.Management.Auth.Profile)
 	}

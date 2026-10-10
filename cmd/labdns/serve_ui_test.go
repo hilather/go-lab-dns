@@ -10,7 +10,7 @@ import (
 )
 
 func TestServeWiresEmbeddedUI(t *testing.T) {
-	cfg := writeLocalConfig(t, "127.0.0.1:0", "127.0.0.1:0")
+	cfg := writeLocalConfigAuth(t, "127.0.0.1:0", "127.0.0.1:0", "dev-loopback-unauth", "")
 	rt, err := serveFromConfig(context.Background(), serveFlags{Config: cfg})
 	if err != nil {
 		t.Fatal(err)

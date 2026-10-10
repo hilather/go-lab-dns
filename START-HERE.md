@@ -7,13 +7,13 @@ If you want to run it, stay on this page, then follow the [README quick start](R
 ## Five-minute path
 
 1. Install **Go 1.26** and clone this repository.
-2. Copy [testdata/container/config.yaml](testdata/container/config.yaml) to `lab.yaml`.
+2. Copy [testdata/container/config.yaml](testdata/container/config.yaml) to `lab.yaml`. That file sets explicit `profile: dev-loopback-unauth`, so validate, serve, `curl /v1/state`, and Continue as local administrator still work. An omitted profile is `bearer` and `labdns serve` fails until `spec.management.auth.secretRef` is set.
 3. `go build -o labdns ./cmd/labdns`
 4. `./labdns validate --config lab.yaml`
 5. `./labdns serve --config lab.yaml`
 6. `./labdns query --name ns1.lab.example.net --server 127.0.0.1:5353`
 7. `curl -sS http://127.0.0.1:8080/v1/state`
-8. Open `http://127.0.0.1:8080/` — Continue as local administrator (loopback) or paste a bearer token.
+8. Open `http://127.0.0.1:8080/` — Continue as local administrator (loopback, this explicit profile) or paste a bearer token.
 
 YAML field rules, revisions, and the plan/apply/export/reset contract live in [docs/04-state-and-configuration.md](docs/04-state-and-configuration.md). REST and MCP twins are in [docs/06-rest-api.md](docs/06-rest-api.md) and [docs/07-mcp-api.md](docs/07-mcp-api.md).
 

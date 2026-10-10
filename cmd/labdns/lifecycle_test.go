@@ -192,7 +192,7 @@ func TestShutdownCancelsDelayedQueries(t *testing.T) {
 
 func TestRestartDiscardsRuntimeDrift(t *testing.T) {
 	bin := labdnsBin(t)
-	cfg := writeLocalConfig(t, "127.0.0.1:0", "127.0.0.1:0")
+	cfg := writeLocalConfigAuth(t, "127.0.0.1:0", "127.0.0.1:0", "dev-loopback-unauth", "")
 	cmd, stdout := startLabdns(t, bin, "serve", "--config", cfg)
 	line := waitOutput(t, stdout, "listening", 5*time.Second)
 	mgmt := "http://" + parseListenField(t, line, "management")
@@ -419,9 +419,8 @@ func writeLocalConfig(t *testing.T, dnsAddr, mgmtAddr string) string {
 
 // writeLocalConfigAuth is writeLocalConfig plus spec.management.auth.
 // An empty profile omits that block, so the document matches writeLocalConfig.
-// A non-empty profile is part of the full document. Dropping it leaves the
-// omitted-profile default, which warns on a wildcard management address, so
-// the bearer quiet test fails.
+// An omitted profile is the startup-error fixture when management is bound.
+// A non-empty profile is part of the full document.
 func writeLocalConfigAuth(t *testing.T, dnsAddr, mgmtAddr, profile, secretRef string) string {
 	t.Helper()
 	authBlock := ""
@@ -514,6 +513,9 @@ spec:
       protocols: [udp, tcp]
     management:
       address: %q
+  management:
+    auth:
+      profile: dev-loopback-unauth
   access:
     clientGroups: []
   defaults:
