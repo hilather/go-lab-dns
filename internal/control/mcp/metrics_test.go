@@ -9,7 +9,7 @@ import (
 func TestCapabilityMetricsForToolsAndResources(t *testing.T) {
 	registry := observability.NewRegistry()
 	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
-	s, err := New(Config{Service: svc, Metrics: registry})
+	s, err := New(Config{Service: svc, Auth: devLoopbackAuth(t), Metrics: registry})
 	if err != nil {
 		t.Fatal(err)
 	}

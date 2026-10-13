@@ -2,13 +2,14 @@
 
 Status: Implemented
 Owners: Control Plane, REST, Security, UI
+Last reviewed: 2026-10-08 (bearer profile has no loopback exception; ADR 0010)
 Last reviewed: 2026-10-03 (cookie mutation ordering, session isolation, mutation workflows, dependency audit)
 Last reviewed: 2026-09-01 (resolve useCache does not store Fallthrough)
 Last reviewed: 2026-08-29 (unknown /zones/:zoneId shows one not_found)
 Last reviewed: 2026-08-29 (charcoal/amber chrome on login and remaining operator pages)
 Last reviewed: 2026-08-29 (operator shell groups, single emergency verb, zones inventory)
 Last reviewed: 2026-08-19 (UI-004 onboarding, 1.1.0 notes; console complete)
-Related ADRs: [0004](https://github.com/hilather/go-lab-dns/blob/main/docs/adr/0004-shared-capability-registry.md), [0008](https://github.com/hilather/go-lab-dns/blob/main/docs/adr/0008-embedded-operator-web-ui.md)
+Related ADRs: [0004](https://github.com/hilather/go-lab-dns/blob/main/docs/adr/0004-shared-capability-registry.md), [0008](https://github.com/hilather/go-lab-dns/blob/main/docs/adr/0008-embedded-operator-web-ui.md), [0010](adr/0010-bearer-profile-no-loopback-exception.md)
 
 ## Problem statement
 
@@ -171,7 +172,7 @@ Shell (authenticated):
 
 - Same charcoal/amber tokens as the authenticated shell (`#0d0d0c` / `#161614` / `#f2efe6`, accent `#e09a3e`). Login is outside `.shell`; tokens are declared on both `.login` and `.shell`.
 - Paste bearer token when the peer is not loopback-unauth.
-- Loopback `dev-loopback-unauth`: allow “Continue as local administrator” which `POST /v1/session` with no bearer (same principal as today’s REST loopback).
+- Loopback `dev-loopback-unauth`: “Continue as local administrator” `POST /v1/session` with no bearer (same principal as REST loopback). The button works only under that profile. Under `profile: bearer` the same POST returns 401 `authentication required`; paste a token. The SPA shows that error (`APIError.detail`) and does not hide the button. Hiding it would need a profile discovery endpoint, which is out of scope.
 - No HTTP Basic (LabDNS has no maildev Basic compat).
 - After success, keep only the CSRF secret in process memory.
 
@@ -252,8 +253,8 @@ DELETE /v1/session
 
 Behavior (aligned with LabMail/LabLDAP, LabDNS cookie names):
 
-- `POST /v1/session` with **no cookie header** authenticates with Identify (loopback unauth or `Authorization: Bearer`). CSRF is **omitted** on that first login only. A cookie that is present but unknown/expired, with no Bearer, is **401** and does not Identify (loopback Identify would mint administrator after idle expiry). On success: 32-byte random session ID in cookie `labdns_session` (`HttpOnly`, `SameSite=Lax`, `Secure` iff `r.TLS != nil`, `Path=/`, host-only) and a 32-byte CSRF secret in the JSON body (hex). `Cache-Control: no-store`.
-- Cookie-present `POST /v1/session` **without** Bearer requires `X-LabDNS-CSRF` and **rotates** ID/CSRF for the **existing session Actor**. It must **not** call Identify (loopback Identify would upgrade a viewer UI session to administrator). Identity switch requires `Authorization: Bearer`.
+- `POST /v1/session` with **no cookie header** authenticates with Identify (loopback unauth under `dev-loopback-unauth`, or `Authorization: Bearer`). Under `profile: bearer`, loopback without a bearer is 401 `authentication required`. CSRF is **omitted** on that first login only. A cookie that is present but unknown/expired, with no Bearer, is **401** and does not Identify (loopback Identify would mint administrator after idle expiry under `dev-loopback-unauth`). On success: 32-byte random session ID in cookie `labdns_session` (`HttpOnly`, `SameSite=Lax`, `Secure` iff `r.TLS != nil`, `Path=/`, host-only) and a 32-byte CSRF secret in the JSON body (hex). `Cache-Control: no-store`.
+- Cookie-present `POST /v1/session` **without** Bearer requires `X-LabDNS-CSRF` and **rotates** ID/CSRF for the **existing session Actor**. It must **not** call Identify (under `dev-loopback-unauth`, loopback Identify would upgrade a viewer UI session to administrator; under `bearer`, Identify would 401 and drop the rotation). Identity switch requires `Authorization: Bearer`.
 - `Authorization: Bearer` wins: cookie and CSRF are ignored for that request. `POST /v1/session` with Bearer creates a **new** session for that token's Actor (old cookie session is left to expire or `DELETE`).
 - Cookie-authenticated requests send `X-LabDNS-CSRF`. Required on every cookie non-GET, including cookie-present `POST /v1/session` and `DELETE /v1/session`. GET/HEAD never require CSRF.
 - `GET /v1/session` returns the CSRF secret for a valid cookie (reload recovery). If GET fails, show `/login`.
@@ -263,7 +264,7 @@ Behavior (aligned with LabMail/LabLDAP, LabDNS cookie names):
 - MCP stays bearer-only. Cookies are ignored on `/mcp`.
 - SPA `GET`/`HEAD` outside `/v1` and `/mcp` is served **before** authenticate. `ui.enabled: false` or a nil UI handler 404s those paths; they must **never** 401.
 
-Loopback unauth does **not** skip CSRF for the SPA after login. Curl/SDK without Origin and without cookies still uses bearer or loopback as today.
+Loopback unauth does **not** skip CSRF for the SPA after login. Curl/SDK without Origin and without cookies uses a bearer, or loopback only under `dev-loopback-unauth`.
 
 ## Configuration
 

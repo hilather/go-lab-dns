@@ -283,7 +283,7 @@ func TestSessionUIDisabledOrNilIs404Not401(t *testing.T) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write([]byte("<html>spa</html>"))
 	})
-	disabled, err := New(Config{Service: svc, RatePerSec: -1, UI: ui, UIEnabled: func() bool { return false }})
+	disabled, err := New(Config{Service: svc, Auth: devLoopbackAuth(t), RatePerSec: -1, UI: ui, UIEnabled: func() bool { return false }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -368,7 +368,7 @@ func TestSessionDeleteRequiresCSRF(t *testing.T) {
 func TestSessionTableFullREST(t *testing.T) {
 	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
 	tab := auth.NewSessionTable(auth.SessionTableConfig{Max: 1})
-	s, err := New(Config{Service: svc, Sessions: tab, RatePerSec: -1})
+	s, err := New(Config{Service: svc, Auth: devLoopbackAuth(t), Sessions: tab, RatePerSec: -1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -390,6 +390,7 @@ func TestSessionOriginsFromClosure(t *testing.T) {
 	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
 	s, err := New(Config{
 		Service:    svc,
+		Auth:       devLoopbackAuth(t),
 		RatePerSec: -1,
 		Origins:    func() []string { return []string{"https://dns-mgmt.lab.example"} },
 	})

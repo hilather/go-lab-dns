@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Deployment, Operations, Security
+Last reviewed: 2026-10-08 (bearer profile has no loopback exception; ADR 0010)
 Last reviewed: 2026-10-03 (runtime signal lifecycle and configuration update boundaries)
 Last reviewed: 2026-10-03 (failed deployments preserve successful rollback snapshots)
 Last reviewed: 2026-10-03 (canonical documentation embed inputs in Docker context)
@@ -10,7 +11,7 @@ Last reviewed: 2026-08-19 (Dockerfile Node 22.14.0 stage for operator console)
 Last reviewed: 2026-08-15 (PERF-001 capacity notes)
 Last reviewed: 2026-08-15 (DEP-001 CLI; GIT-001 GitOps template)
 Last reviewed: 2026-10-03 (Kubernetes redeploy explicitly recreates pods)
-Related ADRs: 0003, 0008
+Related ADRs: 0003, 0008, [0010](adr/0010-bearer-profile-no-loopback-exception.md)
 
 ## Goals
 
@@ -79,9 +80,11 @@ behavior: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/d
    login HTML without a bearer; `/v1` still requires a session cookie or
    `Authorization: Bearer`.
 3. Loopback `dev-loopback-unauth`: **Continue as local administrator**.
-   Remote GitOps (`bearer` + `secretRef`): paste the token into the password
-   field. The SPA discards it after `POST /v1/session`. Never store the
-   bearer in `localStorage`, `sessionStorage`, IndexedDB, or the URL.
+   `profile: bearer` (GitOps `secretRef`), including a browser on loopback:
+   paste the token into the password field. The continue button returns 401
+   `authentication required`. The SPA discards the token after
+   `POST /v1/session`. Never store the bearer in `localStorage`,
+   `sessionStorage`, IndexedDB, or the URL.
 4. `spec.ui.enabled: false` 404s SPA paths only; REST and MCP remain.
    `--management-listen=off` unbinds REST, MCP, and the UI together.
 5. Same-origin UI on a **published** management host needs

@@ -62,6 +62,7 @@
 - `docs/adr/0007-defer-unsafe-wire-chaos.md`
 - `docs/adr/0008-embedded-operator-web-ui.md`
 - `docs/adr/0009-accept-overlength-desired-state-names.md`
+- `docs/adr/0010-bearer-profile-no-loopback-exception.md`
 
 ## Generated contracts
 

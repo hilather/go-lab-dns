@@ -370,7 +370,7 @@ func openAPIComponents() map[string]any {
 				"type":         "http",
 				"scheme":       "bearer",
 				"bearerFormat": "token",
-				"description":  "Required for non-loopback peers. Loopback (127.0.0.1 / ::1) may omit the token (Q-AUTH / dev-loopback-unauth).",
+				"description":  "Under dev-loopback-unauth, required for non-loopback peers; loopback (127.0.0.1 / ::1) may omit it. Under profile bearer, every peer including loopback must send the token (ADR 0010). REST may instead use a live labdns_session cookie. Health live/ready stay unauthenticated.",
 			},
 			"cookieAuth": map[string]any{
 				"type":        "apiKey",

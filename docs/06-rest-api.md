@@ -2,10 +2,11 @@
 
 Status: Implemented (API-001)
 Owners: REST, Application
+Last reviewed: 2026-10-08 (bearer profile has no loopback exception; ADR 0010)
 Last reviewed: 2026-10-03 (active-chaos resolve/explain output and duration strings)
 Last reviewed: 2026-08-19 (serve wires embedded UI handler)
 Last reviewed: 2026-09-01 (resolve useCache does not store Fallthrough)
-Related ADRs: 0004
+Related ADRs: 0004, [0010](adr/0010-bearer-profile-no-loopback-exception.md)
 
 ## Goals
 
@@ -23,7 +24,7 @@ Related ADRs: 0004
 - Request bodies default to a 1 MiB cap; handlers also enforce a request deadline and a concurrent-request admission cap.
 - Management listener default address is `:8080` (`rest.DefaultAddr`). The listener is not public by default.
 - OpenAPI 3.1 is generated from the capability registry and `model.Spec` at [api/openapi/v1.json](https://github.com/hilather/go-lab-dns/blob/main/api/openapi/v1.json) (`make generate`).
-- Authentication (Q-AUTH): unauthenticated access is allowed only from `127.0.0.1` and `::1` under `dev-loopback-unauth`. Non-loopback peers require `Authorization: Bearer` **or** a live `labdns_session` cookie. `Authorization: Bearer` wins over the cookie and ignores CSRF. Health live/ready skip auth so process probes work. `X-Forwarded-For` is not trusted. Shared RBAC lives in `internal/auth` (same decision as MCP). No permissive CORS headers are emitted; a present non-loopback `Origin` is 403 unless allowlisted (`spec.management.allowedOrigins` on the active snapshot).
+- Authentication (Q-AUTH, [ADR 0010](adr/0010-bearer-profile-no-loopback-exception.md)): unauthenticated access is allowed only from `127.0.0.1` and `::1` under `dev-loopback-unauth`. Under `profile: bearer`, every management request (loopback included) needs `Authorization: Bearer` **or** a live `labdns_session` cookie. `Authorization: Bearer` wins over the cookie and ignores CSRF. Health live/ready skip auth so process probes work. `X-Forwarded-For` is not trusted. Shared RBAC lives in `internal/auth` (same decision as MCP). No permissive CORS headers are emitted; a present non-loopback `Origin` is 403 unless allowlisted (`spec.management.allowedOrigins` on the active snapshot).
 - Cookie-authenticated non-GET requests must send `X-LabDNS-CSRF`. CSRF is omitted on `POST /v1/session` **only when no live session cookie is present**. A cookie-present `POST /v1/session` without Bearer rotates the existing session Actor and must not call loopback Identify.
 - Management responses set `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, and `X-Frame-Options: DENY`. CSP is applied on the SPA/HTML branch only.
 - `GET`/`HEAD` paths that are not under `/v1` or `/mcp` are a pre-auth SPA branch: never `Identify`, never 401. If `spec.ui.enabled` is false or the UI handler is nil, those paths 404. `GET /v1/*` still authenticates.
@@ -113,7 +114,7 @@ DELETE /v1/session
 GET    /                 (SPA pre-auth; `cmd/labdns` injects `web.Handler()`)
 ```
 
-`POST /v1/session` with **no cookie header** (or with Bearer) authenticates with Identify (loopback unauth or Bearer) and issues cookie `labdns_session` (`HttpOnly`, `SameSite=Lax`, `Path=/`, host-only, `Secure` iff TLS) plus JSON `{csrf, actor}`. `Cache-Control: no-store`. A present but unknown/expired cookie without Bearer is 401 and does not Identify. At 256 distinct sessions, new creates fail `rate_limited` with detail `session table full` (retryable); rotation of an existing session does not consume a slot.
+`POST /v1/session` with **no cookie header** (or with Bearer) authenticates with Identify (loopback unauth under `dev-loopback-unauth`, or Bearer) and issues cookie `labdns_session` (`HttpOnly`, `SameSite=Lax`, `Path=/`, host-only, `Secure` iff TLS) plus JSON `{csrf, actor}`. Under `profile: bearer`, that POST from loopback without a bearer or cookie is 401 `authentication required`. `Cache-Control: no-store`. A present but unknown/expired cookie without Bearer is 401 and does not Identify. At 256 distinct sessions, new creates fail `rate_limited` with detail `session table full` (retryable); rotation of an existing session does not consume a slot.
 
 Cookie-present `POST /v1/session` **without** Bearer requires CSRF and rotates ID/CSRF for the **same** Actor (`class=ui-session`). Identity switch requires `Authorization: Bearer`.
 
@@ -175,7 +176,7 @@ The adapter is `internal/control/rest`. Routes are compiled from `capabilities.A
 
 | Concern | Behavior |
 |---|---|
-| Auth | Loopback unauthenticated (`dev-loopback-unauth`); remote bearer **or** `labdns_session` cookie. Bearer wins. Cookie non-GET requires `X-LabDNS-CSRF`. `auth.Policy` / `Authenticator` is the shared identity hook. Capability + resource scopes are enforced. |
+| Auth | Loopback unauthenticated only under `dev-loopback-unauth`. Under `bearer`, loopback and remote peers need `Authorization: Bearer` **or** a live `labdns_session` cookie (MCP needs the header). Bearer wins. Cookie non-GET requires `X-LabDNS-CSRF`. `auth.Policy` / `Authenticator` is the shared identity hook. Capability + resource scopes are enforced. Health live/ready stay unauthenticated. |
 | Pagination | Opaque `cursor` + `limit` query parameters on zone, record, and audit lists. |
 | Timeouts | Per-request context deadline (default 30s). `ListenAndServe` also sets read/write/header timeouts. |
 | Request ID | `X-Request-ID` is accepted or generated and echoed; problem `instance` is `urn:labdns:request:<id>`. |

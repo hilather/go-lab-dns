@@ -15,7 +15,7 @@ import (
 
 func TestBodyTooLarge(t *testing.T) {
 	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
-	s, err := New(Config{Service: svc, MaxBodyBytes: 64})
+	s, err := New(Config{Service: svc, Auth: devLoopbackAuth(t), MaxBodyBytes: 64})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestWrongContentType(t *testing.T) {
 func TestRequestTimeout(t *testing.T) {
 	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
 	slow := &slowVersion{App: svc}
-	s, err := New(Config{Service: slow, RequestTimeout: 20 * time.Millisecond})
+	s, err := New(Config{Service: slow, Auth: devLoopbackAuth(t), RequestTimeout: 20 * time.Millisecond})
 	if err != nil {
 		t.Fatal(err)
 	}

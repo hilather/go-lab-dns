@@ -10,7 +10,7 @@ import (
 func TestCapabilityMetricsAndStatusDTO(t *testing.T) {
 	svc := mustBoot(t, copyNamedFixture(t, "pack-sample.yaml"))
 	reg := observability.NewRegistry()
-	s, err := New(Config{Service: svc, Metrics: reg, Logger: observability.NewLogger(nil).WithSync()})
+	s, err := New(Config{Service: svc, Auth: devLoopbackAuth(t), Metrics: reg, Logger: observability.NewLogger(nil).WithSync()})
 	if err != nil {
 		t.Fatal(err)
 	}
