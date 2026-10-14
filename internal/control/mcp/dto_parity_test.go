@@ -14,11 +14,12 @@ import (
 
 func TestStructuredDTOMatchesREST(t *testing.T) {
 	svc := mustBoot(t, copyNamedFixture(t, "pack-sample.yaml"))
-	rs, err := rest.New(rest.Config{Service: svc})
+	authn := devLoopbackAuth(t)
+	rs, err := rest.New(rest.Config{Service: svc, Auth: authn})
 	if err != nil {
 		t.Fatal(err)
 	}
-	ms, err := New(Config{Service: svc})
+	ms, err := New(Config{Service: svc, Auth: authn})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -38,7 +38,8 @@ spec:
 
   management:
     auth:
-      # Remote management requires a bearer. The token file is mounted;
+      # Every management request (loopback included) requires a bearer
+      # (ADR 0010). The token file is mounted;
       # this path is not a secret value.
       profile: bearer
       secretRef: /run/secrets/labdns-token

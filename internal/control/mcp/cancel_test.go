@@ -15,7 +15,7 @@ import (
 func TestToolCancellation(t *testing.T) {
 	svc := mustBoot(t, copyNamedFixture(t, "empty-client-groups.yaml"))
 	slow := &slowVersion{App: svc, started: make(chan struct{})}
-	s, err := New(Config{Service: slow})
+	s, err := New(Config{Service: slow, Auth: devLoopbackAuth(t)})
 	if err != nil {
 		t.Fatal(err)
 	}

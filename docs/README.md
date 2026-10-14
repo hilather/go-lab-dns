@@ -74,6 +74,8 @@ This page is the catalog. Normative design documents win over task summaries.
 | [0007](adr/0007-defer-unsafe-wire-chaos.md) | Defer unsafe wire chaos |
 | [0008](adr/0008-embedded-operator-web-ui.md) | Embedded operator web UI |
 | [0009](adr/0009-accept-overlength-desired-state-names.md) | Accept over-length desired-state names |
+| [0010](adr/0010-bearer-profile-no-loopback-exception.md) | Bearer profile has no loopback exception |
+| [0011](adr/0011-propose-bearer-default-profile.md) | Propose bearer as the default auth profile |
 
 ## Task lists
 

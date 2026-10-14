@@ -8,15 +8,19 @@ the image digest, then run `../../scripts/validate.sh main-lab`.
 | `dns.yaml` | Desired DNS/chaos/management state (read-only mount) |
 | `probes.yaml` | Offline + live verification probes |
 | `image.env` | Digest-pinned `ghcr.io/hilather/labdns` |
-| `compose.yaml` | Docker Compose: port 53, loopback `:8080`, token file |
+| `compose.yaml` | Docker Compose: port 53, process binds `:8080` / Compose publishes on host loopback `127.0.0.1:8080:8080/tcp`, token file |
 | `k8s/` | Kubernetes: one replica, NetworkPolicy, Secret ref |
 
 Create the bearer token before `compose up`:
 
 ```text
 umask 077
-printf 'dev-only-token\n' > ../../secrets/labdns-token
+openssl rand -hex 32 > ../../secrets/labdns-token
 ```
+
+Generate at least 32 bytes. Shorter tokens are deprecated: they still load
+in this release and the next minor release refuses them (see the
+[labdns CHANGELOG](https://github.com/hilather/go-lab-dns/blob/main/CHANGELOG.md)).
 
 Kubernetes:
 
@@ -26,8 +30,9 @@ kubectl create secret generic labdns-token \
   --from-literal=token="$(cat ../../secrets/labdns-token)"
 ```
 
-Do not commit that file. Remote `/v1` and `/mcp` need
-`Authorization: Bearer`; loopback may omit it.
+Do not commit that file. This environment uses `profile: bearer`, so
+`/v1` and `/mcp` need `Authorization: Bearer` from loopback and remote
+peers. Health live/ready stay unauthenticated.
 
 Operator console: `http://127.0.0.1:8080/` after `compose up`. Paste the
 bearer token. Set `spec.ui.enabled: false` in `dns.yaml` to hide the SPA.

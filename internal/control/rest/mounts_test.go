@@ -13,6 +13,7 @@ func TestMountsServeAlongsideREST(t *testing.T) {
 	})
 	s, err := New(Config{
 		Service:    svc,
+		Auth:       devLoopbackAuth(t),
 		RatePerSec: -1,
 		Mounts:     map[string]http.Handler{"/mcp": mounted},
 	})

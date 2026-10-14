@@ -125,7 +125,7 @@ Useful flags: `--dns-listen`, `--management-listen ADDR|off`, `--chaos-disable`,
 
 ### 4. Operator console
 
-Open `http://127.0.0.1:8080/` after `serve` or Compose. Loopback `dev-loopback-unauth`: **Continue as local administrator**. Remote: paste a bearer token into the password field; the SPA discards it after login. CSRF stays in memory, never `localStorage`. `spec.ui.enabled: false` 404s the SPA only. A published management host needs `spec.management.allowedOrigins` (`http(s)://host[:port]`). Spec: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md).
+Open `http://127.0.0.1:8080/` after `serve`. `dev-loopback-unauth` (the default) with `serve` on the host: **Continue as local administrator**. Through a Compose port publish the peer is the Docker bridge, not loopback, so that button returns 401 (section 5). `profile: bearer`, including a browser on loopback: paste a bearer token into the password field; the continue button returns 401. The SPA discards the token after login. CSRF stays in memory, never `localStorage`. `spec.ui.enabled: false` 404s the SPA only. A published management host needs `spec.management.allowedOrigins` (`http(s)://host[:port]`). Spec: [docs/22-web-ui.md](https://github.com/hilather/go-lab-dns/blob/main/docs/22-web-ui.md).
 
 ### 5. Compose
 
@@ -133,7 +133,7 @@ Open `http://127.0.0.1:8080/` after `serve` or Compose. Loopback `dev-loopback-u
 docker compose -f examples/compose.smoke.yaml up --build
 ```
 
-Host `:53` maps to container `:5353`. Management is bound to `127.0.0.1:8080` only. Open the operator console at `http://127.0.0.1:8080/` (loopback: Continue as local administrator). Production GitOps (digest pin, Kubernetes, policy allowlists, probes, token paste): [examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md).
+Host `:53` maps to container `:5353`. The process binds management on `:8080` (every interface). Compose publishes that port on the host loopback only (`127.0.0.1:8080:8080`). The published port does not make the client a loopback peer: Docker forwards it from the bridge network, so the process sees a non-loopback peer. This smoke config omits the profile (`dev-loopback-unauth`) and loads no token, so from the host `http://127.0.0.1:8080/v1/...` and the console's Continue as local administrator return 401 `authentication required`; under `/v1` only `/v1/health/live` and `/v1/health/ready` succeed. The container log also prints the startup warning; it quotes the bound wildcard (`[::]:8080` on a dual-stack host, `0.0.0.0:8080` on IPv4-only). To use the console or REST from the host, set `profile: bearer` with a `spec.management.auth.secretRef` token file and paste that token. Production GitOps uses `profile: bearer` and requires the token even from loopback. Digest pin, Kubernetes, policy allowlists, probes, and token paste: [examples/labdns-deploy](https://github.com/hilather/go-lab-dns/blob/main/examples/labdns-deploy/README.md).
 
 ---
 
@@ -164,7 +164,7 @@ read file
 
 ### REST (`/v1`)
 
-Loopback may omit a bearer token (`dev-loopback-unauth`). Remote peers need `Authorization: Bearer`. OpenAPI: [api/openapi/v1.json](api/openapi/v1.json).
+Under `dev-loopback-unauth`, loopback may omit a bearer token. Under `profile: bearer`, loopback and remote peers need `Authorization: Bearer` or a live session cookie. Health live/ready stay unauthenticated. The curls below match the default `dev-loopback-unauth` profile. OpenAPI: [api/openapi/v1.json](api/openapi/v1.json).
 
 **Inspect**
 
@@ -358,6 +358,8 @@ Full catalog: [docs/README.md](docs/README.md).
 - [0007 Defer unsafe wire chaos](docs/adr/0007-defer-unsafe-wire-chaos.md)
 - [0008 Embedded operator web UI](https://github.com/hilather/go-lab-dns/blob/main/docs/adr/0008-embedded-operator-web-ui.md)
 - [0009 Accept over-length desired-state names](docs/adr/0009-accept-overlength-desired-state-names.md)
+- [0010 Bearer profile has no loopback exception](docs/adr/0010-bearer-profile-no-loopback-exception.md)
+- [0011 Propose bearer as the default auth profile](docs/adr/0011-propose-bearer-default-profile.md)
 
 ### Task lists and program board
 

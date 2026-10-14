@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/hilather/go-lab-dns/internal/app"
+	"github.com/hilather/go-lab-dns/internal/auth"
 	"github.com/hilather/go-lab-dns/internal/compiler"
 	"github.com/hilather/go-lab-dns/internal/config"
 	"github.com/hilather/go-lab-dns/internal/snapshot"
@@ -78,10 +79,21 @@ func newTestServer(t *testing.T) (*Server, *app.App) {
 	return newTestServerFixture(t, "empty-client-groups.yaml")
 }
 
+// devLoopbackAuth is the explicit dev-loopback-unauth policy tests use where a
+// nil Auth used to mean "allow loopback". A nil authenticator now fails closed.
+func devLoopbackAuth(t *testing.T) *auth.Policy {
+	t.Helper()
+	p, err := auth.NewPolicy(auth.PolicyConfig{Profile: auth.ProfileDevLoopbackUnauth})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
 func newTestServerFixture(t *testing.T, name string) (*Server, *app.App) {
 	t.Helper()
 	svc := mustBoot(t, copyNamedFixture(t, name))
-	s, err := New(Config{Service: svc, RatePerSec: -1})
+	s, err := New(Config{Service: svc, Auth: devLoopbackAuth(t), RatePerSec: -1})
 	if err != nil {
 		t.Fatal(err)
 	}
