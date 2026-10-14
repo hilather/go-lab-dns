@@ -8,6 +8,7 @@ import (
 
 	"github.com/hilather/go-lab-dns/internal/dnswire"
 	"github.com/hilather/go-lab-dns/internal/model"
+	"github.com/hilather/go-lab-dns/internal/testutil"
 )
 
 func TestUDPIndependentClientA(t *testing.T) {
@@ -283,4 +284,34 @@ func oversizedTXT(n int) Handler {
 		}
 		return NewResponse(model.Result{RCode: model.RCodeNoError, Answers: answers}), HintSend, nil
 	})
+}
+
+// TestUDPReleasesInflightBeforeWrite pins the order deterministically: the
+// slot is free when the reply write starts, so a client that sends its next
+// query on receipt is never refused at MaxInflight (#64, #65).
+func TestUDPReleasesInflightBeforeWrite(t *testing.T) {
+	s, err := New(Config{
+		UDPAddr:     "127.0.0.1:0",
+		MaxInflight: 1,
+		Handler:     StaticA("192.0.2.1"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	held := make(chan int, 4)
+	s.beforeUDPWrite = func() { held <- len(s.inflight) }
+	if err := s.Start(); err != nil {
+		t.Fatal(err)
+	}
+	testutil.Cleanup(t, func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_ = s.Shutdown(ctx)
+	})
+	for i := uint16(0); i < 3; i++ {
+		mustExchangeUDP(t, s.UDPAddr(), packA(t, "w.lab.", 40+i, nil))
+		if n := <-held; n != 0 {
+			t.Fatalf("query %d: inflight=%d when the reply write started; want 0", i, n)
+		}
+	}
 }

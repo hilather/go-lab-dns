@@ -24,6 +24,9 @@ type Server struct {
 	tcp net.Listener
 
 	inflight chan struct{}
+	// beforeUDPWrite, when set by a test before Start, runs just before a
+	// UDP reply is written. Nil in production.
+	beforeUDPWrite func()
 	qps      *queryLimiter
 
 	mu      sync.Mutex

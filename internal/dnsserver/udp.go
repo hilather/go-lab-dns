@@ -64,6 +64,9 @@ func (s *Server) handleUDP(pkt []byte, addr net.Addr, release func()) {
 		return
 	}
 	release()
+	if s.beforeUDPWrite != nil {
+		s.beforeUDPWrite()
+	}
 	_, _ = s.udp.WriteTo(payload, addr)
 }
 
