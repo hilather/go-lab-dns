@@ -11,7 +11,7 @@ openssl rand -hex 32 > secrets/labdns-token
 ```
 
 Generate at least 32 bytes. Shorter tokens are deprecated: they still load
-in this release and the next minor release refuses them.
+in v1.5.0 and v1.6.0 refuses them.
 
 Kubernetes: create an opaque Secret in the cluster and reference it from
 the Deployment. Do not put the token in `dns.yaml` or `image.env`.

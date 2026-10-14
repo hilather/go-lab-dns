@@ -19,7 +19,7 @@ openssl rand -hex 32 > ../../secrets/labdns-token
 ```
 
 Generate at least 32 bytes. Shorter tokens are deprecated: they still load
-in this release and the next minor release refuses them (see the
+in v1.5.0 and v1.6.0 refuses them (see the
 [labdns CHANGELOG](https://github.com/hilather/go-lab-dns/blob/main/CHANGELOG.md)).
 
 Kubernetes:
