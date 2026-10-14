@@ -13,7 +13,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Deprecated
 
-- Management bearer tokens shorter than 32 bytes are deprecated. This release does not check plain-token length when `labdns serve` reads `spec.management.auth.secretRef` at process start (auth is serve-time; reset does not reread tokens). The next minor release refuses a token shorter than 32 bytes at that same load. Replacement: generate tokens with `openssl rand -hex 32` (the `examples/labdns-deploy` instructions now do). This release has no short-token log line or metric; the shared-auth (controlkit) migration adds a load-time warning (token id only) and the `labdns_auth_short_tokens_total` counter before enforcement.
+- Management bearer tokens shorter than 32 bytes are deprecated. v1.5.0 does not check plain-token length when `labdns serve` reads `spec.management.auth.secretRef` at process start (auth is serve-time; reset does not reread tokens). v1.6.0 refuses a token shorter than 32 bytes at that same load. Replacement: generate tokens with `openssl rand -hex 32` (the `examples/labdns-deploy` instructions now do). v1.5.0 has no short-token log line or metric; the shared-auth (controlkit) migration adds a load-time warning (token id only) and the `labdns_auth_short_tokens_total` counter before enforcement.
 
 ### Security
 

@@ -641,7 +641,8 @@ exit 0
 
 // TestTokenInstructionsGenerateAtLeast32Bytes locks the operator token
 // examples to `openssl rand -hex N` with N >= 32. A fenced `$(cat …)` read
-// (the kubectl Secret creation) is not a generator.
+// (the kubectl Secret creation) is not a generator. The deprecation text
+// names v1.5.0 (short tokens still load) and v1.6.0 (refused).
 func TestTokenInstructionsGenerateAtLeast32Bytes(t *testing.T) {
 	root := repoRoot(t)
 	deploy := filepath.Join(root, "examples", "labdns-deploy")
@@ -658,6 +659,10 @@ func TestTokenInstructionsGenerateAtLeast32Bytes(t *testing.T) {
 		}
 		if printfLiteral.MatchString(body) {
 			t.Errorf("%s generates labdns-token with a printf literal", rel)
+		}
+		flat := strings.Join(strings.Fields(body), " ")
+		if !strings.Contains(flat, "in v1.5.0 and v1.6.0 refuses them") || strings.Contains(flat, "next minor release") {
+			t.Errorf("%s: short-token deprecation must name v1.5.0 (loads) and v1.6.0 (refuses)", rel)
 		}
 		generators := 0
 		for _, block := range markdownFences(body) {
@@ -677,6 +682,21 @@ func TestTokenInstructionsGenerateAtLeast32Bytes(t *testing.T) {
 		}
 		if generators == 0 {
 			t.Errorf("%s: no openssl rand -hex N>=32 write of labdns-token", rel)
+		}
+	}
+	changelog := strings.Join(strings.Fields(read(t, filepath.Join(root, "CHANGELOG.md"))), " ")
+	for _, want := range []string{
+		"v1.5.0 does not check plain-token length",
+		"v1.6.0 refuses a token shorter than 32 bytes",
+		"v1.5.0 has no short-token log line",
+	} {
+		if !strings.Contains(changelog, want) {
+			t.Errorf("CHANGELOG.md: short-token deprecation must say %q", want)
+		}
+	}
+	for _, stale := range []string{"This release does not check plain-token length", "next minor release refuses"} {
+		if strings.Contains(changelog, stale) {
+			t.Errorf("CHANGELOG.md: short-token deprecation still says %q", stale)
 		}
 	}
 }
