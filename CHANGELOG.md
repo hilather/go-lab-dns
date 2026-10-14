@@ -15,6 +15,10 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 - Management bearer tokens shorter than 32 bytes are deprecated. This release does not check plain-token length when `labdns serve` reads `spec.management.auth.secretRef` at process start (auth is serve-time; reset does not reread tokens). The next minor release refuses a token shorter than 32 bytes at that same load. Replacement: generate tokens with `openssl rand -hex 32` (the `examples/labdns-deploy` instructions now do). This release has no short-token log line or metric; the shared-auth (controlkit) migration adds a load-time warning (token id only) and the `labdns_auth_short_tokens_total` counter before enforcement.
 
+### Fixed
+
+- UDP queries free their inflight slot before the reply is written, so a client that sends its next query as soon as it reads an answer is no longer dropped at `MaxInflight` (#64, #65: a rare `TestClassifySourcePanicIsSERVFAILAndFreesInflight` failure under parallel `-race` runs). `MaxInflight` now bounds parsing and handling, not the UDP write. TCP already released the slot before writing; unchanged.
+
 ### Security
 
 - `profile: bearer` no longer treats loopback (`127.0.0.1`, `::1`) requests without a bearer as administrator; they get 401 like remote peers. Send `Authorization: Bearer` (or sign in to the console with a token). `dev-loopback-unauth` and unauthenticated health probes are unchanged. See [ADR 0010](docs/adr/0010-bearer-profile-no-loopback-exception.md).

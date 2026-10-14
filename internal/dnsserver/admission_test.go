@@ -240,6 +240,11 @@ func TestClassifySourcePanicIsSERVFAILAndFreesInflight(t *testing.T) {
 	if rcodeOf(t, out) != 2 {
 		t.Fatalf("panic hook rcode=%d", rcodeOf(t, out))
 	}
+	// The UDP handler frees its slot before it writes the reply, so the
+	// slot is already free once the client holds the answer. No wait.
+	if n := len(s.inflight); n != 0 {
+		t.Fatalf("inflight=%d after the reply arrived; want 0 (slot released before the write)", n)
+	}
 	// Inflight must be released; a leaked slot would drop this query.
 	// Use the same 1s budget as mustExchangeUDP so a busy `go test ./...`
 	// machine does not report a leak when the SERVFAIL is merely slow.
