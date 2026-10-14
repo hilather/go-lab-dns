@@ -160,6 +160,9 @@ func (s *Server) serveOneTCPQuery(conn *leftoverConn, ip netip.Addr, body []byte
 		s.cfg.Metrics.IncAdmission("inflight", "")
 		return nil, HintDrop, "", 0, false
 	}
+	// Deferred first, so it runs last: after the close watcher joins and
+	// before the caller writes the reply, so another query (UDP or another
+	// connection) can be admitted during that write.
 	defer s.releaseInflight()
 
 	qTimeout := s.cfg.QueryTimeout

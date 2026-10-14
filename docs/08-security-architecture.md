@@ -44,7 +44,7 @@ Related ADRs: 0003, 0004, 0005, 0007, [0010](adr/0010-bearer-profile-no-loopback
 
 ### First-GA DNS listener defaults
 
-First-GA DNS listener numeric defaults (DNS-001; YAML overrides land with CFG/STA): max UDP 4096, max TCP message 65535, one question, EDNS UDP clamp 4096 / advertise 1232, TCP idle 10s, read/write 2s, connection max-age 30s, query timeout 2s, 256 TCP connections (16 per source IP), 1024 in-flight queries, hold-then-close cap 1s. Oversized UDP is dropped; oversized TCP is closed. Per-source query token buckets (default 256/s, burst 512) sit on top of those caps. Refuse-forward for unknown clients shipped with CFG/FWD and is not re-specified here.
+First-GA DNS listener numeric defaults (DNS-001; YAML overrides land with CFG/STA): max UDP 4096, max TCP message 65535, one question, EDNS UDP clamp 4096 / advertise 1232, TCP idle 10s, read/write 2s, connection max-age 30s, query timeout 2s, 256 TCP connections (16 per source IP), 1024 in-flight queries (parse and handle; a UDP slot is freed just before the reply write), hold-then-close cap 1s. Oversized UDP is dropped; oversized TCP is closed. Per-source query token buckets (default 256/s, burst 512) sit on top of those caps. Refuse-forward for unknown clients shipped with CFG/FWD and is not re-specified here.
 
 ## Management-plane controls
 

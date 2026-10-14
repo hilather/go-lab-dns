@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"sync"
 
 	"github.com/hilather/go-lab-dns/internal/dnswire"
 	"github.com/hilather/go-lab-dns/internal/model"
@@ -38,13 +39,18 @@ func (s *Server) serveUDP() {
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
-			defer s.releaseInflight()
-			s.handleUDP(pkt, peer)
+			release := sync.OnceFunc(s.releaseInflight)
+			defer release()
+			s.handleUDP(pkt, peer, release)
 		}()
 	}
 }
 
-func (s *Server) handleUDP(pkt []byte, addr net.Addr) {
+// handleUDP answers one datagram. release frees the inflight slot; it is
+// called before the reply is written, so a client that sends its next query
+// as soon as it reads this answer is not dropped at MaxInflight. The cap
+// covers parsing and handling, not the UDP write.
+func (s *Server) handleUDP(pkt []byte, addr net.Addr, release func()) {
 	client := peerFromAddr(addr)
 	req, perr := dnswire.Parse(pkt, model.TransportUDP, client)
 	s.cfg.Metrics.IncParse(parseReason(perr))
@@ -56,6 +62,10 @@ func (s *Server) handleUDP(pkt []byte, addr net.Addr) {
 	s.cfg.Metrics.IncResponse(string(model.TransportUDP), string(rcode), hint.String())
 	if hint != HintSend || len(payload) == 0 {
 		return
+	}
+	release()
+	if s.beforeUDPWrite != nil {
+		s.beforeUDPWrite()
 	}
 	_, _ = s.udp.WriteTo(payload, addr)
 }
