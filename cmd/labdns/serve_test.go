@@ -260,6 +260,11 @@ func ephemeralPackSample(t *testing.T) string {
 	}
 	rewritten := strings.Replace(string(src), `address: ":5353"`, `address: "127.0.0.1:0"`, 1)
 	rewritten = strings.Replace(rewritten, `address: ":8080"`, `address: "127.0.0.1:0"`, 1)
+	const authBlock = "  management:\n    auth:\n      profile: dev-loopback-unauth\n"
+	if !strings.Contains(rewritten, "\n  access:\n") {
+		t.Fatal("pack-sample has no spec.access block to anchor auth")
+	}
+	rewritten = strings.Replace(rewritten, "\n  access:\n", "\n"+authBlock+"  access:\n", 1)
 	if rewritten == string(src) {
 		t.Fatal("pack-sample listen addresses not rewritten")
 	}

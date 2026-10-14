@@ -103,7 +103,7 @@ func TestCanonicalExportMaterializesDefaults(t *testing.T) {
 		`"/mcp"`,
 		`"30s"`,
 		`"10s"`,
-		`"dev-loopback-unauth"`,
+		`"bearer"`,
 	} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("canonical JSON missing %s\n%s", want, s)

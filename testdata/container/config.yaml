@@ -12,6 +12,9 @@ spec:
       address: ":8080"
       restPath: /v1
       mcpPath: /mcp
+  management:
+    auth:
+      profile: dev-loopback-unauth
   access:
     clientGroups: []
   defaults:

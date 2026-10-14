@@ -23,6 +23,9 @@ const DefaultCNAMEDepth = 8
 const (
 	AuthProfileDevLoopbackUnauth = "dev-loopback-unauth"
 	AuthProfileBearer            = "bearer"
+	// DefaultAuthProfile is what an empty spec.management.auth.profile
+	// normalizes to (ADR 0011). Explicit dev-loopback-unauth stays valid.
+	DefaultAuthProfile = AuthProfileBearer
 )
 
 // ListenersSpec configures the DNS and management listeners.

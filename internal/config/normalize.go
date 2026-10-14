@@ -85,7 +85,7 @@ func materializeDefaults(sp *model.Spec) {
 		sp.Chaos.Policies = []model.ChaosPolicy{}
 	}
 	if sp.Management.Auth.Profile == "" {
-		sp.Management.Auth.Profile = model.AuthProfileDevLoopbackUnauth
+		sp.Management.Auth.Profile = model.DefaultAuthProfile
 	}
 	for zi := range sp.Zones {
 		z := &sp.Zones[zi]

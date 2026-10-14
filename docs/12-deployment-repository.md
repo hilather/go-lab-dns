@@ -2,7 +2,7 @@
 
 Status: Normative (GIT-001)
 Owners: Deployment, Platform
-Last reviewed: 2026-10-09 (process bind vs host publish; loopback is 127.0.0.0/8, ::1, IPv4-mapped 127/8; ADR 0011 proposed)
+Last reviewed: 2026-10-09 (process bind vs host publish; loopback is 127.0.0.0/8, ::1, IPv4-mapped 127/8; ADR 0011 accepted)
 Last reviewed: 2026-10-03 (alternate action address checks)
 Last reviewed: 2026-08-19 (operator console :8080, ui.enabled, allowedOrigins)
 

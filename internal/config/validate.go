@@ -763,9 +763,9 @@ func validateManagement(m *model.ManagementSpec, vs *[]domainerr.FieldViolation)
 	switch m.Auth.Profile {
 	case "", model.AuthProfileDevLoopbackUnauth:
 	case model.AuthProfileBearer:
-		if strings.TrimSpace(m.Auth.SecretRef) == "" {
-			*vs = append(*vs, domainerr.FieldViolation{Path: "spec.management.auth.secretRef", Code: violationRequired, Message: "bearer profile requires secretRef"})
-		}
+		// Token usability is process start (auth.NewPolicy), not schema.
+		// Load runs before --management-listen=off, so a secretRef
+		// requirement here would reject a management-off start.
 	default:
 		*vs = append(*vs, domainerr.FieldViolation{Path: "spec.management.auth.profile", Code: violationInvalidValue, Message: "profile must be dev-loopback-unauth or bearer"})
 	}

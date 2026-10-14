@@ -32,26 +32,32 @@ func TestServeExposureWarn(t *testing.T) {
 		localhost  bool
 		skipListen bool
 		fail       bool
+		tokenErr   bool
 	}{
-		{name: "omitted 0.0.0.0:0", mgmt: "0.0.0.0:0", warn: true},
-		{name: "omitted :0", mgmt: ":0", warn: true},
+		{name: "dev-loopback-unauth 0.0.0.0:0", mgmt: "0.0.0.0:0", profile: "dev-loopback-unauth", warn: true},
+		{name: "dev-loopback-unauth :0", mgmt: ":0", profile: "dev-loopback-unauth", warn: true},
 		{name: "explicit dev-loopback-unauth :0", mgmt: ":0", profile: "dev-loopback-unauth", warn: true},
-		{name: "flag wildcard overrides loopback yaml", mgmt: "127.0.0.1:0", flag: "0.0.0.0:0", warn: true},
-		{name: "omitted ipv4-mapped wildcard", mgmt: "[::ffff:0.0.0.0]:0", warn: true, skipListen: true},
+		{name: "flag wildcard overrides loopback yaml", mgmt: "127.0.0.1:0", profile: "dev-loopback-unauth", flag: "0.0.0.0:0", warn: true},
+		{name: "dev-loopback-unauth ipv4-mapped wildcard", mgmt: "[::ffff:0.0.0.0]:0", profile: "dev-loopback-unauth", warn: true, skipListen: true},
 
-		{name: "omitted 127.0.0.1:0", mgmt: "127.0.0.1:0", quiet: true},
-		{name: "omitted 127.0.0.2:0", mgmt: "127.0.0.2:0", quiet: true},
-		{name: "omitted ::1", mgmt: "[::1]:0", quiet: true, skipListen: true},
-		{name: "omitted localhost", mgmt: "localhost:0", quiet: true, localhost: true},
-		{name: "omitted ipv4-mapped loopback", mgmt: "[::ffff:127.0.0.1]:0", quiet: true, skipListen: true},
-		{name: "flag loopback overrides wildcard yaml", mgmt: "0.0.0.0:0", flag: "127.0.0.1:0", quiet: true},
+		{name: "dev-loopback-unauth 127.0.0.1:0", mgmt: "127.0.0.1:0", profile: "dev-loopback-unauth", quiet: true},
+		{name: "dev-loopback-unauth 127.0.0.2:0", mgmt: "127.0.0.2:0", profile: "dev-loopback-unauth", quiet: true},
+		{name: "dev-loopback-unauth ::1", mgmt: "[::1]:0", profile: "dev-loopback-unauth", quiet: true, skipListen: true},
+		{name: "dev-loopback-unauth localhost", mgmt: "localhost:0", profile: "dev-loopback-unauth", quiet: true, localhost: true},
+		{name: "dev-loopback-unauth ipv4-mapped loopback", mgmt: "[::ffff:127.0.0.1]:0", profile: "dev-loopback-unauth", quiet: true, skipListen: true},
+		{name: "flag loopback overrides wildcard yaml", mgmt: "0.0.0.0:0", profile: "dev-loopback-unauth", flag: "127.0.0.1:0", quiet: true},
 		{name: "bearer :0", mgmt: ":0", profile: "bearer", secretRef: tokenPath, quiet: true},
-		{name: "management off", mgmt: "0.0.0.0:0", flag: "off", quiet: true, unbound: true},
-		{name: "management OFF", mgmt: "0.0.0.0:0", flag: "OFF", quiet: true, unbound: true},
+		{name: "management off", mgmt: "0.0.0.0:0", profile: "dev-loopback-unauth", flag: "off", quiet: true, unbound: true},
+		{name: "management OFF", mgmt: "0.0.0.0:0", profile: "dev-loopback-unauth", flag: "OFF", quiet: true, unbound: true},
 
-		{name: "test-net", mgmt: "127.0.0.1:0", flag: "192.0.2.10:0", fail: true},
-		{name: "bad host", mgmt: "127.0.0.1:0", flag: "no-such-labdns-host.invalid:0", fail: true},
-		{name: "missing port", mgmt: "127.0.0.1:0", flag: "127.0.0.1", fail: true},
+		{name: "test-net", mgmt: "127.0.0.1:0", profile: "dev-loopback-unauth", flag: "192.0.2.10:0", fail: true},
+		{name: "bad host", mgmt: "127.0.0.1:0", profile: "dev-loopback-unauth", flag: "no-such-labdns-host.invalid:0", fail: true},
+		{name: "missing port", mgmt: "127.0.0.1:0", profile: "dev-loopback-unauth", flag: "127.0.0.1", fail: true},
+
+		{name: "omitted :0", mgmt: ":0", tokenErr: true},
+		{name: "omitted 127.0.0.1:0", mgmt: "127.0.0.1:0", tokenErr: true},
+		{name: "omitted flag wildcard", mgmt: "127.0.0.1:0", flag: "0.0.0.0:0", tokenErr: true},
+		{name: "omitted management off", mgmt: "0.0.0.0:0", flag: "off", quiet: true, unbound: true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -70,6 +76,8 @@ func TestServeExposureWarn(t *testing.T) {
 				t.Skipf("cannot listen on %s: %s", tc.mgmt, strings.TrimSpace(stderr))
 			}
 			switch {
+			case tc.tokenErr:
+				assertExposureTokenError(t, stdout, stderr, code)
 			case tc.fail:
 				assertExposureFail(t, stdout, stderr, code)
 			case tc.warn:
@@ -90,6 +98,58 @@ func TestServeExposureWarn(t *testing.T) {
 				t.Fatal("case has no expectation")
 			}
 		})
+	}
+}
+
+// TestServeOmittedProfileMissingToken: an omitted profile with no secretRef
+// fails before any listener binds. Ephemeral ports keep the base run (which
+// starts and exits 0) from colliding with a real :8080.
+func TestServeOmittedProfileMissingToken(t *testing.T) {
+	for _, mgmt := range []string{":0", "127.0.0.1:0"} {
+		t.Run(mgmt, func(t *testing.T) {
+			path := writeLocalConfig(t, "127.0.0.1:0", mgmt)
+			stdout, stderr, code := runServeExposure(t, path)
+			assertExposureTokenError(t, stdout, stderr, code)
+		})
+	}
+}
+
+func TestServeBearerTokenFileUnusable(t *testing.T) {
+	cases := []struct {
+		name string
+		body *string
+	}{
+		{name: "missing"},
+		{name: "empty", body: strPtr("")},
+		{name: "empty token value", body: strPtr(`{"tokens":[{"token":""}]}`)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tokenPath := filepath.Join(t.TempDir(), "labdns-token")
+			if tc.body != nil {
+				if err := os.WriteFile(tokenPath, []byte(*tc.body), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			path := writeLocalConfigAuth(t, "127.0.0.1:0", "127.0.0.1:0", "bearer", tokenPath)
+			stdout, stderr, code := runServeExposure(t, path)
+			assertExposureTokenError(t, stdout, stderr, code)
+		})
+	}
+}
+
+func strPtr(s string) *string { return &s }
+
+func TestServeManagementOffWithoutToken(t *testing.T) {
+	path := writeLocalConfig(t, "127.0.0.1:0", "0.0.0.0:0")
+	stdout, stderr, code := runServeExposure(t, path, "--management-listen=off")
+	assertExposureQuiet(t, stdout, stderr, code)
+	line := exposureListenLine(t, stdout)
+	if !strings.Contains(line, "management unbound") {
+		t.Fatalf("listening line %q", line)
+	}
+	if warns := exposureWarnLines(stdout); len(warns) != 0 {
+		t.Fatalf("warnings=%q", warns)
 	}
 }
 
@@ -186,6 +246,23 @@ func assertExposureQuiet(t *testing.T, stdout, stderr string, code int) {
 	}
 }
 
+const serveBearerNoTokenStderr = "labdns serve: management auth: validation_failed: bearer profile has no usable token; set spec.management.auth.secretRef to a token file, or set profile: dev-loopback-unauth\n"
+
+const validateBearerNoTokenStderr = "labdns validate: validation_failed: bearer profile has no usable token; set spec.management.auth.secretRef to a token file, or set profile: dev-loopback-unauth\n"
+
+func assertExposureTokenError(t *testing.T, stdout, stderr string, code int) {
+	t.Helper()
+	if code != 1 {
+		t.Fatalf("exit %d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	if stdout != "" {
+		t.Fatalf("stdout=%q", stdout)
+	}
+	if stderr != serveBearerNoTokenStderr {
+		t.Fatalf("stderr=%q", stderr)
+	}
+}
+
 func assertExposureFail(t *testing.T, stdout, stderr string, code int) {
 	t.Helper()
 	if code != 1 {
@@ -232,10 +309,12 @@ func TestServeExposureWarnBoundAddress(t *testing.T) {
 
 	t.Run("non-loopback local address", func(t *testing.T) {
 		ips := nonLoopbackLocalIPs(t)
+		var failed []string
 		for _, ip := range ips {
 			addr := net.JoinHostPort(ip, "0")
-			stdout, stderr, code := runServeExposure(t, writeLocalConfig(t, dns, addr))
+			stdout, stderr, code := runServeExposure(t, writeLocalConfigAuth(t, dns, addr, "dev-loopback-unauth", ""))
 			if code != 0 && strings.Contains(stderr, "management listen") {
+				failed = append(failed, addr+": "+strings.TrimSpace(stderr))
 				t.Logf("cannot listen on %s: %s", addr, strings.TrimSpace(stderr))
 				continue
 			}
@@ -248,11 +327,15 @@ func TestServeExposureWarnBoundAddress(t *testing.T) {
 			}
 			return
 		}
+		// CI must not skip: this is the only case that kills a "warn only on wildcard" predicate.
+		if os.Getenv("CI") == "true" {
+			t.Fatalf("no bindable non-loopback unicast address (candidates %v; errors %v)", ips, failed)
+		}
 		t.Skipf("no bindable non-loopback unicast address on this host (candidates %v)", ips)
 	})
 
 	t.Run("ipv6 wildcard [::]:0", func(t *testing.T) {
-		stdout, stderr, code := runServeExposure(t, writeLocalConfig(t, dns, "[::]:0"))
+		stdout, stderr, code := runServeExposure(t, writeLocalConfigAuth(t, dns, "[::]:0", "dev-loopback-unauth", ""))
 		if code != 0 && strings.Contains(stderr, "management listen") {
 			t.Skipf("cannot listen on [::]:0: %s", strings.TrimSpace(stderr))
 		}
@@ -267,7 +350,7 @@ func TestServeExposureWarnBoundAddress(t *testing.T) {
 		names := loopbackHostnames(t)
 		for _, name := range names {
 			addr := net.JoinHostPort(name, "0")
-			stdout, stderr, code := runServeExposure(t, writeLocalConfig(t, dns, addr))
+			stdout, stderr, code := runServeExposure(t, writeLocalConfigAuth(t, dns, addr, "dev-loopback-unauth", ""))
 			if code != 0 && strings.Contains(stderr, "management listen") {
 				t.Logf("cannot listen on %s: %s", addr, strings.TrimSpace(stderr))
 				continue

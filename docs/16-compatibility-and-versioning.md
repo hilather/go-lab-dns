@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Architecture, Release Engineering
+Last reviewed: 2026-10-09 (1.5.0 omitted auth profile is bearer; canonical revision change; ADR 0011 accepted)
 Last reviewed: 2026-08-23 (allowLegacyClients overlay knob)
 Last reviewed: 2026-08-15 (OBS-001 metrics catalog)
 Last reviewed: 2026-08-15 (REL-001 release-diff surfaces)
@@ -36,6 +37,8 @@ A DNS correctness fix may alter observable output. Release notes must describe i
 Use `apiVersion` and `kind`. First GA ships **`labdns.dev/v1alpha1` only**. `internal/config.Migrator` is the extension point for a later version; `Migrations()` is empty until then. Unknown `apiVersion` values fail with `unsupported_protocol_version`. Unknown fields fail rather than being silently discarded.
 
 **1.1.0 compatibility event (Canonical revision hash):** omitted `spec.ui` now materializes `{enabled: true}` into Canonical JSON. Content-addressed `sha256:` revisions therefore change for documents that previously omitted `spec.ui`, even when no other fields changed. `hash-v1` chaos vectors are unaffected. Operators storing `expectedRevision` from 1.0.0-rc.* must re-GET state after upgrade (normal after any Canonical change). `spec.management.allowedOrigins` is additive and omitted-empty.
+
+**1.5.0 compatibility event (omitted auth profile):** omitted `spec.management.auth.profile` materializes `bearer` into Canonical JSON, the same revision rule as the 1.1.0 `spec.ui` note. Content-addressed `sha256:` revisions change for documents that omitted `profile`. Documents that already set the profile are unchanged. `hash-v1` is unchanged. Operators storing `expectedRevision` must re-GET state after upgrade. Classified as minor v1.5.0 by the 2026-10-09 decision (Matt Brewer, relayed by Keystone): breaking for omitted-profile deployments, migration required. See [ADR 0011](adr/0011-propose-bearer-default-profile.md).
 
 **1.2.0 compatibility event (over-length names):** v1alpha1 desired-state names are no longer rejected for exceeding RFC 1035 label (63 octet) or presentation FQDN (254 character) length. Documents that previously failed `invalid_name` for length now load. Canonical JSON for previously valid documents is unchanged. UDP/TCP encoding is unchanged (ADR 0007, ADR 0009).
 

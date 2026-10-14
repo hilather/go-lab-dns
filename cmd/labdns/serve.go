@@ -409,14 +409,15 @@ func overrideDNSListen(addr string, snap *snapshot.Snapshot) (udpAddr, tcpAddr s
 // bindManagementAuth loads the authenticator for a bound management listener.
 //
 // compiler.Compile sets Canonical or returns an error, and config.Normalize
-// fills an empty profile with dev-loopback-unauth, so every real serve config
-// gets a *Policy here. Bearer with no tokens errors. The returned authenticator
-// is that *Policy (never nil when construct is true).
+// fills an empty profile with bearer (ADR 0011). Bearer with no usable token
+// errors before listen. The returned authenticator is that *Policy (never nil
+// when construct is true).
 //
 // A nil snapshot or nil Canonical has no profile. construct is false: the
-// caller does not build REST, MCP HTTP, or the session table. That used to
-// pass a nil authenticator, which Identify treated as local-dev administrator.
-// DNS binding is left to the caller and is unchanged.
+// caller does not build REST, MCP HTTP, or the session table, and does not
+// invent a policy. That used to pass a nil authenticator, which Identify
+// treated as local-dev administrator. DNS binding is left to the caller and
+// is unchanged.
 func bindManagementAuth(snap *snapshot.Snapshot) (authn auth.Authenticator, pol *auth.Policy, construct bool, err error) {
 	if snap == nil || snap.Canonical == nil {
 		return nil, nil, false, nil

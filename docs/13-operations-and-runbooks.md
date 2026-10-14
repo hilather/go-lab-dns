@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Operations
+Last reviewed: 2026-10-09 (omitted auth profile is bearer; upgrade to v1.5.0; ADR 0011 accepted)
 Last reviewed: 2026-10-09 (process bind :8080 is every interface; Compose publishes host loopback)
 Last reviewed: 2026-10-08 (bearer profile has no loopback exception; ADR 0010)
 Last reviewed: 2026-10-03 (signal cleanup, live cache updates, management mounts, and real upstream status)
@@ -158,10 +159,21 @@ The embedded operator UI is served on the management listener (`GET /`) when `sp
 
 1. The default process bind is `:8080`, every interface (YAML `spec.listeners.management.address`). GitOps Compose publishes that port on the host loopback (`127.0.0.1:8080:8080` in main-lab; test-lab publishes `127.0.0.1:18080:8080/tcp`). That publish is not a loopback process bind. Set the YAML address to `127.0.0.1:8080` or `[::1]:8080` to bind the process to loopback.
 2. Open `http://127.0.0.1:8080/` (test-lab: `http://127.0.0.1:18080/`) in a browser. Off-loopback clients can load the login HTML without a bearer; `/v1` APIs still require a live `labdns_session` cookie or `Authorization: Bearer`.
-3. On loopback `dev-loopback-unauth` (`serve` on the host), choose **Continue as local administrator** (`POST /v1/session` with no `Authorization`). Through a Compose publish the TCP peer is the Docker bridge, not loopback, so that button returns 401. Under `profile: bearer`, including loopback, paste a bearer token into the password field; that continue button returns 401 `authentication required`. The SPA discards the token after login. CSRF stays in module memory, never `localStorage`, `sessionStorage`, IndexedDB, or the URL.
+3. **Continue as local administrator** works only for explicit `profile: dev-loopback-unauth` when the TCP peer is loopback (`serve` on the host, `POST /v1/session` with no `Authorization`). The omitted default is `bearer` and needs a token file. Through a Compose publish the TCP peer is the Docker bridge, not loopback, so that button returns 401. Under `profile: bearer`, including loopback, paste a bearer token into the password field; that continue button returns 401 `authentication required`. The SPA discards the token after login. CSRF stays in module memory, never `localStorage`, `sessionStorage`, IndexedDB, or the URL.
 4. The overview dashboard shows `GET /v1/status` (revision, ready/degraded) and `GET /v1/version`.
 5. `spec.ui.enabled: false` 404s SPA paths only; REST and MCP remain. `--management-listen=off` unbinds REST, MCP, and the UI together.
-6. Published management hosts (not loopback) must set `spec.management.allowedOrigins` to the exact browser Origin (`http(s)://host[:port]`, no path). Omitted is empty; loopback Origin stays allowed. Invalid entries fail config validation. Plan/apply of `allowedOrigins` and `spec.ui.enabled` takes effect on the next request. `spec.management.auth` remains serve-time and needs a restart (in-process sessions are dropped).
+6. Published management hosts (not loopback) must set `spec.management.allowedOrigins` to the exact browser Origin (`http(s)://host[:port]`, no path). Omitted is empty; loopback Origin stays allowed. Invalid entries fail config validation. Plan/apply of `allowedOrigins` and `spec.ui.enabled` takes effect on the next request. `spec.management.auth` remains serve-time and needs a restart (in-process sessions are dropped). Since v1.5.0 a `management` replace that omits `auth.profile` stores `bearer` in the live canonical state while the running listener keeps its start-time profile; restate `profile: dev-loopback-unauth` in such updates if you rely on it. A restart reloads the bootstrap file and discards that runtime drift; if you export the live state back into the bootstrap file, it now says `bearer`, and without a usable `secretRef` the next `labdns serve` exits 1 with the token sentence.
+
+### Upgrade to v1.5.0
+
+Omitted `spec.management.auth.profile` normalizes to `bearer` ([ADR 0011](adr/0011-propose-bearer-default-profile.md)).
+
+- No `profile` and no token file: `labdns serve` exits 1 before it listens: `validation_failed: bearer profile has no usable token; set spec.management.auth.secretRef to a token file, or set profile: dev-loopback-unauth`. `labdns validate` reports the same sentence when `secretRef` is empty. `labdns validate` does not open the file.
+- Loopback scripts, curls, and the console Continue button need `Authorization: Bearer` (or a session cookie created with a bearer) unless the file sets `profile: dev-loopback-unauth`.
+- `secretRef` set and `profile` omitted: loopback is no longer administrator. Send the bearer. The startup warning does not fire.
+- Opt back in: `spec.management.auth.profile: dev-loopback-unauth`. The non-loopback bind warning still prints.
+- `--management-listen=off` still starts with no token. Health live/ready stay open. MCP stdio is unchanged.
+- Canonical revisions change for documents that omitted `profile`. Re-GET state before plan/apply that sends `expectedRevision`. `hash-v1` is unchanged.
 
 Local `go test` / `go run` embed the committed stub at `internal/web/dist/index.html`, not a production Vite bundle. Production images copy `web/dist` in Docker. GitOps Compose publishes management on the host loopback: main-lab publishes `127.0.0.1:8080:8080` and test-lab publishes `127.0.0.1:18080:8080/tcp`. Both use bearer `secretRef` — paste that token on `/login`.
 
@@ -169,7 +181,7 @@ Local `go test` / `go run` embed the committed stub at `internal/web/dist/index.
 
 For operator-console work against a live process:
 
-1. Start LabDNS: `labdns serve --config testdata/config/valid/pack-sample.yaml` (management `:8080`).
+1. Start LabDNS: `labdns serve --config testdata/container/config.yaml` (explicit `profile: dev-loopback-unauth`, management `:8080`). `testdata/config/valid/pack-sample.yaml` omits the profile; set `spec.management.auth.secretRef` or `profile: dev-loopback-unauth` before `serve`, or the process exits before it listens.
 2. In `web/`, run `npm ci && npm run dev`. Vite proxies `/v1` and `/mcp` to `http://127.0.0.1:8080`.
 3. Open the Vite dev URL (default `http://127.0.0.1:5173/`) and log in as above.
 
