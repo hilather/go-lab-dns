@@ -414,6 +414,26 @@ func postJSON(t *testing.T, url, body string) {
 
 func writeLocalConfig(t *testing.T, dnsAddr, mgmtAddr string) string {
 	t.Helper()
+	return writeLocalConfigAuth(t, dnsAddr, mgmtAddr, "", "")
+}
+
+// writeLocalConfigAuth is writeLocalConfig plus spec.management.auth.
+// An empty profile omits that block, so the document matches writeLocalConfig.
+// A non-empty profile is part of the full document. Dropping it leaves the
+// omitted-profile default, which warns on a wildcard management address, so
+// the bearer quiet test fails.
+func writeLocalConfigAuth(t *testing.T, dnsAddr, mgmtAddr, profile, secretRef string) string {
+	t.Helper()
+	authBlock := ""
+	if profile != "" || secretRef != "" {
+		authBlock = "  management:\n    auth:\n"
+		if profile != "" {
+			authBlock += fmt.Sprintf("      profile: %q\n", profile)
+		}
+		if secretRef != "" {
+			authBlock += fmt.Sprintf("      secretRef: %q\n", secretRef)
+		}
+	}
 	body := fmt.Sprintf(`apiVersion: labdns.dev/v1alpha1
 kind: LabDNS
 metadata:
@@ -425,7 +445,7 @@ spec:
       protocols: [udp, tcp]
     management:
       address: %q
-  access:
+%s  access:
     clientGroups: []
   defaults:
     ttl: 30s
@@ -447,7 +467,7 @@ spec:
           owner: ns1
           type: A
           values: [10.42.0.53]
-`, dnsAddr, mgmtAddr)
+`, dnsAddr, mgmtAddr, authBlock)
 	path := filepath.Join(t.TempDir(), "config.yaml")
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatal(err)

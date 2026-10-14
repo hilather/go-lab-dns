@@ -44,17 +44,18 @@ type serveFlags struct {
 
 // serveRuntime is the process-local listeners and snapshot store.
 type serveRuntime struct {
-	dns     *dnsserver.Server
-	mgmt    *rest.Server
-	mcp     *mcpctl.Server
-	mgmtLn  net.Listener
-	store   *snapshot.Store
-	engine  *chaos.Engine
-	app     *app.App
-	snap    *snapshot.Snapshot
-	stopSig func()
-	pidPath string
-	metrics *observability.Registry
+	dns         *dnsserver.Server
+	mgmt        *rest.Server
+	mcp         *mcpctl.Server
+	mgmtLn      net.Listener
+	mgmtProfile string
+	store       *snapshot.Store
+	engine      *chaos.Engine
+	app         *app.App
+	snap        *snapshot.Snapshot
+	stopSig     func()
+	pidPath     string
+	metrics     *observability.Registry
 }
 
 func serve(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -284,6 +285,7 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 		rt.mgmt = mgmt
 		rt.mcp = mcpSrv
 		rt.mgmtLn = ln
+		rt.mgmtProfile = pol.Profile()
 		go func() { _ = mgmt.Serve(ln) }()
 	}
 
@@ -468,6 +470,11 @@ func printListen(w io.Writer, rt *serveRuntime) {
 		mgmt = "unbound"
 	}
 	_, _ = fmt.Fprintf(w, "labdns: listening udp %s tcp %s management %s revision %s\n", udp, tcp, mgmt, rev)
+	// Classification uses the bound address because Listen rewrites
+	// localhost, 0.0.0.0, and IPv4-mapped forms.
+	if rt != nil && rt.mgmtLn != nil && rt.mgmtProfile == auth.ProfileDevLoopbackUnauth && !auth.IsLoopback(mgmt) {
+		_, _ = fmt.Fprintf(w, "labdns: warning: dev-loopback-unauth management bound to %s (not loopback); any loopback peer, including a same-host reverse proxy or SSH tunnel, is administrator; set profile: bearer\n", mgmt)
+	}
 }
 
 func writePIDFile(path string) error {

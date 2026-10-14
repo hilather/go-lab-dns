@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owners: MCP, Application
-Last reviewed: 2026-10-08 (bearer profile has no loopback exception; ADR 0010)
+Last reviewed: 2026-10-09 (process bind vs host publish; loopback is 127.0.0.0/8, ::1, IPv4-mapped 127/8; ADR 0011 proposed)
 Last reviewed: 2026-10-03 (active-chaos resolve/explain output and duration strings)
 Last reviewed: 2026-09-01 (dns_resolve useCache does not store Fallthrough)
 Last reviewed: 2026-08-23 (allowLegacyClients overlay knob)
@@ -212,7 +212,7 @@ MCP protocol versions, tool names, schemas, resource URIs, and result/error stru
 - Protocol **2026-07-28 only** by default. The Streamable HTTP handler requires `Mcp-Protocol-Version: 2026-07-28` and rejects every other value with `unsupported_protocol_version`. `spec.management.mcp.allowLegacyClients: true` skips that HTTP pin so older SDK clients (MCPJungle) can initialize; it does not add a claimed protocol version. Default is false.
 - Official SDK `github.com/modelcontextprotocol/go-sdk v1.8.0`. Stateless Streamable HTTP (`Stateless=true`) is required for this protocol revision.
 - Origin: missing Origin is allowed (SDK/curl). A present Origin must be loopback (`http://127.0.0.1`, `http://localhost`, `http://[::1]`) or on the per-request Origins allowlist (`spec.management.allowedOrigins` from the active snapshot); otherwise 403 `forbidden`. Cookies are ignored; cookie-only MCP is 401 for every peer under `bearer`, and off-loopback under `dev-loopback-unauth`.
-- Auth matches REST (SEC-001, [ADR 0010](adr/0010-bearer-profile-no-loopback-exception.md)): loopback may omit a bearer under `dev-loopback-unauth`. Under `profile: bearer`, every peer including loopback needs `Authorization: Bearer` (MCP ignores cookies). Tools and resources use the same `internal/auth` capability and resource checks as REST. Health live/ready are REST-only and stay unauthenticated.
+- Auth matches REST (SEC-001, [ADR 0010](adr/0010-bearer-profile-no-loopback-exception.md)): loopback (`127.0.0.0/8`, `::1`, and IPv4-mapped `127/8`) may omit a bearer under `dev-loopback-unauth`. Under `profile: bearer`, every peer including loopback needs `Authorization: Bearer` (MCP ignores cookies). Tools and resources use the same `internal/auth` capability and resource checks as REST. Health live/ready are REST-only and stay unauthenticated.
 - Stdio: `Server.RunStdio` is a developer adapter; logs go to stderr. Not required in the production image.
 
 ## Open questions

@@ -12,13 +12,15 @@ See also the application runbooks in the LabDNS repository
 
 ## Isolated management
 
-Compose: `127.0.0.1:8080`. Kubernetes: NetworkPolicy + ClusterIP. This
+Compose: the process binds `:8080` on every interface; Compose publishes it on host
+loopback only (main-lab `127.0.0.1:8080:8080/tcp`, test-lab `127.0.0.1:18080:8080/tcp`). Kubernetes: NetworkPolicy + ClusterIP. This
 tree uses `profile: bearer`, so loopback and remote calls need
 `Authorization: Bearer` (or a REST session cookie created with a bearer).
 Health live/ready stay unauthenticated so Docker HEALTHCHECK and kubelet
 work at the HTTP layer.
 
-Operator console: open `http://127.0.0.1:8080/` after Compose up and paste
+Operator console: open `http://127.0.0.1:8080/` (test-lab:
+`http://127.0.0.1:18080/`) after Compose up and paste
 the bearer token on `/login`. The SPA discards the token after
 `POST /v1/session` (HttpOnly cookie + CSRF). `spec.ui.enabled: false`
 404s `/` and hashed assets only. A non-loopback browser Origin must be in

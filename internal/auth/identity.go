@@ -62,7 +62,7 @@ type IdentifyIn struct {
 }
 
 // Identify applies Q-AUTH (ADR 0010). Under an explicit dev-loopback-unauth
-// profile, loopback (127.0.0.1 / ::1, including IPv4-mapped) may omit a bearer
+// profile, loopback (127.0.0.0/8, ::1, and IPv4-mapped 127/8) may omit a bearer
 // and is administrator. Under bearer, every peer including loopback must
 // present Authorization: Bearer. A nil Authenticator fails closed: every
 // non-probe request is Unauthenticated ("authentication required"), whether or
@@ -121,7 +121,8 @@ func BearerToken(h string) (string, bool) {
 	return tok, true
 }
 
-// IsLoopback reports whether remoteAddr is 127.0.0.1 or ::1 (with or without a port).
+// IsLoopback reports whether remoteAddr is 127.0.0.0/8, ::1, or IPv4-mapped
+// 127/8 (with or without a port).
 func IsLoopback(remoteAddr string) bool {
 	host := remoteAddr
 	if h, _, err := net.SplitHostPort(remoteAddr); err == nil {

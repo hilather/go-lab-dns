@@ -2,7 +2,7 @@
 
 Status: Normative (GIT-001)
 Owners: Deployment, Platform
-Last reviewed: 2026-10-08 (bearer profile has no loopback exception; ADR 0010)
+Last reviewed: 2026-10-09 (process bind vs host publish; loopback is 127.0.0.0/8, ::1, IPv4-mapped 127/8; ADR 0011 proposed)
 Last reviewed: 2026-10-03 (alternate action address checks)
 Last reviewed: 2026-08-19 (operator console :8080, ui.enabled, allowedOrigins)
 
@@ -60,7 +60,7 @@ labdns-deploy/
 - Pin images by digest (`name@sha256:<64 hex>`). Tags and `:latest` fail `labdns verify --image`. When `k8s/kustomization.yaml` exists, `--kustomize` must carry the **same** digest as `image.env`.
 - Mount `dns.yaml` read-only at `/etc/labdns/config.yaml`.
 - Keep secrets outside Git. GitOps auth is **bearer** via `secretRef` (file or Kubernetes Secret), never an inline token. Under `profile: bearer`, loopback (`127.0.0.1` / `::1`) and remote management peers must present `Authorization: Bearer` (or a REST session cookie created with a bearer). Health live/ready stay unauthenticated. `dev-loopback-unauth` still allows loopback to omit the token ([ADR 0010](adr/0010-bearer-profile-no-loopback-exception.md)).
-- Isolate management: Compose binds `:8080` to `127.0.0.1`; Kubernetes uses ClusterIP plus NetworkPolicy. Open the operator console at `http://127.0.0.1:8080/` after Compose up (paste the bearer token). `spec.ui.enabled: false` 404s the SPA only. A published management Origin must be listed in `spec.management.allowedOrigins` (exact `http(s)://host[:port]`; loopback Origin is already allowed).
+- Isolate management: the process address is `:8080` (every interface). Compose publishes that port on the host loopback (`127.0.0.1:8080:8080` in main-lab and `examples/compose.smoke.yaml`; test-lab publishes `127.0.0.1:18080:8080/tcp`). Kubernetes uses ClusterIP plus NetworkPolicy. Open the operator console at `http://127.0.0.1:8080/` (test-lab: `http://127.0.0.1:18080/`) after Compose up (paste the bearer token). `spec.ui.enabled: false` 404s the SPA only. A published management Origin must be listed in `spec.management.allowedOrigins` (exact `http(s)://host[:port]`; loopback Origin is already allowed).
 - Require review for forwarding, protected names, management networks, and high-impact chaos changes (`CODEOWNERS`).
 - Store verification probes with desired state (`labdns.dev/probes/v1alpha1`).
 - Preserve historical release and schema compatibility through Git history.
