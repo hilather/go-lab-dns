@@ -27,7 +27,7 @@ type Server struct {
 	// beforeUDPWrite, when set by a test before Start, runs just before a
 	// UDP reply is written. Nil in production.
 	beforeUDPWrite func()
-	qps      *queryLimiter
+	qps            *queryLimiter
 
 	mu      sync.Mutex
 	ipCount map[netip.Addr]int

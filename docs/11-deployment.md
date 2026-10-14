@@ -182,7 +182,7 @@ These are the first-GA safe defaults. YAML may lower them; raising a chaos cap a
 |---|---|---|---|
 | `spec.chaos.safety.maxConcurrentDelayed` | 2000 (pack sample) | chaos budgets | Extra delayed queries skip sleep and still answer. Tested by `TestMaxDelayedConcurrency`. |
 | `spec.chaos.safety.maxDelay` | 10s | chaos | Clamped per request. |
-| DNS `MaxInflight` | 1024 | `dnsserver` | Surplus UDP datagrams are dropped (no queue blow-up). |
+| DNS `MaxInflight` | 1024 | `dnsserver` | Surplus UDP datagrams are dropped (no queue blow-up). The cap covers parsing and handling; a UDP query frees its slot just before its reply is written. |
 | DNS `MaxTCPConns` | 256 | `dnsserver` | Process-wide. |
 | DNS `MaxTCPPerIP` | 16 | `dnsserver` | Per client address. |
 | DNS `QueryTimeout` | 2s | `dnsserver` | Chaos delay may outlive this and still answer. |
