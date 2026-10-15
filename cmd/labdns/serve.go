@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -34,12 +35,14 @@ import (
 var _ dnsserver.Metrics = observability.DNSTransport{}
 
 type serveFlags struct {
-	Config           string
-	ChaosDisable     bool
-	DNSListen        string
-	ManagementListen string
-	ShutdownTimeout  time.Duration
-	PIDFile          string
+	Config                string
+	ChaosDisable          bool
+	DNSListen             string
+	ManagementListen      string
+	ShutdownTimeout       time.Duration
+	PIDFile               string
+	OverflowServfailRate  float64
+	OverflowServfailBurst float64
 }
 
 // serveRuntime is the process-local listeners and snapshot store.
@@ -90,6 +93,8 @@ func parseServeFlags(args []string, stderr io.Writer) (serveFlags, error) {
 	mgmtListen := fs.String("management-listen", "", "override management listen address; off/none/- leaves it unbound")
 	shutdown := fs.Duration("shutdown-timeout", dnsserver.DefaultShutdownWait, "graceful shutdown deadline")
 	pidFile := fs.String("pid-file", "", "write process id after listeners bind")
+	rateFlag := fs.Float64("overflow-servfail-rate", 0, "UDP SERVFAIL replies/s when MaxInflight is full; 0 uses 64, negative drops them (also LABDNS_OVERFLOW_SERVFAIL_RATE)")
+	burstFlag := fs.Float64("overflow-servfail-burst", 0, "burst for --overflow-servfail-rate; 0 uses 16 (also LABDNS_OVERFLOW_SERVFAIL_BURST)")
 	if err := fs.Parse(args); err != nil {
 		return serveFlags{}, err
 	}
@@ -97,14 +102,61 @@ func parseServeFlags(args []string, stderr io.Writer) (serveFlags, error) {
 		_, _ = fmt.Fprintln(stderr, "labdns serve: --config is required")
 		return serveFlags{}, fmt.Errorf("missing --config")
 	}
+	var rateSet, burstSet bool
+	fs.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "overflow-servfail-rate":
+			rateSet = true
+		case "overflow-servfail-burst":
+			burstSet = true
+		}
+	})
+	rate, err := resolveServeFloat(rateSet, *rateFlag, "overflow-servfail-rate", "LABDNS_OVERFLOW_SERVFAIL_RATE")
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, "labdns serve:", err)
+		return serveFlags{}, err
+	}
+	burst, err := resolveServeFloat(burstSet, *burstFlag, "overflow-servfail-burst", "LABDNS_OVERFLOW_SERVFAIL_BURST")
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, "labdns serve:", err)
+		return serveFlags{}, err
+	}
+	if burst < 0 || (burst > 0 && burst < 1) {
+		err := fmt.Errorf("overflow SERVFAIL burst must be 0 (default) or >= 1")
+		_, _ = fmt.Fprintln(stderr, "labdns serve:", err)
+		return serveFlags{}, err
+	}
 	return serveFlags{
-		Config:           *path,
-		ChaosDisable:     *disable || chaos.EnvChaosDisable(),
-		DNSListen:        *dnsListen,
-		ManagementListen: *mgmtListen,
-		ShutdownTimeout:  *shutdown,
-		PIDFile:          *pidFile,
+		Config:                *path,
+		ChaosDisable:          *disable || chaos.EnvChaosDisable(),
+		DNSListen:             *dnsListen,
+		ManagementListen:      *mgmtListen,
+		ShutdownTimeout:       *shutdown,
+		PIDFile:               *pidFile,
+		OverflowServfailRate:  rate,
+		OverflowServfailBurst: burst,
 	}, nil
+}
+
+// resolveServeFloat returns an explicit flag value, otherwise the environment
+// variable. An unset flag and an empty variable leave 0 so dnsserver applies
+// its default. Non-finite numbers are rejected.
+func resolveServeFloat(explicit bool, flagVal float64, flagName, envKey string) (float64, error) {
+	if explicit {
+		if math.IsNaN(flagVal) || math.IsInf(flagVal, 0) {
+			return 0, fmt.Errorf("--%s must be a finite number", flagName)
+		}
+		return flagVal, nil
+	}
+	raw, ok := os.LookupEnv(envKey)
+	if !ok || strings.TrimSpace(raw) == "" {
+		return 0, nil
+	}
+	v, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil || math.IsNaN(v) || math.IsInf(v, 0) {
+		return 0, fmt.Errorf("%s=%q must be a finite number", envKey, raw)
+	}
+	return v, nil
 }
 
 // serveFromConfig loads, validates, and compiles path, installs the snapshot,
@@ -199,10 +251,12 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 		}
 	}
 	srv, err := dnsserver.New(dnsserver.Config{
-		UDPAddr: udpAddr,
-		TCPAddr: tcpAddr,
-		Handler: h,
-		Metrics: observability.NewDNSTransport(reg),
+		UDPAddr:               udpAddr,
+		TCPAddr:               tcpAddr,
+		Handler:               h,
+		Metrics:               observability.NewDNSTransport(reg),
+		OverflowServfailRate:  flags.OverflowServfailRate,
+		OverflowServfailBurst: flags.OverflowServfailBurst,
 	})
 	if err != nil {
 		stopSig()

@@ -9,7 +9,10 @@ type Metrics interface {
 	IncParse(result string)
 	// IncAdmission counts an admission decision. result is "ok" or a reason
 	// ("opcode", "qdcount", "class", "qtype", "edns-version", "qr", "inflight", "rate").
-	// rcode is the DNS mnemonic or "" when the packet is dropped.
+	// rcode is the DNS mnemonic, "drop" when a UDP inflight overflow is
+	// discarded (cap exhausted or the cheap question check failed), or ""
+	// when the packet is dropped for another reason. A UDP overflow that
+	// is answered uses "SERVFAIL". TCP inflight refusal still uses "".
 	IncAdmission(result, rcode string)
 	// IncResponse counts a finished query. action is TransportHint.String().
 	IncResponse(transport, rcode, action string)

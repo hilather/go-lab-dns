@@ -234,6 +234,57 @@ func TestParseServeFlagsEnvChaosDisable(t *testing.T) {
 	}
 }
 
+func TestParseServeFlagsOverflowServfail(t *testing.T) {
+	var stderr bytes.Buffer
+	f, err := parseServeFlags([]string{"--config", "/tmp/x.yaml", "--overflow-servfail-rate", "3", "--overflow-servfail-burst", "2"}, &stderr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.OverflowServfailRate != 3 || f.OverflowServfailBurst != 2 {
+		t.Fatalf("%+v", f)
+	}
+
+	t.Setenv("LABDNS_OVERFLOW_SERVFAIL_RATE", "9")
+	t.Setenv("LABDNS_OVERFLOW_SERVFAIL_BURST", "4")
+	f, err = parseServeFlags([]string{"--config", "/tmp/x.yaml"}, &stderr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.OverflowServfailRate != 9 || f.OverflowServfailBurst != 4 {
+		t.Fatalf("env: %+v", f)
+	}
+
+	// An explicit flag wins over the environment.
+	f, err = parseServeFlags([]string{"--config", "/tmp/x.yaml", "--overflow-servfail-rate", "-1"}, &stderr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.OverflowServfailRate != -1 || f.OverflowServfailBurst != 4 {
+		t.Fatalf("flag vs env: %+v", f)
+	}
+}
+
+func TestParseServeFlagsOverflowServfailRejects(t *testing.T) {
+	var stderr bytes.Buffer
+	t.Setenv("LABDNS_OVERFLOW_SERVFAIL_RATE", "nope")
+	if _, err := parseServeFlags([]string{"--config", "/tmp/x.yaml"}, &stderr); err == nil {
+		t.Fatal("non-numeric rate accepted")
+	}
+	t.Setenv("LABDNS_OVERFLOW_SERVFAIL_RATE", "Inf")
+	if _, err := parseServeFlags([]string{"--config", "/tmp/x.yaml"}, &stderr); err == nil {
+		t.Fatal("infinite rate accepted")
+	}
+	t.Setenv("LABDNS_OVERFLOW_SERVFAIL_RATE", "")
+	t.Setenv("LABDNS_OVERFLOW_SERVFAIL_BURST", "0.5")
+	if _, err := parseServeFlags([]string{"--config", "/tmp/x.yaml"}, &stderr); err == nil {
+		t.Fatal("fractional burst accepted")
+	}
+	t.Setenv("LABDNS_OVERFLOW_SERVFAIL_BURST", "-2")
+	if _, err := parseServeFlags([]string{"--config", "/tmp/x.yaml"}, &stderr); err == nil {
+		t.Fatal("negative burst accepted")
+	}
+}
+
 func TestParseServeFlagsManagementOff(t *testing.T) {
 	var stderr bytes.Buffer
 	f, err := parseServeFlags([]string{"--config", "/tmp/x.yaml", "--management-listen", "off"}, &stderr)

@@ -33,7 +33,8 @@ func (s *Server) serveUDP() {
 			continue
 		}
 		if !s.acquireInflight() {
-			s.cfg.Metrics.IncAdmission("inflight", "")
+			// No slot is held. The reply, when sent, is written here.
+			s.replyInflightOverflow(pkt, peer)
 			continue
 		}
 		s.wg.Add(1)

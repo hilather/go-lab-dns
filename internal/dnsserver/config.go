@@ -2,6 +2,8 @@ package dnsserver
 
 import (
 	"context"
+	"errors"
+	"math"
 	"time"
 
 	"github.com/hilather/go-lab-dns/internal/model"
@@ -25,6 +27,14 @@ const (
 	DefaultMaxInflight     = 1024
 	DefaultMaxHold         = time.Second
 	DefaultShutdownWait    = 5 * time.Second
+
+	// DefaultOverflowServfailRate is the global cap on UDP SERVFAIL replies
+	// sent when MaxInflight is exhausted. The reply is never larger than
+	// the query. Negative OverflowServfailRate disables the replies.
+	DefaultOverflowServfailRate = 64.0
+	// DefaultOverflowServfailBurst is the number of those replies that may
+	// be sent immediately before the rate refills the bucket.
+	DefaultOverflowServfailBurst = 16.0
 )
 
 // Config is the listener and admission configuration.
@@ -59,6 +69,17 @@ type Config struct {
 	QueryRatePerSec float64
 	// QueryBurst is the per-source burst. Zero uses 512.
 	QueryBurst float64
+
+	// OverflowServfailRate is the global cap on UDP SERVFAIL replies written
+	// when MaxInflight is exhausted, in replies per second. The reply is
+	// built on the read goroutine and is never larger than the query.
+	// Zero uses DefaultOverflowServfailRate. Negative disables the replies
+	// (surplus datagrams are dropped).
+	OverflowServfailRate float64
+	// OverflowServfailBurst is the global burst for that cap.
+	// Zero uses DefaultOverflowServfailBurst. A value in (0, 1) or below
+	// zero is rejected.
+	OverflowServfailBurst float64
 
 	// AcquireSnapshot may attach a snapshot handle to ctx after admission.
 	// Transport does not load or inspect snapshots.
@@ -117,5 +138,24 @@ func (c Config) withDefaults() Config {
 	if c.ShutdownTimeout <= 0 {
 		c.ShutdownTimeout = DefaultShutdownWait
 	}
+	if c.OverflowServfailRate == 0 {
+		c.OverflowServfailRate = DefaultOverflowServfailRate
+	}
+	if c.OverflowServfailBurst == 0 {
+		c.OverflowServfailBurst = DefaultOverflowServfailBurst
+	}
 	return c
+}
+
+func (c Config) validate() error {
+	if math.IsNaN(c.OverflowServfailRate) || math.IsInf(c.OverflowServfailRate, 0) {
+		return errors.New("dnsserver: OverflowServfailRate must be a finite number")
+	}
+	if math.IsNaN(c.OverflowServfailBurst) || math.IsInf(c.OverflowServfailBurst, 0) {
+		return errors.New("dnsserver: OverflowServfailBurst must be a finite number")
+	}
+	if c.OverflowServfailBurst < 0 || (c.OverflowServfailBurst > 0 && c.OverflowServfailBurst < 1) {
+		return errors.New("dnsserver: OverflowServfailBurst must be 0 (default) or >= 1")
+	}
+	return nil
 }

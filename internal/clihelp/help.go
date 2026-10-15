@@ -10,7 +10,7 @@ const RelPath = "api/cli/help.txt"
 // Text is the exact `labdns help` output, including the trailing newline.
 const Text = `usage: labdns <command>
 commands:
-  serve --config PATH [--chaos-disable] [--dns-listen ADDR] [--management-listen ADDR|off] [--shutdown-timeout DUR] [--pid-file PATH]
+  serve --config PATH [--chaos-disable] [--dns-listen ADDR] [--management-listen ADDR|off] [--shutdown-timeout DUR] [--pid-file PATH] [--overflow-servfail-rate N] [--overflow-servfail-burst N]
   validate --config PATH
   canonicalize --config PATH [--format yaml|json]
   verify --config PATH --probes PATH [--policies DIR] [--image REF|--image-env PATH] [--kustomize PATH] [--server HOST:PORT]
@@ -19,5 +19,6 @@ commands:
   chaos emergency-disable --pid-file PATH
   version
 env: LABDNS_CHAOS_DISABLE=1 inhibits chaos at startup (YAML/API cannot relax it).
+env: LABDNS_OVERFLOW_SERVFAIL_RATE (replies/s) and LABDNS_OVERFLOW_SERVFAIL_BURST cap UDP SERVFAIL replies sent when MaxInflight is full. Unset or 0 uses 64 and 16. A negative rate drops those datagrams. An explicit flag wins over the env.
 env: no environment variable raises chaos safety caps.
 `
