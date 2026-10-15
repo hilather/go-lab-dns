@@ -29,8 +29,9 @@ const (
 	DefaultShutdownWait    = 5 * time.Second
 
 	// DefaultOverflowServfailRate is the global cap on UDP SERVFAIL replies
-	// sent when MaxInflight is exhausted. The reply is never larger than
-	// the query. Negative OverflowServfailRate disables the replies.
+	// sent when MaxInflight is exhausted. One bucket is shared by every
+	// client. The reply is never larger than the query. Negative
+	// OverflowServfailRate disables the replies.
 	DefaultOverflowServfailRate = 64.0
 	// DefaultOverflowServfailBurst is the number of those replies that may
 	// be sent immediately before the rate refills the bucket.
@@ -71,7 +72,8 @@ type Config struct {
 	QueryBurst float64
 
 	// OverflowServfailRate is the global cap on UDP SERVFAIL replies written
-	// when MaxInflight is exhausted, in replies per second. The reply is
+	// when MaxInflight is exhausted, in replies per second. One bucket is
+	// shared by every client, so one flooder can exhaust it. The reply is
 	// built on the read goroutine and is never larger than the query.
 	// Zero uses DefaultOverflowServfailRate. Negative disables the replies
 	// (surplus datagrams are dropped).

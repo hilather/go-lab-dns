@@ -41,6 +41,7 @@ type serveFlags struct {
 	ManagementListen      string
 	ShutdownTimeout       time.Duration
 	PIDFile               string
+	MaxInflight           int
 	OverflowServfailRate  float64
 	OverflowServfailBurst float64
 }
@@ -93,6 +94,7 @@ func parseServeFlags(args []string, stderr io.Writer) (serveFlags, error) {
 	mgmtListen := fs.String("management-listen", "", "override management listen address; off/none/- leaves it unbound")
 	shutdown := fs.Duration("shutdown-timeout", dnsserver.DefaultShutdownWait, "graceful shutdown deadline")
 	pidFile := fs.String("pid-file", "", "write process id after listeners bind")
+	maxInflightFlag := fs.Int("max-inflight", 0, "DNS inflight slots; omitted uses 1024; value must be a positive integer (also LABDNS_MAX_INFLIGHT)")
 	rateFlag := fs.Float64("overflow-servfail-rate", 0, "UDP SERVFAIL replies/s when MaxInflight is full; 0 uses 64, negative drops them (also LABDNS_OVERFLOW_SERVFAIL_RATE)")
 	burstFlag := fs.Float64("overflow-servfail-burst", 0, "burst for --overflow-servfail-rate; 0 uses 16 (also LABDNS_OVERFLOW_SERVFAIL_BURST)")
 	if err := fs.Parse(args); err != nil {
@@ -102,15 +104,22 @@ func parseServeFlags(args []string, stderr io.Writer) (serveFlags, error) {
 		_, _ = fmt.Fprintln(stderr, "labdns serve: --config is required")
 		return serveFlags{}, fmt.Errorf("missing --config")
 	}
-	var rateSet, burstSet bool
+	var rateSet, burstSet, maxInflightSet bool
 	fs.Visit(func(f *flag.Flag) {
 		switch f.Name {
 		case "overflow-servfail-rate":
 			rateSet = true
 		case "overflow-servfail-burst":
 			burstSet = true
+		case "max-inflight":
+			maxInflightSet = true
 		}
 	})
+	maxInflight, err := resolveServePositiveInt(maxInflightSet, *maxInflightFlag, "max-inflight", "LABDNS_MAX_INFLIGHT")
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, "labdns serve:", err)
+		return serveFlags{}, err
+	}
 	rate, err := resolveServeFloat(rateSet, *rateFlag, "overflow-servfail-rate", "LABDNS_OVERFLOW_SERVFAIL_RATE")
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "labdns serve:", err)
@@ -133,9 +142,31 @@ func parseServeFlags(args []string, stderr io.Writer) (serveFlags, error) {
 		ManagementListen:      *mgmtListen,
 		ShutdownTimeout:       *shutdown,
 		PIDFile:               *pidFile,
+		MaxInflight:           maxInflight,
 		OverflowServfailRate:  rate,
 		OverflowServfailBurst: burst,
 	}, nil
+}
+
+// resolveServePositiveInt returns an explicit flag value, otherwise the
+// environment variable. An unset flag and an empty variable leave 0 so
+// dnsserver applies DefaultMaxInflight. A set value must be a positive integer.
+func resolveServePositiveInt(explicit bool, flagVal int, flagName, envKey string) (int, error) {
+	if explicit {
+		if flagVal <= 0 {
+			return 0, fmt.Errorf("--%s must be a positive integer", flagName)
+		}
+		return flagVal, nil
+	}
+	raw, ok := os.LookupEnv(envKey)
+	if !ok || strings.TrimSpace(raw) == "" {
+		return 0, nil
+	}
+	v, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || v <= 0 {
+		return 0, fmt.Errorf("%s=%q must be a positive integer", envKey, raw)
+	}
+	return v, nil
 }
 
 // resolveServeFloat returns an explicit flag value, otherwise the environment
@@ -255,6 +286,7 @@ func serveFromConfig(ctx context.Context, flags serveFlags) (*serveRuntime, erro
 		TCPAddr:               tcpAddr,
 		Handler:               h,
 		Metrics:               observability.NewDNSTransport(reg),
+		MaxInflight:           flags.MaxInflight,
 		OverflowServfailRate:  flags.OverflowServfailRate,
 		OverflowServfailBurst: flags.OverflowServfailBurst,
 	})

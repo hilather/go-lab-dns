@@ -126,7 +126,7 @@ Schema: [api/jsonschema/labdns.dev.v1alpha1.json](api/jsonschema/labdns.dev.v1al
 ./labdns healthcheck --url http://127.0.0.1:8080/v1/health/ready
 ```
 
-Useful flags: `--dns-listen`, `--management-listen ADDR|off`, `--chaos-disable`, `--shutdown-timeout`, `--pid-file`, `--overflow-servfail-rate`, `--overflow-servfail-burst`. `LABDNS_CHAOS_DISABLE=1` is a startup lock that YAML, reset, and emergency-enable cannot relax. `LABDNS_OVERFLOW_SERVFAIL_RATE` and `LABDNS_OVERFLOW_SERVFAIL_BURST` cap UDP SERVFAIL replies sent when every inflight slot is taken (unset or 0 uses 64/s and burst 16; a negative rate drops the datagram instead). An explicit flag wins over the environment.
+Useful flags: `--dns-listen`, `--management-listen ADDR|off`, `--chaos-disable`, `--shutdown-timeout`, `--pid-file`, `--max-inflight`, `--overflow-servfail-rate`, `--overflow-servfail-burst`. `LABDNS_CHAOS_DISABLE=1` is a startup lock that YAML, reset, and emergency-enable cannot relax. `LABDNS_MAX_INFLIGHT` sets the DNS inflight slot cap (unset uses 1024; a set value must be a positive integer). `LABDNS_OVERFLOW_SERVFAIL_RATE` and `LABDNS_OVERFLOW_SERVFAIL_BURST` cap UDP SERVFAIL replies sent when every inflight slot is taken (unset or 0 uses 64/s and burst 16; a negative rate drops the datagram instead). That reply budget is one global bucket shared by every client: one flooder can exhaust it, and other clients then see drops until it refills. An explicit flag wins over the environment.
 
 ### 4. Operator console
 
