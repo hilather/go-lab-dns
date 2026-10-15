@@ -49,7 +49,7 @@ Rename or semantic change of a metric name or label requires migration notes and
 
 `denied_forward` counts queries that needed a forward and were refused (unknown/local-only client or no permitted policy). Local answers to those clients are not counted.
 
-`labdns_dns_admission_total{result="inflight",rcode="SERVFAIL"}` counts UDP queries answered with SERVFAIL because every inflight slot was taken. `{result="inflight",rcode="drop"}` counts those datagrams discarded because the reply cap was exhausted or the cheap question check failed. TCP inflight refusal and the per-source rate drop still use an empty `rcode`.
+`labdns_dns_admission_total{result="inflight",rcode="SERVFAIL"}` counts UDP queries answered with SERVFAIL because every inflight slot was taken. `{result="inflight",rcode="drop"}` counts those datagrams discarded because the reply cap was exhausted, the cheap question check failed, or `OverflowServfailRate` is disabled (negative). TCP inflight refusal and the per-source rate drop still use an empty `rcode`.
 
 ### Resolver and cache
 

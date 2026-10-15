@@ -218,7 +218,7 @@ Default admission and transport limits:
 | Max in-flight queries | 1024 (UDP overflow: SERVFAIL at 64/s, burst 16, then drop) |
 | Max hold-then-close | 1s |
 
-Parse/admission RCODEs: empty or short datagram → drop; malformed with a 12-byte header → FORMERR (question echoed only if unpacked; never a fabricated `. IN A`); QR=1 → drop; opcode ≠ QUERY → NOTIMP; QCLASS ≠ IN or AXFR/IXFR → NOTIMP; EDNS version ≠ 0 → BADVERS (header RCODE 0 + OPT EXTENDED-RCODE 16, OPT VERSION 0). A UDP datagram that arrives while every inflight slot is taken gets SERVFAIL (RA=0, question echoed, OPT omitted) up to `OverflowServfailRate`, then drop. That cheap reply does not re-run opcode, class, or EDNS admission. TCP that cannot take a slot still sends nothing.
+Parse/admission RCODEs: empty or short datagram → drop; malformed with a 12-byte header → FORMERR (question echoed only if unpacked; never a fabricated `. IN A`); QR=1 → drop; opcode ≠ QUERY → NOTIMP; QCLASS ≠ IN or AXFR/IXFR → NOTIMP; EDNS version ≠ 0 → BADVERS (header RCODE 0 + OPT EXTENDED-RCODE 16, OPT VERSION 0). A UDP datagram that arrives while every inflight slot is taken gets SERVFAIL (RA=0, question echoed, OPT omitted) up to `OverflowServfailRate`, then drop. Malformed overflow datagrams (QR=1, QDCOUNT≠1, a compression or reserved label, an overlong name, or a truncated question) are dropped without a reply. That cheap reply does not re-run opcode, class, or EDNS admission. TCP that cannot take a slot still sends nothing.
 
 Transport hints: TCP-only actions on UDP are **drop** (no successful answer). `HintTruncate` on TCP is **send** of the full response (TC is a UDP signal). Unknown hints are **drop**. After `ServeDNS` returns the server owns the `Response`; later `SetHint` fails.
 

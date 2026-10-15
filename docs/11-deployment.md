@@ -46,6 +46,7 @@ SBOM and provenance attachments are REL-001 hooks; the image already carries lic
 labdns serve --config=/etc/labdns/config.yaml [--chaos-disable]
              [--dns-listen ADDR] [--management-listen ADDR|off]
              [--shutdown-timeout 5s] [--pid-file /tmp/labdns.pid]
+             [--overflow-servfail-rate N] [--overflow-servfail-burst N]
 labdns validate --config=...
 labdns canonicalize --config=... [--format yaml|json]
 labdns verify --config=... --probes=... [--policies DIR] [--image REF|--image-env PATH] [--kustomize PATH] [--server HOST:PORT]
@@ -63,7 +64,11 @@ labdns version
 | `--management-listen` | Override YAML management address. `off` / `none` / `-` leaves HTTP unbound. |
 | `--shutdown-timeout` | Graceful deadline (default 5s). Cancels chaos delays, then DNS and management. |
 | `--pid-file` | Written after both requested listeners bind. Removed on shutdown. |
-| `LABDNS_CHAOS_DISABLE` | Only documented safety-related environment variable. No env var raises chaos safety caps. |
+| `--overflow-servfail-rate` | UDP SERVFAIL replies/s when every inflight slot is taken. `0` uses 64/s. A negative rate drops the datagram. Overrides `LABDNS_OVERFLOW_SERVFAIL_RATE`. |
+| `--overflow-servfail-burst` | Burst for `--overflow-servfail-rate`. `0` uses 16. A burst below 0 or in (0, 1) is rejected. Overrides `LABDNS_OVERFLOW_SERVFAIL_BURST`. |
+| `LABDNS_CHAOS_DISABLE` | Documented safety-related environment variable. No env var raises chaos safety caps. |
+| `LABDNS_OVERFLOW_SERVFAIL_RATE` | Same cap as `--overflow-servfail-rate` when that flag is omitted. Unset or 0 uses 64/s. A negative rate drops the datagram. |
+| `LABDNS_OVERFLOW_SERVFAIL_BURST` | Same burst as `--overflow-servfail-burst` when that flag is omitted. Unset or 0 uses 16. |
 
 `labdns chaos emergency-disable --pid-file` sends **`SIGUSR1`** and does not call HTTP. `SIGTERM` / `SIGINT` are graceful shutdown. `SIGUSR2` is ignored.
 
