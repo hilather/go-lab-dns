@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Observability, Operations
+Last reviewed: 2026-10-15 (UDP inflight overflow admission labels)
 Last reviewed: 2026-10-03 (forwarding topology state lifetime and health identity)
 Last reviewed: 2026-10-03 (shared live control metrics and real upstream health)
 Last reviewed: 2026-08-19 (event ui.session)
@@ -47,6 +48,8 @@ Rename or semantic change of a metric name or label requires migration notes and
 | `labdns_dns_denied_forward_total` | counter | `result` |
 
 `denied_forward` counts queries that needed a forward and were refused (unknown/local-only client or no permitted policy). Local answers to those clients are not counted.
+
+`labdns_dns_admission_total{result="inflight",rcode="SERVFAIL"}` counts UDP queries answered with SERVFAIL because every inflight slot was taken. `{result="inflight",rcode="drop"}` counts those datagrams discarded because the reply cap was exhausted or the cheap question check failed. TCP inflight refusal and the per-source rate drop still use an empty `rcode`.
 
 ### Resolver and cache
 

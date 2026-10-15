@@ -24,6 +24,7 @@ type Server struct {
 	tcp net.Listener
 
 	inflight chan struct{}
+	overflow *overflowLimiter
 	// beforeUDPWrite, when set by a test before Start, runs just before a
 	// UDP reply is written. Nil in production.
 	beforeUDPWrite func()
@@ -41,6 +42,9 @@ type Server struct {
 // New validates cfg. Start binds and serves.
 func New(cfg Config) (*Server, error) {
 	cfg = cfg.withDefaults()
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
 	if cfg.Handler == nil {
 		return nil, errors.New("dnsserver: Handler is required")
 	}
@@ -48,7 +52,7 @@ func New(cfg Config) (*Server, error) {
 		return nil, errors.New("dnsserver: at least one of UDPAddr or TCPAddr is required")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Server{
+	s := &Server{
 		cfg:      cfg,
 		ctx:      ctx,
 		cancel:   cancel,
@@ -56,7 +60,9 @@ func New(cfg Config) (*Server, error) {
 		qps:      newQueryLimiter(cfg.QueryRatePerSec, cfg.QueryBurst, nil),
 		ipCount:  make(map[netip.Addr]int),
 		conns:    make(map[net.Conn]struct{}),
-	}, nil
+	}
+	s.overflow = newOverflowLimiter(cfg.OverflowServfailRate, cfg.OverflowServfailBurst, s.now)
+	return s, nil
 }
 
 // Start binds listeners and serves in the background.

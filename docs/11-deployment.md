@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Deployment, Operations, Security
+Last reviewed: 2026-10-15 (UDP inflight overflow returns a bounded SERVFAIL)
 Last reviewed: 2026-10-09 (omitted auth profile is bearer; upgrade to v1.5.0; ADR 0011 accepted)
 Last reviewed: 2026-10-09 (process bind :8080 is every interface; Compose publishes host loopback)
 Last reviewed: 2026-10-08 (bearer profile has no loopback exception; ADR 0010)
@@ -182,12 +183,16 @@ These are the first-GA safe defaults. YAML may lower them; raising a chaos cap a
 |---|---|---|---|
 | `spec.chaos.safety.maxConcurrentDelayed` | 2000 (pack sample) | chaos budgets | Extra delayed queries skip sleep and still answer. Tested by `TestMaxDelayedConcurrency`. |
 | `spec.chaos.safety.maxDelay` | 10s | chaos | Clamped per request. |
-| DNS `MaxInflight` | 1024 | `dnsserver` | Surplus UDP datagrams are dropped (no queue blow-up). The cap covers parsing and handling; a UDP query frees its slot just before its reply is written. |
+| DNS `MaxInflight` | 1024 | `dnsserver` | A UDP query that arrives with every slot taken gets SERVFAIL, up to `OverflowServfailRate` (default 64/s, burst 16); further surplus datagrams are dropped (no queue). The cap covers parsing and handling; a UDP query frees its slot just before its reply is written. |
 | DNS `MaxTCPConns` | 256 | `dnsserver` | Process-wide. |
 | DNS `MaxTCPPerIP` | 16 | `dnsserver` | Per client address. |
 | DNS `QueryTimeout` | 2s | `dnsserver` | Chaos delay may outlive this and still answer. |
 | Cache `maxEntries` | 10000 (pack sample) | `internal/cache` | LRU; namespaced by snapshot revision. |
 | Management `MaxConcurrent` | 256 | REST adapter | Control plane only. |
+
+`OverflowServfailRate` and `OverflowServfailBurst` live on `dnsserver.Config`. `labdns serve` reads `--overflow-servfail-rate` / `--overflow-servfail-burst`, or `LABDNS_OVERFLOW_SERVFAIL_RATE` / `LABDNS_OVERFLOW_SERVFAIL_BURST` when the flag is omitted. Unset or 0 uses 64/s and burst 16. A negative rate disables the replies and drops the datagram, which is the previous behaviour. An explicit flag wins over the environment. A burst below 0 or in (0, 1) is rejected. This knob is not a v1alpha1 field.
+
+The overflow reply is a flood guard, not a second queue. It is written on the UDP read goroutine, takes no inflight slot, and copies only the header and the one question. EDNS OPT is omitted. The reply is never larger than the query, so the amplification factor is at most 1, and the token bucket caps how many of those replies leave the process. QR=1, QDCOUNT other than 1, a compression pointer in the question, or a truncated name is dropped with no reply. RA is 0 because this path does not classify the client. The per-source query bucket (default 256/s, burst 512) still runs first and still drops silently. TCP that cannot take a slot still returns no DNS message.
 
 In-process local exact/wildcard/negative lookups are expected well under 1 ms on the reference class (see `go test ./benches -bench=.`). Forwarded QPS is dominated by upstream RTT. Chaos configured but not triggered (`probability: 0`) must stay on the same order as the exact path.
 

@@ -83,14 +83,14 @@ func TestFloodAdmissionInflight(t *testing.T) {
 	const capN = 2
 	const extra = 4
 	st := LabState("")
-	// Hold admitted queries longer than a dropped datagram's wait would need,
-	// so extras cannot sneak in after a slot is released.
+	// Hold admitted queries longer than an overflow reply takes, so extras
+	// cannot sneak into a slot that a finished query has released.
 	st.Spec.Chaos.Policies[1].Outcomes[0].Actions[0].Duration = 400 * time.Millisecond
 	held := NewLab(t, Options{State: st, StartServer: true, MaxInflight: capN, QueryTimeout: time.Second})
 
 	start := make(chan struct{})
 	var wg sync.WaitGroup
-	var answers, drops atomic.Int64
+	var noerror, servfail, drops atomic.Int64
 	for i := 0; i < capN+extra; i++ {
 		wg.Add(1)
 		go func(id uint16) {
@@ -101,20 +101,31 @@ func TestFloodAdmissionInflight(t *testing.T) {
 			}
 			<-start
 			out, err := DialUDP(held.UDPAddr(), raw, 800*time.Millisecond)
-			if err != nil || out == nil {
+			if err != nil || out == nil || len(out) < 4 {
 				drops.Add(1)
 				return
 			}
-			answers.Add(1)
+			switch out[3] & 0x0f {
+			case 0:
+				noerror.Add(1)
+			case 2:
+				servfail.Add(1)
+			default:
+				drops.Add(1)
+			}
 		}(uint16(i + 1))
 	}
 	close(start)
 	wg.Wait()
-	if answers.Load() != capN {
-		t.Fatalf("admitted answers=%d want %d (drops=%d); inflight cap not enforced", answers.Load(), capN, drops.Load())
+	// The cap still admits only capN queries (they return the delayed
+	// NOERROR). Surplus datagrams get a cheap SERVFAIL while those slots
+	// are held; the default overflow burst covers this extra. A silent
+	// drop here would mean the reply cap was exhausted or a slot was leaked.
+	if noerror.Load() != capN {
+		t.Fatalf("admitted NOERROR=%d want %d (servfail=%d drops=%d); inflight cap not enforced", noerror.Load(), capN, servfail.Load(), drops.Load())
 	}
-	if drops.Load() != extra {
-		t.Fatalf("silent drops=%d want %d", drops.Load(), extra)
+	if servfail.Load() != extra || drops.Load() != 0 {
+		t.Fatalf("overflow SERVFAIL=%d want %d, drops=%d want 0", servfail.Load(), extra, drops.Load())
 	}
 }
 
