@@ -10,5 +10,5 @@ commands:
   version
 env: LABDNS_CHAOS_DISABLE=1 inhibits chaos at startup (YAML/API cannot relax it).
 env: LABDNS_MAX_INFLIGHT sets DNS inflight slots. Unset uses 1024. A set value must be a positive integer. An explicit --max-inflight wins over the env.
-env: LABDNS_OVERFLOW_SERVFAIL_RATE (replies/s) and LABDNS_OVERFLOW_SERVFAIL_BURST cap UDP SERVFAIL replies sent when MaxInflight is full. The bucket is global across clients. Unset or 0 uses 64 and 16. A negative rate drops those datagrams. An explicit flag wins over the env.
+env: LABDNS_OVERFLOW_SERVFAIL_RATE (replies/s) and LABDNS_OVERFLOW_SERVFAIL_BURST cap UDP SERVFAIL replies sent when MaxInflight is full. The bucket is global across clients: one flooder can exhaust it, and other clients then see drops. Unset or 0 uses 64 and 16. A negative rate drops those datagrams. An explicit flag wins over the env.
 env: no environment variable raises chaos safety caps.
