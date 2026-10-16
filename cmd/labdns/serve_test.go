@@ -264,6 +264,75 @@ func TestParseServeFlagsOverflowServfail(t *testing.T) {
 	}
 }
 
+func TestParseServeFlagsMaxInflight(t *testing.T) {
+	var stderr bytes.Buffer
+	t.Setenv("LABDNS_MAX_INFLIGHT", "")
+	f, err := parseServeFlags([]string{"--config", "/tmp/x.yaml", "--max-inflight", "32"}, &stderr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.MaxInflight != 32 {
+		t.Fatalf("%+v", f)
+	}
+
+	t.Setenv("LABDNS_MAX_INFLIGHT", "64")
+	f, err = parseServeFlags([]string{"--config", "/tmp/x.yaml"}, &stderr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.MaxInflight != 64 {
+		t.Fatalf("env: %+v", f)
+	}
+
+	// An explicit flag wins over the environment.
+	f, err = parseServeFlags([]string{"--config", "/tmp/x.yaml", "--max-inflight", "8"}, &stderr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.MaxInflight != 8 {
+		t.Fatalf("flag vs env: %+v", f)
+	}
+
+	t.Setenv("LABDNS_MAX_INFLIGHT", "")
+	f, err = parseServeFlags([]string{"--config", "/tmp/x.yaml"}, &stderr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.MaxInflight != 0 {
+		t.Fatalf("unset must leave 0 so dnsserver applies the default: %+v", f)
+	}
+}
+
+func TestParseServeFlagsMaxInflightRejects(t *testing.T) {
+	var stderr bytes.Buffer
+	t.Setenv("LABDNS_MAX_INFLIGHT", "")
+	if _, err := parseServeFlags([]string{"--config", "/tmp/x.yaml", "--max-inflight", "0"}, &stderr); err == nil {
+		t.Fatal("zero max-inflight accepted")
+	}
+	if _, err := parseServeFlags([]string{"--config", "/tmp/x.yaml", "--max-inflight", "-1"}, &stderr); err == nil {
+		t.Fatal("negative max-inflight accepted")
+	}
+	if _, err := parseServeFlags([]string{"--config", "/tmp/x.yaml", "--max-inflight", "nope"}, &stderr); err == nil {
+		t.Fatal("non-numeric max-inflight accepted")
+	}
+	t.Setenv("LABDNS_MAX_INFLIGHT", "0")
+	if _, err := parseServeFlags([]string{"--config", "/tmp/x.yaml"}, &stderr); err == nil {
+		t.Fatal("zero env accepted")
+	}
+	t.Setenv("LABDNS_MAX_INFLIGHT", "-3")
+	if _, err := parseServeFlags([]string{"--config", "/tmp/x.yaml"}, &stderr); err == nil {
+		t.Fatal("negative env accepted")
+	}
+	t.Setenv("LABDNS_MAX_INFLIGHT", "nope")
+	if _, err := parseServeFlags([]string{"--config", "/tmp/x.yaml"}, &stderr); err == nil {
+		t.Fatal("non-numeric env accepted")
+	}
+	t.Setenv("LABDNS_MAX_INFLIGHT", "1.5")
+	if _, err := parseServeFlags([]string{"--config", "/tmp/x.yaml"}, &stderr); err == nil {
+		t.Fatal("fractional env accepted")
+	}
+}
+
 func TestParseServeFlagsOverflowServfailRejects(t *testing.T) {
 	var stderr bytes.Buffer
 	t.Setenv("LABDNS_OVERFLOW_SERVFAIL_RATE", "nope")

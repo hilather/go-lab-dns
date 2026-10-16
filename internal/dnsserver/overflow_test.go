@@ -100,11 +100,17 @@ func assertOverflowServfail(t *testing.T, query, reply []byte) {
 	if rf&flagRD != qf&flagRD {
 		t.Fatalf("RD changed: query %04x reply %04x", qf, rf)
 	}
+	if rf&flagCD != qf&flagCD {
+		t.Fatalf("CD changed: query %04x reply %04x", qf, rf)
+	}
+	if rf&flagAD != 0 {
+		t.Fatalf("AD set: %04x", rf)
+	}
 	if rf&0x000F != 2 {
 		t.Fatalf("rcode=%d", rf&0x000F)
 	}
-	if extra := rf &^ (flagQR | flagOpcode | flagRD | 0x000F); extra != 0 {
-		t.Fatalf("flags besides QR, opcode, RD, RCODE: %04x", rf)
+	if extra := rf &^ (flagQR | flagOpcode | flagRD | flagCD | 0x000F); extra != 0 {
+		t.Fatalf("flags besides QR, opcode, RD, CD, RCODE: %04x", rf)
 	}
 	if binary.BigEndian.Uint16(reply[4:6]) != 1 ||
 		binary.BigEndian.Uint16(reply[6:8]) != 0 ||
@@ -389,6 +395,66 @@ func TestOverflowLimiter(t *testing.T) {
 	}
 }
 
+// TestOverflowLimiterIdleHourCapsAtBurst kills a refill that forgets to
+// clamp tokens at burst. One second at rate 1 cannot show the clamp:
+// the uncapped sum is already equal to a burst of 1.
+func TestOverflowLimiterIdleHourCapsAtBurst(t *testing.T) {
+	const burst = 16
+	clk := testutil.NewFakeClock(time.Unix(1_700_000_000, 0))
+	l := newOverflowLimiter(64, burst, clk.Now)
+	for i := 0; i < burst; i++ {
+		if !l.allow() {
+			t.Fatalf("drain %d refused", i)
+		}
+	}
+	clk.Advance(time.Hour)
+	n := 0
+	for n <= burst && l.allow() {
+		n++
+	}
+	if n > burst {
+		t.Fatalf("after 1h idle allowed at least %d replies; burst is %d", n, burst)
+	}
+	if n < burst {
+		t.Fatalf("after 1h idle allowed %d, want a full burst of %d", n, burst)
+	}
+}
+
+// TestOverflowLimiterStepBackLeavesLast kills a step-back that stores the
+// earlier time in last. FakeClock.Advance rejects a negative step, so this
+// test moves the injected clock directly.
+func TestOverflowLimiterStepBackLeavesLast(t *testing.T) {
+	origin := time.Unix(1_700_000_000, 0)
+	cur := origin
+	l := newOverflowLimiter(64, 1, func() time.Time { return cur })
+	if !l.allow() || l.allow() {
+		t.Fatal("burst 1")
+	}
+	if !l.last.Equal(origin) {
+		t.Fatalf("last=%s, want %s", l.last, origin)
+	}
+	cur = origin.Add(-time.Hour)
+	if l.allow() {
+		t.Fatal("clock step back refilled")
+	}
+	if !l.last.Equal(origin) {
+		t.Fatalf("step back moved last to %s", l.last)
+	}
+	// Still before the original last. Resetting last to the stepped-back
+	// time would treat this 30m advance as elapsed and grant a token.
+	cur = origin.Add(-30 * time.Minute)
+	if l.allow() {
+		t.Fatal("time still before the original last refilled")
+	}
+	if !l.last.Equal(origin) {
+		t.Fatalf("last=%s, want %s", l.last, origin)
+	}
+	cur = origin.Add(time.Second)
+	if !l.allow() {
+		t.Fatal("step forward past the original last did not refill")
+	}
+}
+
 func TestNewRejectsOverflowConfig(t *testing.T) {
 	cases := []Config{
 		{OverflowServfailRate: math.NaN()},
@@ -420,6 +486,64 @@ func TestNewRejectsOverflowConfig(t *testing.T) {
 	}
 	if s.cfg.OverflowServfailRate != -1 || !s.overflow.disabled {
 		t.Fatalf("negative rate did not disable: %+v", s.cfg)
+	}
+}
+
+func TestBuildOverflowServfailCopiesCD(t *testing.T) {
+	withCD := packA(t, "cd.lab.", 0xCD01, nil)
+	withCD[3] |= byte(flagCD)
+	withCD[3] |= byte(flagAD)
+	reply := buildOverflowServfail(withCD, mustEnd(t, withCD))
+	assertOverflowServfail(t, withCD, reply)
+	rf := binary.BigEndian.Uint16(reply[2:4])
+	if rf&flagCD == 0 {
+		t.Fatal("CD was cleared")
+	}
+	if rf&flagAD != 0 {
+		t.Fatal("AD was copied")
+	}
+
+	adOnly := packA(t, "ad.lab.", 0xAD01, nil)
+	adOnly[3] |= byte(flagAD)
+	reply = buildOverflowServfail(adOnly, mustEnd(t, adOnly))
+	assertOverflowServfail(t, adOnly, reply)
+	rf = binary.BigEndian.Uint16(reply[2:4])
+	if rf&flagCD != 0 || rf&flagAD != 0 {
+		t.Fatalf("CD=0 query gained flags %04x", rf)
+	}
+}
+
+// TestOverflowQuestionEndRejectsLabelTypeWithPadding kills removal of the
+// lab&0xC0 check. Each packet is a single question whose first label byte
+// is a compression pointer (0xC0) or a reserved label type (0x40), followed
+// by 200 zero bytes. Those zeros are long enough to be a legal label body,
+// a root, and QTYPE/QCLASS, and 1+lab stays within 255 octets, so the
+// name-length and truncation checks accept it.
+func TestOverflowQuestionEndRejectsLabelTypeWithPadding(t *testing.T) {
+	const pad = 200
+	for _, lab := range []byte{0xC0, 0x40} {
+		pkt := make([]byte, dnswire.HeaderLen+1+pad)
+		pkt[2] = 0x01 // RD, QR=0
+		binary.BigEndian.PutUint16(pkt[4:6], 1)
+		pkt[dnswire.HeaderLen] = lab
+		if _, ok := overflowQuestionEnd(pkt); ok {
+			t.Fatalf("label 0x%02X accepted", lab)
+		}
+		n := int(lab)
+		if 1+n > maxDNSName {
+			t.Fatalf("label 0x%02X would also fail the 255-octet check", lab)
+		}
+		if dnswire.HeaderLen+1+n > len(pkt) {
+			t.Fatalf("label 0x%02X would also fail truncation", lab)
+		}
+		// Root sits just past the label body; four bytes after it are QTYPE/QCLASS.
+		rootAt := dnswire.HeaderLen + 1 + n
+		if rootAt+1+4 > len(pkt) {
+			t.Fatalf("label 0x%02X padding does not cover root and QTYPE/QCLASS", lab)
+		}
+		if pkt[rootAt] != 0 {
+			t.Fatalf("label 0x%02X root byte is %02x", lab, pkt[rootAt])
+		}
 	}
 }
 

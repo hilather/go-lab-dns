@@ -2,6 +2,7 @@
 
 Status: Proposed
 Owners: Architecture, DNS, Control Plane
+Last reviewed: 2026-10-15 (overflow SERVFAIL budget is global; CD is copied; MaxInflight is a serve flag)
 Last reviewed: 2026-10-15 (UDP inflight overflow returns a bounded SERVFAIL)
 Last reviewed: 2026-10-03 (forwarding topology state lifetime and health identity)
 Last reviewed: 2026-10-03 (shared runtime health/metrics and signal lifecycle)
@@ -215,10 +216,10 @@ Default admission and transport limits:
 | TCP idle / read / write / max age | 10s / 2s / 2s / 30s |
 | Query handler timeout | 2s |
 | Max TCP connections / per source IP | 256 / 16 |
-| Max in-flight queries | 1024 (UDP overflow: SERVFAIL at 64/s, burst 16, then drop) |
+| Max in-flight queries | 1024 (`--max-inflight` / `LABDNS_MAX_INFLIGHT`). UDP overflow: SERVFAIL at 64/s, burst 16, then drop. That reply budget is global across clients. |
 | Max hold-then-close | 1s |
 
-Parse/admission RCODEs: empty or short datagram → drop; malformed with a 12-byte header → FORMERR (question echoed only if unpacked; never a fabricated `. IN A`); QR=1 → drop; opcode ≠ QUERY → NOTIMP; QCLASS ≠ IN or AXFR/IXFR → NOTIMP; EDNS version ≠ 0 → BADVERS (header RCODE 0 + OPT EXTENDED-RCODE 16, OPT VERSION 0). A UDP datagram that arrives while every inflight slot is taken gets SERVFAIL (RA=0, question echoed, OPT omitted) up to `OverflowServfailRate`, then drop. Malformed overflow datagrams (QR=1, QDCOUNT≠1, a compression or reserved label, an overlong name, or a truncated question) are dropped without a reply. That cheap reply does not re-run opcode, class, or EDNS admission. TCP that cannot take a slot still sends nothing.
+Parse/admission RCODEs: empty or short datagram → drop; malformed with a 12-byte header → FORMERR (question echoed only if unpacked; never a fabricated `. IN A`); QR=1 → drop; opcode ≠ QUERY → NOTIMP; QCLASS ≠ IN or AXFR/IXFR → NOTIMP; EDNS version ≠ 0 → BADVERS (header RCODE 0 + OPT EXTENDED-RCODE 16, OPT VERSION 0). A UDP datagram that arrives while every inflight slot is taken gets SERVFAIL (RA=0, AD=0, CD copied from the query, question echoed, OPT omitted) up to `OverflowServfailRate`, then drop. The reply budget is one global bucket shared by every client: one flooder can exhaust it, and other clients then see drops until it refills. Malformed overflow datagrams (QR=1, QDCOUNT≠1, a compression or reserved label, an overlong name, or a truncated question) are dropped without a reply. That cheap reply does not re-run opcode, class, or EDNS admission. TCP that cannot take a slot still sends nothing.
 
 Transport hints: TCP-only actions on UDP are **drop** (no successful answer). `HintTruncate` on TCP is **send** of the full response (TC is a UDP signal). Unknown hints are **drop**. After `ServeDNS` returns the server owns the `Response`; later `SetHint` fails.
 

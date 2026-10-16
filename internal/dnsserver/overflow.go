@@ -15,6 +15,8 @@ const (
 	flagQR     = 1 << 15
 	flagOpcode = 0x7800
 	flagRD     = 1 << 8
+	flagAD     = 1 << 5
+	flagCD     = 1 << 4
 )
 
 // maxDNSName is the RFC 1035 wire limit for a domain name, including
@@ -67,10 +69,10 @@ func (l *overflowLimiter) allow() bool {
 			l.tokens = l.burst
 		}
 		l.last = now
-	} else if elapsed < 0 {
-		// A stepped-back clock must not mint tokens.
-		l.last = now
 	}
+	// A stepped-back clock (elapsed < 0) must not mint tokens and must
+	// not move last. Moving last backward credits that interval again
+	// when the clock steps forward.
 	if l.tokens < 1 {
 		return false
 	}
@@ -132,14 +134,16 @@ func overflowQuestionEnd(pkt []byte) (end int, ok bool) {
 // additional (including EDNS OPT) are omitted, so len(reply) <= len(pkt)
 // whenever end <= len(pkt).
 //
-// RA is 0. This path does not classify the client. EncodeError does the
-// same; the handler sets RA only for a known-forward client.
+// RA and AD are 0. This path does not classify the client and does not
+// validate. EncodeError leaves RA clear the same way; the handler sets
+// RA only for a known-forward client. CD is copied from the query
+// (RFC 4035 §3.2.2, RFC 6840 §5.9).
 func buildOverflowServfail(pkt []byte, end int) []byte {
 	reply := make([]byte, end)
 	copy(reply, pkt[:end])
 	flags := binary.BigEndian.Uint16(pkt[2:4])
 	// model.RCode is a mnemonic, not the wire nibble. SERVFAIL is 2.
-	out := uint16(flagQR) | (flags & flagOpcode) | (flags & flagRD) | 2
+	out := uint16(flagQR) | (flags & flagOpcode) | (flags & flagRD) | (flags & flagCD) | 2
 	binary.BigEndian.PutUint16(reply[2:4], out)
 	binary.BigEndian.PutUint16(reply[4:6], 1)
 	binary.BigEndian.PutUint16(reply[6:8], 0)

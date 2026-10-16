@@ -2,6 +2,7 @@
 
 Status: Implementation-confirmed for local resolution (RES-001) and forwarding/cache/orchestrator (FWD-001)
 Owners: DNS
+Last reviewed: 2026-10-15 (overflow SERVFAIL copies CD; the reply budget is global; reserved labels and overlong names are dropped)
 Last reviewed: 2026-10-15 (UDP inflight overflow returns a bounded SERVFAIL)
 Last reviewed: 2026-10-03 (deadline expiry during forwarding answers SERVFAIL)
 Last reviewed: 2026-10-03 (upstream identity health and caller cancellation)
@@ -216,7 +217,7 @@ Implemented in `internal/dnsserver` using `internal/dnswire`. Malformed input ne
 | No EDNS on UDP | Responses capped at 512 octets; TC set if truncated |
 | EDNS UDP size < 512 | Treated as 512 (RFC 6891) |
 | EDNS UDP size > `MaxEDNSUDPSize` (default 4096) | Clamped |
-| UDP query while every `MaxInflight` slot is taken | SERVFAIL up to `OverflowServfailRate` (default 64/s, burst 16), then drop. QR=1, QDCOUNT≠1, a compression pointer, or a truncated question is dropped. OPT is omitted. RA=0. TCP still sends nothing. |
+| UDP query while every `MaxInflight` slot is taken | SERVFAIL up to `OverflowServfailRate` (default 64/s, burst 16), then drop. The budget is one global bucket shared by every client: one flooder can exhaust it, and other clients then see drops. QR=1, QDCOUNT≠1, a compression pointer, a reserved label type, an overlong name, or a truncated question is dropped. OPT is omitted. RA=0, AD=0, and CD is copied from the query. TCP still sends nothing. |
 
 Handler failures, panics (including hook panics), and a nil `Response` with `HintSend` are fail-closed to SERVFAIL. Cancellation (shutdown, TCP peer close) produces no answer, as does a query whose deadline has already expired before handling starts. When the query deadline (query timeout, or TCP max-age if sooner) expires while an upstream exchange is in flight, the query is answered SERVFAIL.
 

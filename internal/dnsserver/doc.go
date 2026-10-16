@@ -44,8 +44,10 @@
 //	UDP length > MaxUDPSize                     → drop
 //	TCP length prefix > MaxTCPSize              → close
 //	UDP while MaxInflight is full               → SERVFAIL up to OverflowServfailRate, then drop
-//	  (QR≠0, QDCOUNT≠1, or a question the cheap walker rejects → drop;
-//	   OPT is not echoed; RA=0; no slot is taken)
+//	  (one global bucket shared by every client;
+//	   QR≠0, QDCOUNT≠1, compression or reserved label, overlong name,
+//	   or a truncated question → drop;
+//	   OPT is not echoed; RA=0; AD=0; CD copied; no slot is taken)
 //	TCP while MaxInflight is full               → drop (no DNS message)
 //
 // # Hooks
