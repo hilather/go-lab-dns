@@ -23,6 +23,7 @@
 - `docs/releases/v1.3.2.md`: curated 1.3.2 notes (go-sdk 1.7.0 → 1.8.0 deps patch).
 - `docs/releases/v1.4.0.md`: curated 1.4.0 notes (hardening #46–#53; resolve/explain explanation fields; stricter chaos config validation; first tagged in v1.4.1).
 - `docs/releases/v1.4.1.md`: curated 1.4.1 notes (notes-only patch; ships the v1.4.0 notes; no code change).
+- `docs/releases/v1.5.0.md`: curated 1.5.0 notes (bearer default, ADR 0010/0011; UDP inflight overflow SERVFAIL; Go 1.26.9).
 - `docs/releases/acceptance-evidence.md`: docs/19 criterion → test/command index (rc.1 plus 1.1.0 console appendix).
 - `CI-FAILURE-HARDENING-TEMPLATE.md`: root-cause and pipeline-hardening record.
 
