@@ -8,6 +8,13 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 Curated notes: [docs/releases/v1.5.0.md](https://github.com/hilather/go-lab-dns/blob/v1.5.0/docs/releases/v1.5.0.md).
 
+### Breaking changes / Upgrade
+
+- Bearer is the default: an omitted `spec.management.auth.profile` normalizes to `bearer`, and with management bound and no usable token `labdns serve` and `labdns validate` fail with `validation_failed`.
+- Loopback is no longer administrator under `profile: bearer`: loopback clients, the console and MCP must send `Authorization: Bearer`.
+- Canonical `sha256:` revisions change for documents that omitted `profile`; re-GET `expectedRevision` (`hash-v1` is unchanged).
+- Opt-out: set `profile: dev-loopback-unauth` before upgrade to keep loopback-as-administrator.
+
 ### Changed
 
 - A UDP query that arrives while every `MaxInflight` slot is taken gets SERVFAIL instead of being dropped, up to `OverflowServfailRate` (default 64/s, burst 16). That budget is one global bucket shared by every client: one flooder can exhaust it, and other clients then see drops until it refills. Further surplus datagrams are dropped. The reply is built on the read loop from the header and question only (no EDNS OPT), so it is never larger than the query. QR=1, QDCOUNT other than 1, a compression pointer, a reserved label type, an overlong name, or a truncated question is still dropped. RA is 0 and AD is 0. The CD bit is copied from the query (RFC 4035 §3.2.2, RFC 6840 §5.9). A negative rate disables the replies. Set the slot cap with `labdns serve --max-inflight` or `LABDNS_MAX_INFLIGHT` (a positive integer; unset uses 1024; an explicit flag wins). Set the reply cap with `dnsserver.Config`, `labdns serve --overflow-servfail-rate` / `--overflow-servfail-burst`, or `LABDNS_OVERFLOW_SERVFAIL_RATE` / `LABDNS_OVERFLOW_SERVFAIL_BURST` (unset or 0 uses the default; an explicit flag wins over the environment). The per-source query bucket still runs first and still drops silently. TCP inflight refusal is unchanged. `labdns_dns_admission_total{result="inflight",rcode="SERVFAIL"}` counts the replies; `rcode="drop"` counts the discards.

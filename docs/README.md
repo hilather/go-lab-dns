@@ -120,7 +120,7 @@ See [tasks/README.md](../tasks/README.md) and the [program board](../tasks/00-pr
 | [releases/v1.3.2.md](releases/v1.3.2.md) | 1.3.2 notes (go-sdk 1.8.0 deps patch) |
 | [releases/v1.4.0.md](releases/v1.4.0.md) | 1.4.0 notes (hardening #46–#53; explanation fields; stricter chaos config) |
 | [releases/v1.4.1.md](releases/v1.4.1.md) | 1.4.1 notes-only patch (ships the v1.4.0 notes) |
-| [releases/v1.5.0.md](releases/v1.5.0.md) | 1.5.0 notes (bearer default; loopback needs a bearer; overflow SERVFAIL) |
+| [releases/v1.5.0.md](releases/v1.5.0.md) | 1.5.0 notes (bearer default; loopback needs a bearer; `sha256:` revision change; overflow SERVFAIL) |
 | [releases/acceptance-evidence.md](releases/acceptance-evidence.md) | Acceptance index |
 | [ci-failure-hardening/2026-08-15-cli-help-not-generated.md](ci-failure-hardening/2026-08-15-cli-help-not-generated.md) | CI hardening note |
 | [../api/openapi/v1.json](../api/openapi/v1.json) | OpenAPI 3.1 |
