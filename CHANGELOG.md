@@ -10,7 +10,7 @@ Curated notes: [docs/releases/v1.5.0.md](https://github.com/hilather/go-lab-dns/
 
 ### Breaking changes / Upgrade
 
-- Bearer is the default: an omitted `spec.management.auth.profile` normalizes to `bearer`, and with management bound and no usable token `labdns serve` and `labdns validate` fail with `validation_failed`.
+- Bearer is the default: an omitted `spec.management.auth.profile` normalizes to `bearer`. With management bound and no usable token, `labdns serve` fails with `validation_failed`; `labdns validate` fails only when `secretRef` is empty (it does not read the token file).
 - Loopback is no longer administrator under `profile: bearer`: loopback clients, the console and MCP must send `Authorization: Bearer`.
 - Canonical `sha256:` revisions change for documents that omitted `profile`; re-GET `expectedRevision` (`hash-v1` is unchanged).
 - Opt-out: set `profile: dev-loopback-unauth` before upgrade to keep loopback-as-administrator.
