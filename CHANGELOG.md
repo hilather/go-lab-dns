@@ -4,6 +4,11 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+### Changed
+
+- Go toolchain 1.26.9 → 1.26.10 (`go.mod` `toolchain`, CI and release `GO_VERSION`, Dockerfile `golang:1.26.10-alpine`, and the current pin in `docs/11-deployment.md`, `docs/14-release-engineering.md`, `docs/22-web-ui.md`, and `docs/implementation-design.md`). 1.26.9 lacks the crypto/x509 fix for GO-2026-6809.
+- Web dev dependency `vite` 8.2.1 → 8.3.5 (`web/package.json`, `web/package-lock.json`), which fixes GHSA-9jrq-w75r-8gcw and related high-severity advisories via `launch-editor` that failed the CI `npm audit --audit-level=high` step. No peer changes needed; `internal/web/dist` is unchanged.
+
 ## v1.5.0 — 2026-10-19
 
 Curated notes: [docs/releases/v1.5.0.md](https://github.com/hilather/go-lab-dns/blob/v1.5.0/docs/releases/v1.5.0.md).
