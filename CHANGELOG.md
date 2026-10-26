@@ -4,6 +4,10 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+## v1.5.1 — 2026-10-26
+
+Curated notes: [docs/releases/v1.5.1.md](https://github.com/hilather/go-lab-dns/blob/v1.5.1/docs/releases/v1.5.1.md). Go toolchain 1.26.10 and web dev-dependency bumps only ([#71](https://github.com/hilather/go-lab-dns/pull/71), [#72](https://github.com/hilather/go-lab-dns/pull/72)); no behavior change.
+
 ### Changed
 
 - Web dev dependency `undici` 7.29.1 → 7.30.1 (transitive, `web/package-lock.json` only), fixing GHSA-xjj6-f33q-929c (high; it failed the CI `npm audit --audit-level=high` step) plus GHSA-4qv8-2p9j-2685 and GHSA-f72v-6w45-q472 (moderate). Dev-only; `internal/web/dist` unchanged.
