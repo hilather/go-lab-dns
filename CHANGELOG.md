@@ -6,7 +6,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ### Changed
 
-- Web dev dependency `undici` 7.29.1 → 7.30.1 (transitive, `web/package-lock.json` only), fixing GHSA-4qv8-2p9j-2685, GHSA-f72v-6w45-q472 and GHSA-xjj6-f33q-929c (high) that failed the CI `npm audit --audit-level=high` step. Dev-only; `internal/web/dist` unchanged.
+- Web dev dependency `undici` 7.29.1 → 7.30.1 (transitive, `web/package-lock.json` only), fixing GHSA-xjj6-f33q-929c (high; it failed the CI `npm audit --audit-level=high` step) plus GHSA-4qv8-2p9j-2685 and GHSA-f72v-6w45-q472 (moderate). Dev-only; `internal/web/dist` unchanged.
 - Web dev dependency `vitest` 4.1.11 → 4.1.12 (`web/package.json`, `web/package-lock.json`), clearing two moderate npm audit findings in the vitest tree. Dev-only; `internal/web/dist` unchanged.
 - Go toolchain 1.26.9 → 1.26.10 (`go.mod` `toolchain`, CI and release `GO_VERSION`, Dockerfile `golang:1.26.10-alpine`, and the current pin in `docs/11-deployment.md`, `docs/14-release-engineering.md`, `docs/22-web-ui.md`, and `docs/implementation-design.md`). 1.26.9 lacks the crypto/x509 fix for GO-2026-6809.
 - Web dev dependency `vite` 8.2.1 → 8.3.5 (`web/package.json`, `web/package-lock.json`), which fixes GHSA-9jrq-w75r-8gcw and related high-severity advisories via `launch-editor` that failed the CI `npm audit --audit-level=high` step. No peer changes needed; `internal/web/dist` is unchanged.
