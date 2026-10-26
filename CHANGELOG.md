@@ -4,6 +4,10 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+## v1.5.1 — 2026-10-26
+
+Curated notes: [docs/releases/v1.5.1.md](https://github.com/hilather/go-lab-dns/blob/v1.5.1/docs/releases/v1.5.1.md). Go toolchain 1.26.10 and web dev-dependency bumps only ([#71](https://github.com/hilather/go-lab-dns/pull/71), [#72](https://github.com/hilather/go-lab-dns/pull/72)); no behavior change.
+
 ### Changed
 
 - Web dev dependency `vitest` 4.1.11 → 4.1.12 (`web/package.json`, `web/package-lock.json`), clearing two moderate npm audit findings in the vitest tree. Dev-only; `internal/web/dist` unchanged.
