@@ -4,6 +4,10 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 
 ## Unreleased
 
+### Changed
+
+- Go toolchain 1.26.10 → 1.26.11 (`go.mod` `toolchain`, CI and release `GO_VERSION`, Dockerfile `golang:1.26.11-alpine`, and the current pin in `docs/11-deployment.md`, `docs/14-release-engineering.md`, `docs/22-web-ui.md`, and `docs/implementation-design.md`); go1.26.11 includes security fixes to cgo, the go command, the compiler, the linker and net/http.
+
 ## v1.5.1 — 2026-10-26
 
 Curated notes: [docs/releases/v1.5.1.md](https://github.com/hilather/go-lab-dns/blob/v1.5.1/docs/releases/v1.5.1.md). Go toolchain 1.26.10 and web dev-dependency bumps only ([#71](https://github.com/hilather/go-lab-dns/pull/71), [#72](https://github.com/hilather/go-lab-dns/pull/72)); no behavior change.
