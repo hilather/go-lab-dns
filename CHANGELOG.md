@@ -7,6 +7,7 @@ All notable user-visible and operator-visible changes are recorded here. This fi
 ### Changed
 
 - Go toolchain 1.26.10 → 1.26.11 (`go.mod` `toolchain`, CI and release `GO_VERSION`, Dockerfile `golang:1.26.11-alpine`, and the current pin in `docs/11-deployment.md`, `docs/14-release-engineering.md`, `docs/22-web-ui.md`, and `docs/implementation-design.md`); go1.26.11 includes security fixes to cgo, the go command, the compiler, the linker and net/http.
+- CI workflows: `actions/setup-go` v7.0.0 → v7.1.0 (SHA-pinned; Dependabot #76).
 
 ## v1.5.1 — 2026-10-26
 
